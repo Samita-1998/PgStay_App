@@ -1,0 +1,608 @@
+import 'dart:ui';
+import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
+import 'package:google_fonts/google_fonts.dart';
+import 'package:pgstay/core/theme/app_theme.dart';
+import 'package:pgstay/features/auth/providers/auth_provider.dart';
+
+class MainLayout extends ConsumerStatefulWidget {
+  final Widget child;
+  const MainLayout({super.key, required this.child});
+
+  @override
+  ConsumerState<MainLayout> createState() => _MainLayoutState();
+}
+
+class _MainLayoutState extends ConsumerState<MainLayout> {
+  final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
+
+  // ── Bottom nav items (no rent here) ─────────────────────────────────────────
+  List<Map<String, dynamic>> _getNavItems(String role) {
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return [
+          {
+            'path': '/home',
+            'icon': Icons.dashboard_outlined,
+            'activeIcon': Icons.dashboard,
+            'label': 'Dashboard',
+          },
+          {
+            'path': '/my-pgs',
+            'icon': Icons.apartment_outlined,
+            'activeIcon': Icons.apartment_rounded,
+            'label': "My PG's",
+          },
+          {
+            'path': '/vacancies',
+            'icon': Icons.post_add_outlined,
+            'activeIcon': Icons.post_add_rounded,
+            'label': 'Vacancies',
+          },
+          {
+            'path': '/profile',
+            'icon': Icons.person_outline,
+            'activeIcon': Icons.person,
+            'label': 'Profile',
+          },
+        ];
+      case 'manager':
+        return [
+          {
+            'path': '/manager/dashboard',
+            'icon': Icons.assessment_outlined,
+            'activeIcon': Icons.assessment,
+            'label': 'Operations',
+          },
+          {
+            'path': '/profile',
+            'icon': Icons.person_outline,
+            'activeIcon': Icons.person,
+            'label': 'Profile',
+          },
+        ];
+      case 'employee':
+      case 'staff':
+        return [
+          {
+            'path': '/staff/dashboard',
+            'icon': Icons.assignment_outlined,
+            'activeIcon': Icons.assignment,
+            'label': 'Tasks',
+          },
+          {
+            'path': '/profile',
+            'icon': Icons.person_outline,
+            'activeIcon': Icons.person,
+            'label': 'Profile',
+          },
+        ];
+      default: // Tenant / 'user'
+        return [
+          {
+            'path': '/home',
+            'icon': Icons.explore_outlined,
+            'activeIcon': Icons.explore,
+            'label': 'Discover',
+          },
+          {
+            'path': '/enquiries',
+            'icon': Icons.bookmark_outline,
+            'activeIcon': Icons.bookmark,
+            'label': 'Enquiries',
+          },
+          {
+            'path': '/profile',
+            'icon': Icons.person_outline,
+            'activeIcon': Icons.person,
+            'label': 'Profile',
+          },
+        ];
+    }
+  }
+
+  // ── Drawer items per role ───────────────────────────────────────────────────
+  List<Map<String, dynamic>> _getDrawerItems(String role) {
+    final common = <Map<String, dynamic>>[
+      {
+        'path': '/notifications',
+        'icon': Icons.notifications_outlined,
+        'label': 'Notifications',
+      },
+      {
+        'path': '/complaints',
+        'icon': Icons.report_problem_outlined,
+        'label': 'Complaints',
+      },
+    ];
+
+    switch (role.toLowerCase()) {
+      case 'owner':
+        return [
+          {
+            'path': '/owner-rent',
+            'icon': Icons.receipt_long_outlined,
+            'label': 'Rent Management',
+          },
+          {
+            'path': '/owner-enquiries',
+            'icon': Icons.question_answer_outlined,
+            'label': 'Enquiries',
+          },
+          ...common,
+        ];
+      case 'manager':
+        return [
+          {
+            'path': '/owner-rent',
+            'icon': Icons.receipt_long_outlined,
+            'label': 'Rent Management',
+          },
+          ...common,
+        ];
+      default: // Tenant / user / staff
+        return [
+          {
+            'path': '/rent',
+            'icon': Icons.receipt_long_outlined,
+            'label': 'Rent Tracker',
+          },
+          ...common,
+        ];
+    }
+  }
+
+  int _calculateSelectedIndex(
+    BuildContext context,
+    List<Map<String, dynamic>> navItems,
+  ) {
+    final String location = GoRouterState.of(context).uri.path;
+    for (int i = 0; i < navItems.length; i++) {
+      final String path = navItems[i]['path'];
+      if (location.startsWith(path)) {
+        return i;
+      }
+    }
+    return 0;
+  }
+
+  void _onItemTapped(
+    int index,
+    BuildContext context,
+    List<Map<String, dynamic>> navItems,
+  ) {
+    context.go(navItems[index]['path']);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final authState = ref.watch(authProvider);
+    final user = authState.valueOrNull;
+    final String role = user?.role ?? 'user';
+    final navItems = _getNavItems(role);
+    final selectedIndex = _calculateSelectedIndex(context, navItems);
+    final drawerItems = _getDrawerItems(role);
+    final currentPath = GoRouterState.of(context).uri.path;
+
+    return Scaffold(
+      key: _scaffoldKey,
+      body: widget.child,
+      extendBody: true,
+      // ── Drawer ────────────────────────────────────────────────────────────
+      endDrawer: _buildDrawer(user, role, drawerItems, currentPath),
+      // ── Bottom Nav ────────────────────────────────────────────────────────
+      bottomNavigationBar: Container(
+        margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(24),
+          child: BackdropFilter(
+            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
+            child: Container(
+              height: 72,
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.92),
+                borderRadius: BorderRadius.circular(24),
+                border: Border.all(
+                  color: AppTheme.primary.withValues(alpha: 0.06),
+                  width: 1.5,
+                ),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.primary.withValues(alpha: 0.04),
+                    blurRadius: 24,
+                    spreadRadius: 0,
+                    offset: const Offset(0, 8),
+                  ),
+                ],
+              ),
+              child: Row(
+                mainAxisAlignment: MainAxisAlignment.spaceAround,
+                children: [
+                  ...List.generate(navItems.length, (index) {
+                    final item = navItems[index];
+                    final isSelected = selectedIndex == index;
+                    return _buildNavItem(
+                      index: index,
+                      icon: item['icon'],
+                      activeIcon: item['activeIcon'],
+                      label: item['label'],
+                      isSelected: isSelected,
+                      context: context,
+                      navItems: navItems,
+                    );
+                  }),
+                ],
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  // ── Drawer trigger in bottom nav ──────────────────────────────────────────
+  Widget _buildDrawerTrigger() {
+    return GestureDetector(
+      onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(Icons.menu_rounded, color: AppTheme.textSecondary, size: 22),
+            const SizedBox(height: 4),
+            Text(
+              'More',
+              style: TextStyle(
+                color: AppTheme.textSecondary,
+                fontSize: 10,
+                fontWeight: FontWeight.w500,
+                fontFamily: 'PlusJakartaSans',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  // ── Drawer widget ─────────────────────────────────────────────────────────
+  Widget _buildDrawer(
+    dynamic user,
+    String role,
+    List<Map<String, dynamic>> items,
+    String currentPath,
+  ) {
+    return Drawer(
+      backgroundColor: Colors.transparent,
+      elevation: 0,
+      width: MediaQuery.of(context).size.width * 0.78,
+      child: Container(
+        decoration: const BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.only(
+            topLeft: Radius.circular(28),
+            bottomLeft: Radius.circular(28),
+          ),
+        ),
+        child: Column(
+          children: [
+            // ── Header ────────────────────────────────────────────────────
+            Container(
+              width: double.infinity,
+              padding: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + 24,
+                left: 24,
+                right: 24,
+                bottom: 24,
+              ),
+              decoration: const BoxDecoration(
+                gradient: AppTheme.primaryGradient,
+                borderRadius: BorderRadius.only(topLeft: Radius.circular(28)),
+              ),
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // User avatar
+                  Container(
+                    width: 56,
+                    height: 56,
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(18),
+                      border: Border.all(
+                        color: Colors.white.withValues(alpha: 0.3),
+                        width: 2,
+                      ),
+                    ),
+                    child: Center(
+                      child: Text(
+                        (user?.name ?? 'U').substring(0, 1).toUpperCase(),
+                        style: GoogleFonts.plusJakartaSans(
+                          fontSize: 22,
+                          fontWeight: FontWeight.w800,
+                          color: Colors.white,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 16),
+                  Text(
+                    user?.name ?? 'User',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 18,
+                      fontWeight: FontWeight.w800,
+                      color: Colors.white,
+                    ),
+                  ),
+                  const SizedBox(height: 2),
+                  Text(
+                    user?.email ?? '',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 12,
+                      fontWeight: FontWeight.w500,
+                      color: Colors.white.withValues(alpha: 0.7),
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  // Role badge
+                  Container(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 10,
+                      vertical: 4,
+                    ),
+                    decoration: BoxDecoration(
+                      color: Colors.white.withValues(alpha: 0.15),
+                      borderRadius: BorderRadius.circular(8),
+                    ),
+                    child: Text(
+                      role.toUpperCase(),
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 10,
+                        fontWeight: FontWeight.w800,
+                        color: Colors.white,
+                        letterSpacing: 1.2,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+
+            // ── Menu items ────────────────────────────────────────────────
+            Expanded(
+              child: ListView(
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                children: [
+                  Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 12),
+                    child: Text(
+                      'MENU',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w800,
+                        color: AppTheme.textHint,
+                        letterSpacing: 1.5,
+                      ),
+                    ),
+                  ),
+                  ...items.map((item) {
+                    final isActive = currentPath == item['path'];
+                    return _buildDrawerItem(
+                      icon: item['icon'],
+                      label: item['label'],
+                      isActive: isActive,
+                      onTap: () {
+                        Navigator.of(context).pop(); // close drawer
+                        context.go(item['path']);
+                      },
+                    );
+                  }),
+                ],
+              ),
+            ),
+
+            // ── Footer ───────────────────────────────────────────────────
+            Container(
+              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
+              decoration: BoxDecoration(
+                border: Border(
+                  top: BorderSide(
+                    color: AppTheme.surfaceBorder.withValues(alpha: 0.5),
+                  ),
+                ),
+              ),
+              child: _buildDrawerItem(
+                icon: Icons.logout_rounded,
+                label: 'Logout',
+                isActive: false,
+                isDestructive: true,
+                onTap: () {
+                  Navigator.of(context).pop();
+                  _showLogoutDialog();
+                },
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildDrawerItem({
+    required IconData icon,
+    required String label,
+    required bool isActive,
+    required VoidCallback onTap,
+    bool isDestructive = false,
+  }) {
+    final Color itemColor = isDestructive
+        ? AppTheme.error
+        : isActive
+        ? AppTheme.primary
+        : AppTheme.textSecondary;
+
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+            decoration: BoxDecoration(
+              color: isActive
+                  ? AppTheme.primary.withValues(alpha: 0.06)
+                  : Colors.transparent,
+              borderRadius: BorderRadius.circular(14),
+            ),
+            child: Row(
+              children: [
+                Container(
+                  width: 38,
+                  height: 38,
+                  decoration: BoxDecoration(
+                    color: isActive
+                        ? AppTheme.primary.withValues(alpha: 0.1)
+                        : isDestructive
+                        ? AppTheme.error.withValues(alpha: 0.06)
+                        : AppTheme.backgroundLight,
+                    borderRadius: BorderRadius.circular(11),
+                  ),
+                  child: Icon(icon, size: 20, color: itemColor),
+                ),
+                const SizedBox(width: 14),
+                Expanded(
+                  child: Text(
+                    label,
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 14,
+                      fontWeight: isActive ? FontWeight.w700 : FontWeight.w600,
+                      color: isDestructive
+                          ? AppTheme.error
+                          : isActive
+                          ? AppTheme.primary
+                          : AppTheme.textPrimary,
+                    ),
+                  ),
+                ),
+                if (isActive)
+                  Container(
+                    width: 6,
+                    height: 6,
+                    decoration: BoxDecoration(
+                      color: AppTheme.primary,
+                      shape: BoxShape.circle,
+                    ),
+                  ),
+                if (!isActive && !isDestructive)
+                  Icon(
+                    Icons.chevron_right_rounded,
+                    size: 18,
+                    color: AppTheme.textHint.withValues(alpha: 0.5),
+                  ),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  void _showLogoutDialog() {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
+        title: Text(
+          'Logout',
+          style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800),
+        ),
+        content: Text(
+          'Are you sure you want to logout?',
+          style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary),
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.pop(ctx),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.plusJakartaSans(color: AppTheme.textHint),
+            ),
+          ),
+          TextButton(
+            onPressed: () {
+              Navigator.pop(ctx);
+              ref.read(authProvider.notifier).logout();
+            },
+            child: Text(
+              'Logout',
+              style: GoogleFonts.plusJakartaSans(
+                color: AppTheme.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  // ── Bottom nav item ───────────────────────────────────────────────────────
+  Widget _buildNavItem({
+    required int index,
+    required IconData icon,
+    required IconData activeIcon,
+    required String label,
+    required bool isSelected,
+    required BuildContext context,
+    required List<Map<String, dynamic>> navItems,
+  }) {
+    return GestureDetector(
+      onTap: () => _onItemTapped(index, context, navItems),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 250),
+        curve: Curves.easeOutCubic,
+        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        decoration: BoxDecoration(
+          color: isSelected
+              ? AppTheme.primary.withValues(alpha: 0.05)
+              : Colors.transparent,
+          borderRadius: BorderRadius.circular(16),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            AnimatedSwitcher(
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                isSelected ? activeIcon : icon,
+                key: ValueKey(isSelected),
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                size: isSelected ? 24 : 22,
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                fontSize: isSelected ? 11 : 10,
+                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w500,
+                fontFamily: 'PlusJakartaSans',
+              ),
+              child: Text(label),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
