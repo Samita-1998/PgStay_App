@@ -47,4 +47,5 @@ class EnquiriesRepository {
       throw Exception(e.response?.data['message'] ?? 'Network error occurred while updating enquiry');
     }
   }
+
 }

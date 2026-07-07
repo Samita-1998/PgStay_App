@@ -35,7 +35,7 @@ class NotificationsScreen extends StatelessWidget {
       appBar: AppBar(
         title: Text(
           'Notifications',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: AppTheme.textPrimary,
@@ -94,7 +94,7 @@ class NotificationsScreen extends StatelessWidget {
                       children: [
                         Text(
                           notif['title'] as String,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700,
                             fontSize: 15,
                             color: AppTheme.textPrimary,
@@ -103,7 +103,7 @@ class NotificationsScreen extends StatelessWidget {
                         const SizedBox(height: 4),
                         Text(
                           notif['body'] as String,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             fontSize: 13,
                             color: AppTheme.textSecondary,
                             height: 1.4,
@@ -112,7 +112,7 @@ class NotificationsScreen extends StatelessWidget {
                         const SizedBox(height: 8),
                         Text(
                           notif['time'] as String,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             fontSize: 11,
                             color: AppTheme.textHint,
                             fontWeight: FontWeight.w500,

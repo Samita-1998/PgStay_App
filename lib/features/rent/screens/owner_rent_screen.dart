@@ -10,12 +10,23 @@ import 'package:pgstay/features/rent/providers/rent_provider.dart';
 import 'package:pgstay/features/rent/widgets/edit_payment_dialog.dart';
 import 'package:pgstay/features/rent/widgets/rent_breakdown_dialog.dart';
 import 'package:pgstay/features/rent/widgets/record_payment_dialog.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 // ─── Date helpers ─────────────────────────────────────────────────────────────
 String _fmtDate(DateTime d) {
   const months = [
-    'Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun',
-    'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'
+    'Jan',
+    'Feb',
+    'Mar',
+    'Apr',
+    'May',
+    'Jun',
+    'Jul',
+    'Aug',
+    'Sep',
+    'Oct',
+    'Nov',
+    'Dec',
   ];
   return '${d.day.toString().padLeft(2, '0')} ${months[d.month - 1]} ${d.year}';
 }
@@ -24,8 +35,19 @@ String _monthLabel(String ym) {
   final parts = ym.split('-');
   if (parts.length != 2) return ym;
   const m = [
-    '', 'January', 'February', 'March', 'April', 'May', 'June',
-    'July', 'August', 'September', 'October', 'November', 'December'
+    '',
+    'January',
+    'February',
+    'March',
+    'April',
+    'May',
+    'June',
+    'July',
+    'August',
+    'September',
+    'October',
+    'November',
+    'December',
   ];
   final idx = int.tryParse(parts[1]) ?? 0;
   return '${(idx > 0 && idx < 13) ? m[idx] : parts[1]} ${parts[0]}';
@@ -70,79 +92,26 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      body: CustomScrollView(
-        slivers: [
-          _buildAppBar(),
-          SliverToBoxAdapter(child: _buildPgSelector()),
-          if (_selectedPgId != null) ...[
-            SliverToBoxAdapter(child: _buildMonthFilterBar()),
-            SliverToBoxAdapter(child: _buildGenerateButton()),
-            _buildRentList(),
-          ] else
-            SliverToBoxAdapter(child: _buildSelectPgPrompt()),
-        ],
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: 'Rent Hub',
+        subtitle: 'Track, collect, and manage monthly rent seamlessly.',
+        pinnedSCurve: true,
       ),
-    );
-  }
-
-  // ── App Bar ─────────────────────────────────────────────────────────────────
-  Widget _buildAppBar() {
-    return SliverAppBar(
-      expandedHeight: 130,
-      floating: false,
-      pinned: true,
-      backgroundColor: AppTheme.backgroundLight,
-      elevation: 0,
-      flexibleSpace: FlexibleSpaceBar(
-        background: Container(
-          decoration: const BoxDecoration(gradient: AppTheme.primaryGradient),
-          child: SafeArea(
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  Row(
-                    children: [
-                      Text(
-                        '💰',
-                        style: GoogleFonts.plusJakartaSans(fontSize: 28),
-                      ),
-                      const SizedBox(width: 8),
-                      Text(
-                        'Rent Management',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 24,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                    ],
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'Generate, track & collect monthly rent',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: Colors.white.withValues(alpha: 0.7),
-                      fontWeight: FontWeight.w500,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: CustomScrollView(
+          slivers: [
+            SliverToBoxAdapter(child: _buildPgSelector()),
+            if (_selectedPgId != null) ...[
+              SliverToBoxAdapter(child: _buildMonthFilterBar()),
+              SliverToBoxAdapter(child: _buildGenerateButton()),
+              _buildRentList(),
+            ] else
+              SliverToBoxAdapter(child: _buildSelectPgPrompt()),
+          ],
         ),
-        title: Text(
-          'Rent Management',
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 17,
-            fontWeight: FontWeight.w800,
-            color: AppTheme.textPrimary,
-          ),
-        ),
-        collapseMode: CollapseMode.parallax,
-        titlePadding: const EdgeInsets.only(left: 20, bottom: 16),
       ),
     );
   }
@@ -152,7 +121,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
     final pgsAsync = ref.watch(_ownerPgsProvider);
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 4),
+      padding: EdgeInsets.fromLTRB(24, 110 + MediaQuery.of(context).padding.top + 32, 24, 4),
       child: pgsAsync.when(
         data: (pgs) {
           if (pgs.isEmpty) {
@@ -161,7 +130,9 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
               decoration: BoxDecoration(
                 color: AppTheme.warning.withValues(alpha: 0.08),
                 borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.warning.withValues(alpha: 0.2)),
+                border: Border.all(
+                  color: AppTheme.warning.withValues(alpha: 0.2),
+                ),
               ),
               child: Row(
                 children: [
@@ -170,7 +141,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                   Expanded(
                     child: Text(
                       'You have no PGs yet. Create one to start managing rent.',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 13,
                         fontWeight: FontWeight.w600,
                         color: AppTheme.textSecondary,
@@ -197,49 +168,70 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           return GestureDetector(
             onTap: () => _showPgPicker(pgs),
             child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 14),
+              padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(16),
-                border: Border.all(color: AppTheme.surfaceBorder, width: 1.5),
-                boxShadow: AppTheme.softShadow(opacity: 0.03),
+                borderRadius: BorderRadius.circular(20),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppTheme.textSecondary.withValues(alpha: 0.05),
+                    blurRadius: 20,
+                    offset: const Offset(0, 10),
+                  ),
+                ],
               ),
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(10),
+                    padding: const EdgeInsets.all(12),
                     decoration: BoxDecoration(
-                      gradient: AppTheme.accentGradient,
-                      borderRadius: BorderRadius.circular(12),
+                      color: AppTheme.primary.withValues(alpha: 0.08),
+                      borderRadius: BorderRadius.circular(14),
                     ),
-                    child: const Icon(Icons.apartment_rounded, size: 20, color: Colors.white),
+                    child: const Icon(
+                      Icons.domain_rounded,
+                      size: 24,
+                      color: AppTheme.primary,
+                    ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 16),
                   Expanded(
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
                         Text(
-                          'Selected PG',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 11,
+                          'Managing Property',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
                             fontWeight: FontWeight.w600,
                             color: AppTheme.textHint,
+                            letterSpacing: 0.5,
                           ),
                         ),
-                        const SizedBox(height: 2),
+                        const SizedBox(height: 4),
                         Text(
                           _selectedPgName ?? 'Select a PG',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 15,
-                            fontWeight: FontWeight.w700,
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w800,
                             color: AppTheme.textPrimary,
                           ),
                         ),
                       ],
                     ),
                   ),
-                  const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.primary),
+                  Container(
+                    padding: const EdgeInsets.all(8),
+                    decoration: BoxDecoration(
+                      color: AppTheme.backgroundLight,
+                      shape: BoxShape.circle,
+                    ),
+                    child: const Icon(
+                      Icons.expand_more_rounded,
+                      color: AppTheme.primary,
+                      size: 20,
+                    ),
+                  ),
                 ],
               ),
             ),
@@ -248,7 +240,10 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
         loading: () => const Center(
           child: Padding(
             padding: EdgeInsets.all(20),
-            child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2),
+            child: CircularProgressIndicator(
+              color: AppTheme.primary,
+              strokeWidth: 2,
+            ),
           ),
         ),
         error: (e, _) => Text('Error loading PGs: $e'),
@@ -277,42 +272,63 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           const SizedBox(height: 16),
           Text(
             'Select PG',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 17,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
             ),
           ),
           const SizedBox(height: 8),
-          ...pgs.map((pg) => ListTile(
-                leading: Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: const Icon(Icons.apartment_rounded, size: 20, color: AppTheme.primary),
-                ),
-                title: Text(
-                  pg.name ?? 'PG',
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
-                ),
-                subtitle: Text(
-                  '${pg.totalBeds ?? 0} beds · ${pg.occupiedBeds ?? 0} occupied',
-                  style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textHint),
-                ),
-                trailing: _selectedPgId == pg.id
-                    ? const Icon(Icons.check_circle, color: AppTheme.primary)
-                    : null,
-                onTap: () {
-                  setState(() {
-                    _selectedPgId = pg.id;
-                    _selectedPgName = pg.name;
-                  });
-                  Navigator.pop(ctx);
-                },
-              )),
-          const SizedBox(height: 24),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: pgs
+                    .map(
+                      (pg) => ListTile(
+                        leading: Container(
+                          padding: const EdgeInsets.all(8),
+                          decoration: BoxDecoration(
+                            color: AppTheme.primary.withValues(alpha: 0.08),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: const Icon(
+                            Icons.apartment_rounded,
+                            size: 20,
+                            color: AppTheme.primary,
+                          ),
+                        ),
+                        title: Text(
+                          pg.name ?? 'PG',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+                        ),
+                        subtitle: Text(
+                          '${pg.totalBeds ?? 0} beds · ${pg.occupiedBeds ?? 0} occupied',
+                          style: GoogleFonts.inter(
+                            fontSize: 12,
+                            color: AppTheme.textHint,
+                          ),
+                        ),
+                        trailing: _selectedPgId == pg.id
+                            ? const Icon(
+                                Icons.check_circle,
+                                color: AppTheme.primary,
+                              )
+                            : null,
+                        onTap: () {
+                          setState(() {
+                            _selectedPgId = pg.id;
+                            _selectedPgName = pg.name;
+                          });
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    )
+                    .toList(),
+              ),
+            ),
+          ),
+          const SizedBox(height: 100),
         ],
       ),
     );
@@ -327,7 +343,11 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           // Month row
           Row(
             children: [
-              const Icon(Icons.calendar_month_rounded, size: 16, color: AppTheme.textHint),
+              const Icon(
+                Icons.calendar_month_rounded,
+                size: 16,
+                color: AppTheme.textHint,
+              ),
               const SizedBox(width: 6),
               GestureDetector(
                 onTap: _pickMonth,
@@ -335,7 +355,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                   children: [
                     Text(
                       _monthLabel(_selectedMonth),
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 15,
                         fontWeight: FontWeight.w700,
                         color: AppTheme.textPrimary,
@@ -356,7 +376,10 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                 label: const Text('Reset'),
                 style: TextButton.styleFrom(
                   foregroundColor: AppTheme.primary,
-                  textStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w600),
+                  textStyle: GoogleFonts.inter(
+                    fontSize: 12,
+                    fontWeight: FontWeight.w600,
+                  ),
                 ),
               ),
             ],
@@ -374,22 +397,31 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                     onTap: () => setState(() => _statusFilter = e.key),
                     child: AnimatedContainer(
                       duration: const Duration(milliseconds: 200),
-                      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 7),
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 14,
+                        vertical: 7,
+                      ),
                       decoration: BoxDecoration(
                         color: isSelected ? AppTheme.primary : Colors.white,
                         borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: isSelected ? AppTheme.primary : AppTheme.surfaceBorder,
+                          color: isSelected
+                              ? AppTheme.primary
+                              : AppTheme.surfaceBorder,
                           width: 1.5,
                         ),
-                        boxShadow: isSelected ? AppTheme.primaryGlow(opacity: 0.12) : [],
+                        boxShadow: isSelected
+                            ? AppTheme.primaryGlow(opacity: 0.12)
+                            : [],
                       ),
                       child: Text(
                         e.value,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 12,
                           fontWeight: FontWeight.w700,
-                          color: isSelected ? Colors.white : AppTheme.textSecondary,
+                          color: isSelected
+                              ? Colors.white
+                              : AppTheme.textSecondary,
                         ),
                       ),
                     ),
@@ -424,15 +456,18 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                         ),
                       )
                     : const Icon(Icons.auto_awesome_rounded, size: 20),
-                label: Text(
-                  _isGenerating ? 'Generating...' : 'Auto-Generate',
-                ),
+                label: Text(_isGenerating ? 'Generating...' : 'Auto-Generate'),
                 style: ElevatedButton.styleFrom(
                   backgroundColor: AppTheme.accentColor,
                   foregroundColor: Colors.white,
                   elevation: 0,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                  textStyle: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(14),
+                  ),
+                  textStyle: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                  ),
                 ),
               ),
             ),
@@ -442,9 +477,11 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
             height: 52,
             child: ElevatedButton.icon(
               onPressed: () {
-                showDialog(
-                  context: context,
-                  builder: (ctx) => const RecordPaymentDialog(),
+                Navigator.push(
+                  context,
+                  MaterialPageRoute(
+                    builder: (context) => const RecordPaymentScreen(),
+                  ),
                 );
               },
               icon: const Icon(Icons.add_rounded, size: 20),
@@ -453,8 +490,13 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                 backgroundColor: AppTheme.primary,
                 foregroundColor: Colors.white,
                 elevation: 0,
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                textStyle: GoogleFonts.plusJakartaSans(fontSize: 14, fontWeight: FontWeight.w700),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(14),
+                ),
+                textStyle: GoogleFonts.inter(
+                  fontSize: 14,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
             ),
           ),
@@ -472,20 +514,23 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       // Due date = 5th of the selected month
       final parts = _selectedMonth.split('-');
       final dueDate = '${parts[0]}-${parts[1]}-05T00:00:00.000Z';
-      await repo.generateRent(_selectedPgId!, _selectedMonth, dueDate);
+      final result = await repo.generateRent(_selectedPgId!, _selectedMonth, dueDate);
 
       // Refresh the list
       ref.invalidate(pgRentsProvider);
 
       if (mounted) {
+        final message = result['message'] ?? 'Rent generated successfully!';
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
             content: Text(
-              'Rent generated successfully!',
-              style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+              message,
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
             ),
             backgroundColor: AppTheme.success,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
             behavior: SnackBarBehavior.floating,
           ),
         );
@@ -518,10 +563,12 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           child: Column(
             children: [
               _buildSummaryRow(rents),
-              ...rents.map((r) => Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
-                    child: _buildRentCard(r),
-                  )),
+              ...rents.map(
+                (r) => Padding(
+                  padding: const EdgeInsets.fromLTRB(24, 0, 24, 14),
+                  child: _buildRentCard(r),
+                ),
+              ),
               const SizedBox(height: 120),
             ],
           ),
@@ -530,7 +577,9 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       loading: () => const SliverToBoxAdapter(
         child: Padding(
           padding: EdgeInsets.all(60),
-          child: Center(child: CircularProgressIndicator(color: AppTheme.primary)),
+          child: Center(
+            child: CircularProgressIndicator(color: AppTheme.primary),
+          ),
         ),
       ),
       error: (e, _) => SliverToBoxAdapter(
@@ -538,17 +587,27 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           padding: const EdgeInsets.all(32),
           child: Column(
             children: [
-              const Icon(Icons.wifi_off_rounded, size: 40, color: AppTheme.error),
+              const Icon(
+                Icons.wifi_off_rounded,
+                size: 40,
+                color: AppTheme.error,
+              ),
               const SizedBox(height: 12),
               Text(
                 'Could not load rent records',
-                style: GoogleFonts.plusJakartaSans(fontSize: 15, fontWeight: FontWeight.w700),
+                style: GoogleFonts.inter(
+                  fontSize: 15,
+                  fontWeight: FontWeight.w700,
+                ),
               ),
               const SizedBox(height: 6),
               Text(
                 e.toString(),
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(fontSize: 12, color: AppTheme.textHint),
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppTheme.textHint,
+                ),
               ),
               const SizedBox(height: 16),
               ElevatedButton.icon(
@@ -566,59 +625,86 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
   // ── Summary Row ─────────────────────────────────────────────────────────────
   Widget _buildSummaryRow(List<RentModel> rents) {
     final total = rents.fold(0.0, (s, r) => s + r.amount);
-    final collected = rents.where((r) => r.status == 'paid').fold(0.0, (s, r) => s + r.paidAmount);
-    final pending = rents.where((r) => r.status == 'pending' || r.status == 'overdue').fold(0.0, (s, r) => s + r.amount);
+    final collected = rents
+        .where((r) => r.status == 'paid')
+        .fold(0.0, (s, r) => s + r.paidAmount);
+    final pending = rents
+        .where((r) => r.status == 'pending' || r.status == 'overdue')
+        .fold(0.0, (s, r) => s + r.amount);
     final paidCount = rents.where((r) => r.status == 'paid').length;
     final totalCount = rents.length;
+    final progress = totalCount > 0 ? paidCount / totalCount : 0.0;
 
     return Padding(
-      padding: const EdgeInsets.fromLTRB(24, 0, 24, 20),
+      padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
       child: Container(
-        padding: const EdgeInsets.all(20),
+        padding: const EdgeInsets.all(24),
         decoration: BoxDecoration(
-          gradient: AppTheme.primaryGradient,
-          borderRadius: BorderRadius.circular(20),
-          boxShadow: AppTheme.primaryGlow(opacity: 0.2, blur: 20),
+          gradient: AppTheme.darkGradient,
+          borderRadius: BorderRadius.circular(24),
+          boxShadow: [
+            BoxShadow(
+              color: AppTheme.primaryDark.withValues(alpha: 0.2),
+              blurRadius: 24,
+              offset: const Offset(0, 12),
+            ),
+          ],
         ),
         child: Column(
           children: [
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                _summaryItem('Total', '₹${total.toInt()}', Colors.white),
-                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.2)),
-                _summaryItem('Collected', '₹${collected.toInt()}', const Color(0xFF6EE7B7)),
-                Container(width: 1, height: 40, color: Colors.white.withValues(alpha: 0.2)),
-                _summaryItem('Pending', '₹${pending.toInt()}', const Color(0xFFFCD34D)),
+                _summaryItem('Total Rent', '₹${total.toInt()}', Colors.white),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                _summaryItem(
+                  'Collected',
+                  '₹${collected.toInt()}',
+                  AppTheme.success,
+                ),
+                Container(
+                  width: 1,
+                  height: 40,
+                  color: Colors.white.withValues(alpha: 0.1),
+                ),
+                _summaryItem(
+                  'Pending',
+                  '₹${pending.toInt()}',
+                  AppTheme.warning,
+                ),
               ],
             ),
-            const SizedBox(height: 16),
+            const SizedBox(height: 24),
             // Progress bar
             ClipRRect(
-              borderRadius: BorderRadius.circular(6),
+              borderRadius: BorderRadius.circular(8),
               child: LinearProgressIndicator(
-                value: totalCount > 0 ? paidCount / totalCount : 0,
-                backgroundColor: Colors.white.withValues(alpha: 0.15),
-                valueColor: const AlwaysStoppedAnimation(Color(0xFF6EE7B7)),
+                value: progress,
+                backgroundColor: Colors.white.withValues(alpha: 0.05),
+                valueColor: const AlwaysStoppedAnimation(AppTheme.success),
                 minHeight: 8,
               ),
             ),
-            const SizedBox(height: 8),
+            const SizedBox(height: 12),
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Text(
-                  '$paidCount of $totalCount tenants paid',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w600,
-                    color: Colors.white.withValues(alpha: 0.8),
+                  '$paidCount of $totalCount collected',
+                  style: GoogleFonts.inter(
+                    fontSize: 13,
+                    fontWeight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.5),
                   ),
                 ),
                 Text(
-                  totalCount > 0 ? '${((paidCount / totalCount) * 100).toInt()}%' : '0%',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 13,
+                  totalCount > 0 ? '${(progress * 100).toInt()}%' : '0%',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
                     fontWeight: FontWeight.w800,
                     color: Colors.white,
                   ),
@@ -633,19 +719,21 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
 
   Widget _summaryItem(String label, String value, Color color) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 11,
             fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.65),
+            color: Colors.white.withValues(alpha: 0.5),
+            letterSpacing: 0.5,
           ),
         ),
-        const SizedBox(height: 4),
+        const SizedBox(height: 6),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 18,
             fontWeight: FontWeight.w800,
             color: color,
@@ -667,18 +755,18 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
     return Container(
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(18),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(
           color: rent.status == 'overdue'
               ? AppTheme.error.withValues(alpha: 0.3)
-              : AppTheme.surfaceBorder,
+              : Colors.transparent,
           width: 1.5,
         ),
         boxShadow: [
           BoxShadow(
-            color: AppTheme.primary.withValues(alpha: 0.03),
-            blurRadius: 16,
-            offset: const Offset(0, 4),
+            color: AppTheme.textSecondary.withValues(alpha: 0.04),
+            blurRadius: 15,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
@@ -686,114 +774,186 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
         children: [
           // Header
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 16, 18, 0),
+            padding: const EdgeInsets.fromLTRB(20, 20, 16, 12),
             child: Row(
               children: [
                 // Tenant avatar
                 Container(
-                  width: 40,
-                  height: 40,
+                  width: 44,
+                  height: 44,
                   decoration: BoxDecoration(
-                    color: AppTheme.primary.withValues(alpha: 0.08),
-                    borderRadius: BorderRadius.circular(12),
+                    gradient: LinearGradient(
+                      colors: [
+                        AppTheme.primary.withValues(alpha: 0.15),
+                        AppTheme.primary.withValues(alpha: 0.05),
+                      ],
+                      begin: Alignment.topLeft,
+                      end: Alignment.bottomRight,
+                    ),
+                    borderRadius: BorderRadius.circular(14),
                   ),
                   child: Center(
                     child: Text(
                       (rent.userName ?? 'T').substring(0, 1).toUpperCase(),
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 16,
+                      style: GoogleFonts.inter(
+                        fontSize: 18,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.primary,
                       ),
                     ),
                   ),
                 ),
-                const SizedBox(width: 12),
+                const SizedBox(width: 14),
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
                       Text(
                         rent.userName ?? 'Tenant',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 14,
+                        style: GoogleFonts.inter(
+                          fontSize: 15,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
                         ),
                       ),
-                      if (rent.bedNumber != null)
-                        Text(
-                          'Bed ${rent.bedNumber}',
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 12,
-                            fontWeight: FontWeight.w500,
-                            color: AppTheme.textHint,
-                          ),
-                        ),
+                      const SizedBox(height: 2),
+                      Row(
+                        children: [
+                          if (rent.bedNumber != null)
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 6,
+                                vertical: 2,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.backgroundLight,
+                                borderRadius: BorderRadius.circular(6),
+                              ),
+                              child: Text(
+                                'Bed ${rent.bedNumber}',
+                                style: GoogleFonts.inter(
+                                  fontSize: 10,
+                                  fontWeight: FontWeight.w600,
+                                  color: AppTheme.textSecondary,
+                                ),
+                              ),
+                            ),
+                        ],
+                      ),
                     ],
                   ),
                 ),
-                // Status badge & Options
-                Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 5),
-                      decoration: BoxDecoration(
-                        color: sColor.withValues(alpha: 0.1),
-                        borderRadius: BorderRadius.circular(8),
+                // Status badge
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 12,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: sColor.withValues(alpha: 0.1),
+                    borderRadius: BorderRadius.circular(20),
+                    border: Border.all(color: sColor.withValues(alpha: 0.2)),
+                  ),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      Icon(sIcon, size: 12, color: sColor),
+                      const SizedBox(width: 6),
+                      Text(
+                        sLabel.toUpperCase(),
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
+                          fontWeight: FontWeight.w800,
+                          color: sColor,
+                        ),
                       ),
+                    ],
+                  ),
+                ),
+                const SizedBox(width: 8),
+                PopupMenuButton<String>(
+                  icon: const Icon(
+                    Icons.more_vert_rounded,
+                    color: AppTheme.textHint,
+                    size: 22,
+                  ),
+                  padding: EdgeInsets.zero,
+                  shape: RoundedRectangleBorder(
+                    borderRadius: BorderRadius.circular(16),
+                  ),
+                  color: Colors.white,
+                  elevation: 8,
+                  onSelected: (val) {
+                    if (val == 'edit') {
+                      Navigator.push(
+                        context,
+                        MaterialPageRoute(
+                          builder: (context) => EditPaymentScreen(rent: rent),
+                        ),
+                      );
+                    } else if (val == 'breakdown') {
+                      showDialog(
+                        context: context,
+                        builder: (_) => RentBreakdownDialog(rent: rent),
+                      );
+                    }
+                  },
+                  itemBuilder: (ctx) => [
+                    PopupMenuItem(
+                      value: 'edit',
                       child: Row(
-                        mainAxisSize: MainAxisSize.min,
                         children: [
-                          Icon(sIcon, size: 12, color: sColor),
-                          const SizedBox(width: 4),
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.primary.withValues(alpha: 0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.edit_rounded,
+                              size: 16,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                          const SizedBox(width: 12),
                           Text(
-                            sLabel.toUpperCase(),
-                            style: GoogleFonts.plusJakartaSans(
-                              fontSize: 10,
-                              fontWeight: FontWeight.w800,
-                              color: sColor,
+                            'Edit Payment',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
                             ),
                           ),
                         ],
                       ),
                     ),
-                    const SizedBox(width: 4),
-                    PopupMenuButton<String>(
-                      icon: const Icon(Icons.more_vert_rounded, color: AppTheme.textHint, size: 20),
-                      padding: EdgeInsets.zero,
-                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                      color: Colors.white,
-                      onSelected: (val) {
-                        if (val == 'edit') {
-                          showDialog(context: context, builder: (_) => EditPaymentDialog(rent: rent));
-                        } else if (val == 'breakdown') {
-                          showDialog(context: context, builder: (_) => RentBreakdownDialog(rent: rent));
-                        }
-                      },
-                      itemBuilder: (ctx) => [
-                        PopupMenuItem(
-                          value: 'edit',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.edit_rounded, size: 18, color: AppTheme.textPrimary),
-                              const SizedBox(width: 10),
-                              Text('Edit Payment Record', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                            ],
+                    PopupMenuItem(
+                      value: 'breakdown',
+                      child: Row(
+                        children: [
+                          Container(
+                            padding: const EdgeInsets.all(6),
+                            decoration: BoxDecoration(
+                              color: AppTheme.accentColor.withValues(
+                                alpha: 0.1,
+                              ),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: const Icon(
+                              Icons.receipt_long_rounded,
+                              size: 16,
+                              color: AppTheme.accentColor,
+                            ),
                           ),
-                        ),
-                        PopupMenuItem(
-                          value: 'breakdown',
-                          child: Row(
-                            children: [
-                              const Icon(Icons.receipt_long_rounded, size: 18, color: AppTheme.textPrimary),
-                              const SizedBox(width: 10),
-                              Text('Rent Breakdown', style: GoogleFonts.plusJakartaSans(fontSize: 13, fontWeight: FontWeight.w600)),
-                            ],
+                          const SizedBox(width: 12),
+                          Text(
+                            'Rent Breakdown',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w600,
+                            ),
                           ),
-                        ),
-                      ],
+                        ],
+                      ),
                     ),
                   ],
                 ),
@@ -801,9 +961,18 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
             ),
           ),
 
+          // Divider
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 20),
+            child: Divider(
+              color: AppTheme.surfaceBorder.withValues(alpha: 0.5),
+              height: 1,
+            ),
+          ),
+
           // Amount & due
           Padding(
-            padding: const EdgeInsets.fromLTRB(18, 14, 18, 0),
+            padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -811,9 +980,18 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
                     Text(
+                      'Amount',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
+                        fontWeight: FontWeight.w600,
+                        color: AppTheme.textHint,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
                       '₹${rent.amount.toInt()}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 24,
+                      style: GoogleFonts.inter(
+                        fontSize: 26,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
                       ),
@@ -824,19 +1002,28 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                   crossAxisAlignment: CrossAxisAlignment.end,
                   children: [
                     Text(
-                      'Due: ${_fmtDate(rent.dueDate)}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
+                      'Due Date',
+                      style: GoogleFonts.inter(
+                        fontSize: 11,
                         fontWeight: FontWeight.w600,
+                        color: AppTheme.textHint,
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    Text(
+                      _fmtDate(rent.dueDate),
+                      style: GoogleFonts.inter(
+                        fontSize: 14,
+                        fontWeight: FontWeight.w700,
                         color: isActionable && daysLeft < 0
                             ? AppTheme.error
-                            : AppTheme.textSecondary,
+                            : AppTheme.textPrimary,
                       ),
                     ),
                     if (isActionable && daysLeft < 0)
                       Text(
-                        '${daysLeft.abs()}d overdue',
-                        style: GoogleFonts.plusJakartaSans(
+                        '${daysLeft.abs()} days overdue',
+                        style: GoogleFonts.inter(
                           fontSize: 11,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.error,
@@ -851,22 +1038,29 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           // Paid receipt
           if (rent.status == 'paid' && rent.paidDate != null)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 12, 18, 0),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 0),
               child: Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 14,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  color: AppTheme.success.withValues(alpha: 0.06),
-                  borderRadius: BorderRadius.circular(8),
+                  color: AppTheme.success.withValues(alpha: 0.08),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 child: Row(
                   children: [
-                    const Icon(Icons.verified_rounded, size: 14, color: AppTheme.success),
-                    const SizedBox(width: 6),
+                    const Icon(
+                      Icons.verified_rounded,
+                      size: 16,
+                      color: AppTheme.success,
+                    ),
+                    const SizedBox(width: 8),
                     Text(
                       'Paid ${_fmtDate(rent.paidDate!)}',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 12,
-                        fontWeight: FontWeight.w600,
+                        fontWeight: FontWeight.w700,
                         color: AppTheme.success,
                       ),
                     ),
@@ -874,8 +1068,8 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                     if (rent.paymentMethod != null)
                       Text(
                         rent.paymentMethod!.toUpperCase().replaceAll('_', ' '),
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 10,
+                        style: GoogleFonts.inter(
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.success,
                         ),
@@ -888,36 +1082,49 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           // Action buttons
           if (isActionable)
             Padding(
-              padding: const EdgeInsets.fromLTRB(18, 14, 18, 16),
+              padding: const EdgeInsets.fromLTRB(20, 16, 20, 20),
               child: Row(
                 children: [
                   Expanded(
                     child: SizedBox(
-                      height: 42,
+                      height: 48,
                       child: ElevatedButton.icon(
                         onPressed: () => _showMarkPaidSheet(rent),
-                        icon: const Icon(Icons.check_circle_outline, size: 16),
+                        icon: const Icon(Icons.check_circle_outline, size: 18),
                         label: const Text('Mark Paid'),
                         style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.success,
+                          backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
                           elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                          textStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(14),
+                          ),
+                          textStyle: GoogleFonts.inter(
+                            fontSize: 13,
+                            fontWeight: FontWeight.w700,
+                          ),
                         ),
                       ),
                     ),
                   ),
-                  const SizedBox(width: 8),
+                  const SizedBox(width: 12),
                   SizedBox(
-                    height: 42,
+                    height: 48,
                     child: OutlinedButton(
                       onPressed: () => _waiveRent(rent),
                       style: OutlinedButton.styleFrom(
                         foregroundColor: AppTheme.textHint,
-                        side: const BorderSide(color: AppTheme.surfaceBorder),
-                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                        textStyle: GoogleFonts.plusJakartaSans(fontSize: 12, fontWeight: FontWeight.w700),
+                        side: BorderSide(
+                          color: AppTheme.surfaceBorder,
+                          width: 1.5,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(14),
+                        ),
+                        textStyle: GoogleFonts.inter(
+                          fontSize: 13,
+                          fontWeight: FontWeight.w700,
+                        ),
                       ),
                       child: const Text('Waive'),
                     ),
@@ -926,7 +1133,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
               ),
             )
           else
-            const SizedBox(height: 16),
+            const SizedBox(height: 20),
         ],
       ),
     );
@@ -935,7 +1142,14 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
   // ── Mark Paid Sheet ─────────────────────────────────────────────────────────
   void _showMarkPaidSheet(RentModel rent) {
     String selectedMethod = 'cash';
-    final methods = ['cash', 'upi', 'bank_transfer', 'cheque', 'online', 'other'];
+    final methods = [
+      'cash',
+      'upi',
+      'bank_transfer',
+      'cheque',
+      'online',
+      'other',
+    ];
 
     showModalBottomSheet(
       context: context,
@@ -945,7 +1159,9 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
         return StatefulBuilder(
           builder: (ctx, setSheetState) {
             return ClipRRect(
-              borderRadius: const BorderRadius.vertical(top: Radius.circular(28)),
+              borderRadius: const BorderRadius.vertical(
+                top: Radius.circular(28),
+              ),
               child: BackdropFilter(
                 filter: ImageFilter.blur(sigmaX: 6, sigmaY: 6),
                 child: Container(
@@ -957,7 +1173,9 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                   ),
                   decoration: const BoxDecoration(
                     color: Colors.white,
-                    borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+                    borderRadius: BorderRadius.vertical(
+                      top: Radius.circular(28),
+                    ),
                   ),
                   child: Column(
                     mainAxisSize: MainAxisSize.min,
@@ -976,7 +1194,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                       const SizedBox(height: 20),
                       Text(
                         'Record Payment',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 20,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.textPrimary,
@@ -985,7 +1203,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                       const SizedBox(height: 4),
                       Text(
                         '${rent.userName ?? 'Tenant'} · ₹${rent.amount.toInt()} · ${_monthLabel(rent.month)}',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 13,
                           color: AppTheme.textSecondary,
                         ),
@@ -993,7 +1211,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                       const SizedBox(height: 20),
                       Text(
                         'Payment Method',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 13,
                           fontWeight: FontWeight.w700,
                           color: AppTheme.textPrimary,
@@ -1006,24 +1224,32 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                         children: methods.map((m) {
                           final sel = selectedMethod == m;
                           return GestureDetector(
-                            onTap: () => setSheetState(() => selectedMethod = m),
+                            onTap: () =>
+                                setSheetState(() => selectedMethod = m),
                             child: AnimatedContainer(
                               duration: const Duration(milliseconds: 180),
-                              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 14,
+                                vertical: 8,
+                              ),
                               decoration: BoxDecoration(
                                 color: sel ? AppTheme.primary : Colors.white,
                                 borderRadius: BorderRadius.circular(10),
                                 border: Border.all(
-                                  color: sel ? AppTheme.primary : AppTheme.surfaceBorder,
+                                  color: sel
+                                      ? AppTheme.primary
+                                      : AppTheme.surfaceBorder,
                                   width: 1.5,
                                 ),
                               ),
                               child: Text(
                                 m.toUpperCase().replaceAll('_', ' '),
-                                style: GoogleFonts.plusJakartaSans(
+                                style: GoogleFonts.inter(
                                   fontSize: 11,
                                   fontWeight: FontWeight.w700,
-                                  color: sel ? Colors.white : AppTheme.textSecondary,
+                                  color: sel
+                                      ? Colors.white
+                                      : AppTheme.textSecondary,
                                 ),
                               ),
                             ),
@@ -1042,11 +1268,13 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.success,
                             elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(14),
+                            ),
                           ),
                           child: Text(
                             'Confirm Payment — ₹${rent.amount.toInt()}',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: GoogleFonts.inter(
                               color: Colors.white,
                               fontWeight: FontWeight.w800,
                               fontSize: 15,
@@ -1068,18 +1296,20 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
   Future<void> _markPaid(String rentId, String method) async {
     try {
       final repo = ref.read(rentRepositoryProvider);
-      await repo.updateRent(rentId, {
-        'status': 'paid',
-        'paymentMode': method,
-      });
+      await repo.updateRent(rentId, {'status': 'paid', 'paymentMode': method});
       ref.invalidate(pgRentsProvider);
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Rent marked as paid!', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            content: Text(
+              'Rent marked as paid!',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+            ),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            shape: RoundedRectangleBorder(
+              borderRadius: BorderRadius.circular(12),
+            ),
           ),
         );
       }
@@ -1097,15 +1327,21 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20)),
-        title: Text('Waive Rent?', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w800)),
+        title: Text(
+          'Waive Rent?',
+          style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+        ),
         content: Text(
           'Are you sure you want to waive ₹${rent.amount.toInt()} for ${rent.userName ?? 'this tenant'}?',
-          style: GoogleFonts.plusJakartaSans(color: AppTheme.textSecondary),
+          style: GoogleFonts.inter(color: AppTheme.textSecondary),
         ),
         actions: [
           TextButton(
             onPressed: () => Navigator.pop(ctx),
-            child: Text('Cancel', style: GoogleFonts.plusJakartaSans(color: AppTheme.textHint)),
+            child: Text(
+              'Cancel',
+              style: GoogleFonts.inter(color: AppTheme.textHint),
+            ),
           ),
           TextButton(
             onPressed: () async {
@@ -1116,7 +1352,13 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
                 ref.invalidate(pgRentsProvider);
               } catch (_) {}
             },
-            child: Text('Waive', style: GoogleFonts.plusJakartaSans(color: AppTheme.error, fontWeight: FontWeight.w700)),
+            child: Text(
+              'Waive',
+              style: GoogleFonts.inter(
+                color: AppTheme.error,
+                fontWeight: FontWeight.w700,
+              ),
+            ),
           ),
         ],
       ),
@@ -1133,6 +1375,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
 
     await showModalBottomSheet(
       context: context,
+      isScrollControlled: true,
       shape: const RoundedRectangleBorder(
         borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
@@ -1151,22 +1394,31 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           const SizedBox(height: 16),
           Text(
             'Select Month',
-            style: GoogleFonts.plusJakartaSans(fontSize: 17, fontWeight: FontWeight.w800),
+            style: GoogleFonts.inter(fontSize: 17, fontWeight: FontWeight.w800),
           ),
           const SizedBox(height: 8),
-          ...months.map((m) => ListTile(
-                title: Text(
-                  _monthLabel(m),
-                  style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w600),
-                ),
-                trailing: m == _selectedMonth
-                    ? const Icon(Icons.check_rounded, color: AppTheme.primary)
-                    : null,
-                onTap: () {
-                  setState(() => _selectedMonth = m);
-                  Navigator.pop(ctx);
-                },
-              )),
+          Flexible(
+            child: SingleChildScrollView(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                children: months.map(
+                  (m) => ListTile(
+                    title: Text(
+                      _monthLabel(m),
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    ),
+                    trailing: m == _selectedMonth
+                        ? const Icon(Icons.check_rounded, color: AppTheme.primary)
+                        : null,
+                    onTap: () {
+                      setState(() => _selectedMonth = m);
+                      Navigator.pop(ctx);
+                    },
+                  ),
+                ).toList(),
+              ),
+            ),
+          ),
           const SizedBox(height: 16),
         ],
       ),
@@ -1179,26 +1431,41 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       final monthMatch = r.month == _selectedMonth;
       final statusMatch = _statusFilter == null || r.status == _statusFilter;
       return monthMatch && statusMatch;
-    }).toList()
-      ..sort((a, b) {
-        if (a.status == 'overdue' && b.status != 'overdue') return -1;
-        if (a.status != 'overdue' && b.status == 'overdue') return 1;
-        if (a.status == 'pending' && b.status == 'paid') return -1;
-        if (a.status == 'paid' && b.status == 'pending') return 1;
-        return (a.userName ?? '').compareTo(b.userName ?? '');
-      });
+    }).toList()..sort((a, b) {
+      if (a.status == 'overdue' && b.status != 'overdue') return -1;
+      if (a.status != 'overdue' && b.status == 'overdue') return 1;
+      if (a.status == 'pending' && b.status == 'paid') return -1;
+      if (a.status == 'paid' && b.status == 'pending') return 1;
+      return (a.userName ?? '').compareTo(b.userName ?? '');
+    });
   }
 
   Map<String, dynamic> _statusMeta(String status) {
     switch (status) {
       case 'paid':
-        return {'color': AppTheme.success, 'label': 'Paid', 'icon': Icons.check_circle_outline};
+        return {
+          'color': AppTheme.success,
+          'label': 'Paid',
+          'icon': Icons.check_circle_outline,
+        };
       case 'overdue':
-        return {'color': AppTheme.error, 'label': 'Overdue', 'icon': Icons.error_outline};
+        return {
+          'color': AppTheme.error,
+          'label': 'Overdue',
+          'icon': Icons.error_outline,
+        };
       case 'waived':
-        return {'color': AppTheme.textHint, 'label': 'Waived', 'icon': Icons.cancel_outlined};
+        return {
+          'color': AppTheme.textHint,
+          'label': 'Waived',
+          'icon': Icons.cancel_outlined,
+        };
       default:
-        return {'color': AppTheme.warning, 'label': 'Pending', 'icon': Icons.schedule};
+        return {
+          'color': AppTheme.warning,
+          'label': 'Pending',
+          'icon': Icons.schedule,
+        };
     }
   }
 
@@ -1214,12 +1481,16 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
               color: AppTheme.primary.withValues(alpha: 0.07),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(Icons.receipt_long_outlined, size: 36, color: AppTheme.primary),
+            child: const Icon(
+              Icons.receipt_long_outlined,
+              size: 36,
+              color: AppTheme.primary,
+            ),
           ),
           const SizedBox(height: 20),
           Text(
             'No Rent Records',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -1229,7 +1500,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           Text(
             'Tap "Auto-Generate Rent" to create rent records for all tenants in ${_monthLabel(_selectedMonth)}.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 13,
               color: AppTheme.textSecondary,
               height: 1.5,
@@ -1252,12 +1523,16 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
               color: AppTheme.accentColor.withValues(alpha: 0.08),
               borderRadius: BorderRadius.circular(24),
             ),
-            child: const Icon(Icons.apartment_rounded, size: 36, color: AppTheme.accentColor),
+            child: const Icon(
+              Icons.apartment_rounded,
+              size: 36,
+              color: AppTheme.accentColor,
+            ),
           ),
           const SizedBox(height: 20),
           Text(
             'Select a PG',
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 18,
               fontWeight: FontWeight.w800,
               color: AppTheme.textPrimary,
@@ -1267,7 +1542,7 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
           Text(
             'Choose a PG from the dropdown above to view and manage rent records.',
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 13,
               color: AppTheme.textSecondary,
               height: 1.5,

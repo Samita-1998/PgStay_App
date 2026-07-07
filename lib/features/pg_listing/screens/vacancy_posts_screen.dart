@@ -1,9 +1,13 @@
+import 'dart:async';
+import 'dart:convert';
 import 'package:flutter/material.dart';
+import 'package:pgstay/features/pg_listing/widgets/pg_image_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:pgstay/features/pg_listing/screens/create_vacancy_post_screen.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class VacancyPostsScreen extends ConsumerStatefulWidget {
   const VacancyPostsScreen({super.key});
@@ -28,129 +32,114 @@ class _VacancyPostsScreenState extends ConsumerState<VacancyPostsScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: AppTheme.backgroundLight,
-        elevation: 0,
-        title: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Text(
-              'Vacancy Posts',
-              style: AppTheme.textTheme.displayMedium?.copyWith(
-                fontWeight: FontWeight.w800,
-                fontSize: isSmallScreen ? 24 : 28,
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: 'Vacancy Posts',
+        showBackButton: false,
+        pinnedSCurve: true,
+        isCompact: true,
+        actionWidget: Padding(
+          padding: const EdgeInsets.only(right: 8.0),
+          child: ElevatedButton.icon(
+            onPressed: () {
+              Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (_) => const CreateVacancyPostScreen(),
+                ),
+              ).then((_) => ref.refresh(pgListProvider));
+            },
+            style: ElevatedButton.styleFrom(
+              backgroundColor: AppTheme.accentColor,
+              shape: RoundedRectangleBorder(
+                borderRadius: BorderRadius.circular(AppTheme.radiusXL),
               ),
+              padding: EdgeInsets.symmetric(
+                horizontal: isSmallScreen ? 12 : 16,
+                vertical: isSmallScreen ? 8 : 12,
+              ),
+              minimumSize: Size.zero,
+              tapTargetSize: MaterialTapTargetSize.shrinkWrap,
             ),
-            const SizedBox(height: 2),
-            Text(
-              'Manage your vacancy listings',
-              style: AppTheme.textTheme.bodyMedium?.copyWith(
+            icon: Icon(
+              Icons.add,
+              size: isSmallScreen ? 16 : 18,
+              color: Colors.white,
+            ),
+            label: Text(
+              'New Post',
+              style: AppTheme.textTheme.labelLarge?.copyWith(
+                fontWeight: FontWeight.w700,
+                color: Colors.white,
                 fontSize: isSmallScreen ? 12 : 14,
               ),
             ),
-          ],
-        ),
-        actions: [
-          Padding(
-            padding: const EdgeInsets.symmetric(
-              horizontal: 16.0,
-              vertical: 8.0,
-            ),
-            child: ElevatedButton.icon(
-              onPressed: () {
-                Navigator.push(
-                  context,
-                  MaterialPageRoute(
-                    builder: (_) => const CreateVacancyPostScreen(),
-                  ),
-                ).then((_) => ref.refresh(pgListProvider));
-              },
-              style: ElevatedButton.styleFrom(
-                backgroundColor: AppTheme.accentColor,
-                shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(AppTheme.radiusXL),
-                ),
-                padding: EdgeInsets.symmetric(
-                  horizontal: isSmallScreen ? 12 : 16,
-                  vertical: isSmallScreen ? 8 : 12,
-                ),
-                minimumSize: Size.zero,
-                tapTargetSize: MaterialTapTargetSize.shrinkWrap,
-              ),
-              icon: Icon(
-                Icons.add,
-                size: isSmallScreen ? 16 : 18,
-                color: Colors.white,
-              ),
-              label: Text(
-                'New Post',
-                style: AppTheme.textTheme.labelLarge?.copyWith(
-                  fontWeight: FontWeight.w700,
-                  color: Colors.white,
-                  fontSize: isSmallScreen ? 12 : 14,
-                ),
-              ),
-            ),
           ),
-        ],
+        ),
       ),
-      body: RefreshIndicator(
-        onRefresh: () async {
-          ref.refresh(pgListProvider);
-        },
-        color: AppTheme.accentColor,
-        backgroundColor: AppTheme.surfaceWhite,
-        child: postsAsync.when(
-          data: (posts) {
-            if (posts.isEmpty) {
-              return Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Icon(
-                      Icons.post_add_rounded,
-                      size: 64,
-                      color: AppTheme.textHint.withOpacity(0.5),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'No vacancy posts found',
-                      style: AppTheme.textTheme.titleMedium?.copyWith(
-                        color: AppTheme.textSecondary,
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: RefreshIndicator(
+          onRefresh: () async {
+            ref.refresh(pgListProvider);
+          },
+          color: AppTheme.accentColor,
+          backgroundColor: AppTheme.surfaceWhite,
+          child: postsAsync.when(
+            data: (posts) {
+              if (posts.isEmpty) {
+                return Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Icon(
+                        Icons.post_add_rounded,
+                        size: 64,
+                        color: AppTheme.textHint.withOpacity(0.5),
                       ),
-                    ),
-                  ],
+                      const SizedBox(height: 16),
+                      Text(
+                        'No vacancy posts found',
+                        style: AppTheme.textTheme.titleMedium?.copyWith(
+                          color: AppTheme.textSecondary,
+                        ),
+                      ),
+                    ],
+                  ),
+                );
+              }
+
+              return Padding(
+                padding: const EdgeInsets.only(bottom: 100),
+                child: ListView.separated(
+                  padding: EdgeInsets.fromLTRB(
+                    isSmallScreen ? AppTheme.spacingLG : AppTheme.spacingXL,
+                    120 + MediaQuery.of(context).padding.top + 32,
+                    isSmallScreen ? AppTheme.spacingLG : AppTheme.spacingXL,
+                    isSmallScreen ? AppTheme.spacingLG : AppTheme.spacingXL,
+                  ),
+                  itemCount: posts.length,
+                  separatorBuilder: (context, index) => SizedBox(
+                    height: isSmallScreen
+                        ? AppTheme.spacingLG
+                        : AppTheme.spacingXL,
+                  ),
+                  itemBuilder: (context, index) {
+                    final post = posts[index];
+                    return _buildPostCard(post, isSmallScreen);
+                  },
                 ),
               );
-            }
-
-            return Padding(
-              padding: const EdgeInsets.only(bottom: 100),
-              child: ListView.separated(
-                padding: EdgeInsets.all(
-                  isSmallScreen ? AppTheme.spacingLG : AppTheme.spacingXL,
-                ),
-                itemCount: posts.length,
-                separatorBuilder: (context, index) => SizedBox(
-                  height: isSmallScreen
-                      ? AppTheme.spacingLG
-                      : AppTheme.spacingXL,
-                ),
-                itemBuilder: (context, index) {
-                  final post = posts[index];
-                  return _buildPostCard(post, isSmallScreen);
-                },
+            },
+            loading: () => const Center(
+              child: CircularProgressIndicator(color: AppTheme.accentColor),
+            ),
+            error: (err, stack) => Center(
+              child: Text(
+                'Error: $err',
+                style: const TextStyle(color: AppTheme.error),
               ),
-            );
-          },
-          loading: () => const Center(
-            child: CircularProgressIndicator(color: AppTheme.accentColor),
-          ),
-          error: (err, stack) => Center(
-            child: Text(
-              'Error loading posts: $err',
-              style: const TextStyle(color: AppTheme.error),
             ),
           ),
         ),
@@ -206,23 +195,9 @@ class _VacancyPostsScreenState extends ConsumerState<VacancyPostsScreen> {
                 child: Stack(
                   fit: StackFit.expand,
                   children: [
-                    PageView.builder(
-                      itemCount: post.images.length,
-                      itemBuilder: (context, index) {
-                        return Image.network(
-                          post.images[index],
-                          width: double.infinity,
-                          fit: BoxFit.cover,
-                          errorBuilder: (context, error, stackTrace) =>
-                              Container(
-                                color: AppTheme.surfaceBorder,
-                                child: const Icon(
-                                  Icons.image,
-                                  color: AppTheme.textHint,
-                                ),
-                              ),
-                        );
-                      },
+                    _AutoPlayImageCarousel(
+                      images: post.images,
+                      isSmallScreen: isSmallScreen,
                     ),
                     // Image Count Badge
                     Positioned(
@@ -608,5 +583,75 @@ class _VacancyPostsScreenState extends ConsumerState<VacancyPostsScreen> {
   String _capitalize(String text) {
     if (text.isEmpty) return text;
     return text[0].toUpperCase() + text.substring(1);
+  }
+}
+
+class _AutoPlayImageCarousel extends StatefulWidget {
+  final List<String> images;
+  final bool isSmallScreen;
+
+  const _AutoPlayImageCarousel({
+    required this.images,
+    required this.isSmallScreen,
+  });
+
+  @override
+  State<_AutoPlayImageCarousel> createState() => _AutoPlayImageCarouselState();
+}
+
+class _AutoPlayImageCarouselState extends State<_AutoPlayImageCarousel> {
+  late final PageController _pageController;
+  Timer? _timer;
+  int _currentPage = 0;
+
+  @override
+  void initState() {
+    super.initState();
+    _pageController = PageController();
+    if (widget.images.length > 1) {
+      _timer = Timer.periodic(const Duration(seconds: 3), (Timer timer) {
+        if (_currentPage < widget.images.length - 1) {
+          _currentPage++;
+        } else {
+          _currentPage = 0;
+        }
+
+        if (_pageController.hasClients) {
+          _pageController.animateToPage(
+            _currentPage,
+            duration: const Duration(milliseconds: 350),
+            curve: Curves.easeIn,
+          );
+        }
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _pageController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return PageView.builder(
+      controller: _pageController,
+      itemCount: widget.images.length,
+      onPageChanged: (int page) {
+        _currentPage = page;
+      },
+      itemBuilder: (context, index) {
+        return PgImageWidget(
+          imageUrl: widget.images[index],
+          fit: BoxFit.cover,
+          fallbackWidget: Container(
+            color: AppTheme.surfaceBorder,
+            child: const Icon(Icons.image, color: AppTheme.textHint),
+          ),
+        );
+      },
+    );
   }
 }

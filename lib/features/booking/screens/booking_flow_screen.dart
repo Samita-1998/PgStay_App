@@ -40,7 +40,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
       appBar: AppBar(
         title: Text(
           'Complete Booking',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: AppTheme.textPrimary,
@@ -106,7 +106,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
           alignment: Alignment.center,
           child: Text(
             (stepIndex + 1).toString(),
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               color: isActive ? Colors.white : AppTheme.textHint,
               fontWeight: FontWeight.w700,
               fontSize: 14,
@@ -116,7 +116,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
         const SizedBox(height: 8),
         Text(
           title,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             color: isActive ? AppTheme.primary : AppTheme.textHint,
             fontWeight: FontWeight.w600,
             fontSize: 12,
@@ -155,7 +155,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
       children: [
         Text(
           'Booking Details',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: AppTheme.textPrimary,
@@ -167,7 +167,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
 
         Text(
           'Check-in Date',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
@@ -204,7 +204,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                 const SizedBox(width: 12),
                 Text(
                   '${_checkInDate.day}/${_checkInDate.month}/${_checkInDate.year}',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.w600,
                     fontSize: 16,
                   ),
@@ -217,7 +217,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
 
         Text(
           'Duration (Months)',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 14,
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
@@ -231,7 +231,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
               child: Text(
                 '$_durationMonths Month${_durationMonths > 1 ? 's' : ''}',
                 textAlign: TextAlign.center,
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
                   fontSize: 18,
                 ),
@@ -300,7 +300,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
               children: [
                 Text(
                   widget.pgName,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     color: Colors.white,
                     fontWeight: FontWeight.w700,
                     fontSize: 16,
@@ -309,7 +309,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                 const SizedBox(height: 4),
                 Text(
                   widget.roomType,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     color: Colors.white.withOpacity(0.8),
                     fontSize: 13,
                   ),
@@ -332,7 +332,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
       children: [
         Text(
           'Review Summary',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: AppTheme.textPrimary,
@@ -364,7 +364,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
         const SizedBox(height: 24),
         Text(
           'Payment Breakdown',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 16,
             fontWeight: FontWeight.w700,
             color: AppTheme.textPrimary,
@@ -393,7 +393,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                 children: [
                   Text(
                     'Total Amount',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.w800,
                       fontSize: 16,
                       color: AppTheme.textPrimary,
@@ -401,7 +401,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                   ),
                   Text(
                     '₹${grandTotal.toStringAsFixed(0)}',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontWeight: FontWeight.w800,
                       fontSize: 20,
                       color: AppTheme.accentColor,
@@ -424,7 +424,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
           flex: 2,
           child: Text(
             label,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               color: AppTheme.textSecondary,
               fontSize: 14,
             ),
@@ -435,7 +435,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
           child: Text(
             value,
             textAlign: TextAlign.right,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontWeight: FontWeight.w600,
               color: AppTheme.textPrimary,
               fontSize: 14,
@@ -452,14 +452,14 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             color: AppTheme.textSecondary,
             fontSize: 14,
           ),
         ),
         Text(
           '₹${amount.toStringAsFixed(0)}',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w600,
             color: AppTheme.textPrimary,
             fontSize: 14,
@@ -475,7 +475,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
       children: [
         Text(
           'Select Payment Method',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontSize: 20,
             fontWeight: FontWeight.w800,
             color: AppTheme.textPrimary,
@@ -543,7 +543,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
               children: [
                 Text(
                   title,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontWeight: FontWeight.w700,
                     fontSize: 15,
                     color: AppTheme.textPrimary,
@@ -551,7 +551,7 @@ class _BookingFlowScreenState extends ConsumerState<BookingFlowScreen> {
                 ),
                 Text(
                   subtitle,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 12,
                     color: AppTheme.textSecondary,
                   ),

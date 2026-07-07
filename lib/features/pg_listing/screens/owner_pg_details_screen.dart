@@ -1,237 +1,295 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:intl/intl.dart';
+import 'package:go_router/go_router.dart';
+import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
+import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:pgstay/features/pg_listing/screens/add_pg_screen.dart';
 import 'package:pgstay/features/pg_listing/screens/inventory_management_screen.dart';
+import 'package:pgstay/features/pg_listing/widgets/pg_image_widget.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
-class OwnerPgDetailsScreen extends StatelessWidget {
+class OwnerPgDetailsScreen extends ConsumerWidget {
   final PgModel pg;
 
   const OwnerPgDetailsScreen({super.key, required this.pg});
 
-  // Dark Theme Colors based on the UI
-  static const Color bgColor = Color(0xFF0F111A);
-  static const Color cardColor = Color(0xFF1A1D2B);
-  static const Color borderColor = Color(0xFF2A2E3D);
-  static const Color textWhite = Colors.white;
-  static const Color textGray = Color(0xFF94A3B8);
-
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     return Scaffold(
-      backgroundColor: bgColor,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: textGray),
-          onPressed: () => Navigator.pop(context),
-        ),
+      backgroundColor: context.backgroundLight,
+      appBar: CustomAppBar(
+        title: 'Property Details',
+        showBackButton: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.symmetric(horizontal: 24.0, vertical: 8.0),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingLG,
+          vertical: context.spacingXS,
+        ),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
             _buildHeader(context),
-            const SizedBox(height: 32),
+            SizedBox(height: context.spacingXL),
+            if (pg.images.isNotEmpty) ...[
+              _buildImageGallery(context),
+              SizedBox(height: context.spacingXL),
+            ],
             _buildStatsRow(context),
-            const SizedBox(height: 32),
-            LayoutBuilder(builder: (context, constraints) {
-              if (constraints.maxWidth > 800) {
-                return Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Expanded(
-                      flex: 3,
-                      child: Column(
-                        children: [
-                          _buildAboutCard(),
-                          const SizedBox(height: 24),
-                          _buildFacilitiesCard(),
-                        ],
+            SizedBox(height: context.spacingXL),
+            _buildOccupancyCard(context),
+            SizedBox(height: context.spacingXL),
+            LayoutBuilder(
+              builder: (context, constraints) {
+                if (constraints.maxWidth > 800) {
+                      return Row(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Expanded(
+                        flex: 3,
+                        child: Column(
+                          children: [
+                            _buildAboutCard(context),
+                            SizedBox(height: context.spacingLG),
+                            _buildFacilitiesCard(context, ref),
+                            if (pg.upiId != null || pg.paymentQrImage != null) ...[
+                              SizedBox(height: context.spacingLG),
+                              _buildPaymentCard(context),
+                            ],
+                          ],
+                        ),
                       ),
-                    ),
-                    const SizedBox(width: 24),
-                    Expanded(
-                      flex: 2,
-                      child: Column(
-                        children: [
-                          _buildOperationalDetailsCard(),
-                          const SizedBox(height: 24),
-                          _buildManagementCard(),
-                        ],
+                      SizedBox(width: context.spacingLG),
+                      Expanded(
+                        flex: 2,
+                        child: Column(
+                          children: [
+                            _buildOperationalDetailsCard(context),
+                            SizedBox(height: context.spacingLG),
+                            _buildManagementCard(context),
+                          ],
+                        ),
                       ),
-                    ),
-                  ],
-                );
-              } else {
-                return Column(
-                  children: [
-                    _buildAboutCard(),
-                    const SizedBox(height: 24),
-                    _buildFacilitiesCard(),
-                    const SizedBox(height: 24),
-                    _buildOperationalDetailsCard(),
-                    const SizedBox(height: 24),
-                    _buildManagementCard(),
-                    const SizedBox(height: 40),
-                  ],
-                );
-              }
-            }),
+                    ],
+                  );
+                } else {
+                  return Column(
+                    children: [
+                      _buildAboutCard(context),
+                      SizedBox(height: context.spacingLG),
+                      _buildFacilitiesCard(context, ref),
+                      if (pg.upiId != null || pg.paymentQrImage != null) ...[
+                        SizedBox(height: context.spacingLG),
+                        _buildPaymentCard(context),
+                      ],
+                      SizedBox(height: context.spacingLG),
+                      _buildOperationalDetailsCard(context),
+                      SizedBox(height: context.spacingLG),
+                      _buildManagementCard(context),
+                      SizedBox(height: 100),
+                    ],
+                  );
+                }
+              },
+            ),
           ],
         ),
       ),
     );
   }
 
+  Widget _buildImageGallery(BuildContext context) {
+    return _PgImageCarousel(images: pg.images);
+  }
+
   Widget _buildHeader(BuildContext context) {
-    Color typeColor = Colors.orange;
+    Color typeColor = context.warningColor;
     String lowerType = pg.pgType.toLowerCase();
     if (lowerType.contains('female') || lowerType.contains('girls')) {
-      typeColor = Colors.purple.shade400;
+      typeColor = context.accentColor;
     } else if (lowerType.contains('male') || lowerType.contains('boys')) {
-      typeColor = Colors.indigo.shade400;
+      typeColor = context.primaryColor;
     } else if (lowerType.contains('unisex')) {
-      typeColor = Colors.teal;
+      typeColor = context.successColor;
     }
 
-    return LayoutBuilder(builder: (context, constraints) {
-      bool isWide = constraints.maxWidth > 600;
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isWide = constraints.maxWidth > 600;
 
-      Widget titleSection = Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              Expanded(
-                child: Text(
-                  pg.name,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: isWide ? 28 : 24,
-                    fontWeight: FontWeight.w800,
-                    color: textWhite,
-                  ),
-                ),
-              ),
-              const SizedBox(width: 12),
-              Container(
-                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                decoration: BoxDecoration(
-                  color: typeColor.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: typeColor.withOpacity(0.3)),
-                ),
-                child: Text(
-                  pg.pgType,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: typeColor,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Row(
-            children: [
-              const Icon(Icons.location_on_outlined,
-                  size: 16, color: textGray),
-              const SizedBox(width: 6),
-              Expanded(
-                child: Text(
-                  '${pg.address.landmark.isNotEmpty ? pg.address.landmark + ', ' : ''}${pg.address.city}, ${pg.address.state}',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 14,
-                    color: textGray,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ],
-      );
-
-      Widget buttonsSection = Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          _buildButton(
-            'Manage Inventory',
-            Icons.domain,
-            const Color(0xFF9E77ED),
-            () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => InventoryManagementScreen(pg: pg),
-                ),
-              );
-            },
-          ),
-          const SizedBox(width: 12),
-          _buildButton(
-            'Edit PG',
-            Icons.edit_outlined,
-            const Color(0xFF10B981),
-            () {
-              Navigator.push(
-                context,
-                MaterialPageRoute(
-                  builder: (_) => AddPgScreen(pgToEdit: pg),
-                ),
-              );
-            },
-          ),
-        ],
-      );
-
-      if (isWide) {
-        return Row(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Expanded(child: titleSection),
-            const SizedBox(width: 24),
-            buttonsSection,
-          ],
-        );
-      } else {
-        return Column(
+        Widget titleSection = Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: [
-            titleSection,
-            const SizedBox(height: 20),
-            SingleChildScrollView(
-              scrollDirection: Axis.horizontal,
-              child: buttonsSection,
+            Row(
+              children: [
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Text(
+                        pg.name,
+                        style: isWide
+                            ? context.textTheme.displaySmall?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              )
+                            : context.textTheme.headlineMedium?.copyWith(
+                                fontWeight: FontWeight.w800,
+                              ),
+                      ),
+                      if (pg.pgDisplayId != null) ...[
+                        SizedBox(height: 4),
+                        Container(
+                          padding: EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                          decoration: BoxDecoration(
+                            color: context.primaryColor.withOpacity(0.1),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                          child: Text(
+                            'ID: ${pg.pgDisplayId}',
+                            style: context.textTheme.labelSmall?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: context.primaryColor,
+                            ),
+                          ),
+                        ),
+                      ],
+                    ],
+                  ),
+                ),
+                SizedBox(width: context.spacingSM),
+                Container(
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacingSM,
+                    vertical: 6,
+                  ),
+                  decoration: BoxDecoration(
+                    color: typeColor.withOpacity(0.15),
+                    borderRadius: BorderRadius.circular(context.radiusXL),
+                    border: Border.all(color: typeColor.withOpacity(0.3)),
+                  ),
+                  child: Text(
+                    pg.pgType,
+                    style: context.textTheme.labelSmall?.copyWith(
+                      fontWeight: FontWeight.w700,
+                      color: typeColor,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            SizedBox(height: context.spacingXS),
+            Row(
+              children: [
+                Icon(
+                  Icons.location_on_outlined,
+                  size: 16,
+                  color: context.textHint,
+                ),
+                SizedBox(width: 6),
+                Expanded(
+                  child: Text(
+                    '${pg.address.landmark.isNotEmpty ? pg.address.landmark + ', ' : ''}${pg.address.city}, ${pg.address.state}',
+                    style: context.textTheme.bodySmall,
+                  ),
+                ),
+              ],
             ),
           ],
         );
-      }
-    });
+
+        Widget buttonsSection = Row(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            _buildButton(
+              context,
+              'Manage Inventory',
+              Icons.domain,
+              context.accentColor,
+              () {
+                context.push('/inventory', extra: pg);
+              },
+            ),
+            SizedBox(width: context.spacingSM),
+            _buildButton(
+              context,
+              'Create Post',
+              Icons.post_add_outlined,
+              context.primaryColor,
+              () {
+                context.push('/create-post');
+              },
+            ),
+            SizedBox(width: context.spacingSM),
+            _buildButton(
+              context,
+              'Edit PG',
+              Icons.edit_outlined,
+              context.successColor,
+              () {
+                context.push('/add-pg', extra: pg);
+              },
+            ),
+          ],
+        );
+
+        if (isWide) {
+          return Row(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Expanded(child: titleSection),
+              SizedBox(width: context.spacingLG),
+              buttonsSection,
+            ],
+          );
+        } else {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              titleSection,
+              SizedBox(height: context.spacingXL),
+              SingleChildScrollView(
+                scrollDirection: Axis.horizontal,
+                child: buttonsSection,
+              ),
+            ],
+          );
+        }
+      },
+    );
   }
 
-  Widget _buildButton(String label, IconData icon, Color color, VoidCallback onTap) {
+  Widget _buildButton(
+    BuildContext context,
+    String label,
+    IconData icon,
+    Color color,
+    VoidCallback onTap,
+  ) {
     return InkWell(
       onTap: onTap,
-      borderRadius: BorderRadius.circular(12),
+      borderRadius: BorderRadius.circular(context.radiusSM),
       child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+        padding: EdgeInsets.symmetric(
+          horizontal: context.spacingMD,
+          vertical: context.spacingXS,
+        ),
         decoration: BoxDecoration(
           color: color,
-          borderRadius: BorderRadius.circular(12),
+          borderRadius: BorderRadius.circular(context.radiusSM),
+          boxShadow: context.primaryGlow(opacity: 0.2),
         ),
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: [
             Icon(icon, size: 18, color: Colors.white),
-            const SizedBox(width: 8),
+            SizedBox(width: context.spacingXS),
             Text(
               label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
+              style: context.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
                 color: Colors.white,
               ),
@@ -243,65 +301,106 @@ class OwnerPgDetailsScreen extends StatelessWidget {
   }
 
   Widget _buildStatsRow(BuildContext context) {
-    return LayoutBuilder(builder: (context, constraints) {
-      bool isWide = constraints.maxWidth > 600;
-      if (isWide) {
-        return Row(
-          children: [
-            Expanded(
-                child: _buildStatCard('TOTAL ROOMS', pg.totalRooms.toString(),
-                    Icons.door_front_door_outlined, const Color(0xFF6366F1))),
-            const SizedBox(width: 16),
-            Expanded(
-                child: _buildStatCard('OCCUPIED BEDS',
-                    pg.occupiedBeds.toString(), Icons.people_outline,
-                    const Color(0xFFF59E0B))),
-            const SizedBox(width: 16),
-            Expanded(
-                child: _buildStatCard('EMPTY BEDS', pg.emptyBeds.toString(),
-                    Icons.check_circle_outline, const Color(0xFF10B981))),
-          ],
-        );
-      } else {
-        return Column(
-          children: [
-            _buildStatCard('TOTAL ROOMS', pg.totalRooms.toString(),
-                Icons.door_front_door_outlined, const Color(0xFF6366F1)),
-            const SizedBox(height: 16),
-            Row(
-              children: [
-                Expanded(
-                    child: _buildStatCard('OCCUPIED BEDS',
-                        pg.occupiedBeds.toString(), Icons.people_outline,
-                        const Color(0xFFF59E0B))),
-                const SizedBox(width: 16),
-                Expanded(
-                    child: _buildStatCard('EMPTY BEDS', pg.emptyBeds.toString(),
-                        Icons.check_circle_outline, const Color(0xFF10B981))),
-              ],
-            ),
-          ],
-        );
-      }
-    });
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        bool isWide = constraints.maxWidth > 600;
+        if (isWide) {
+          return Row(
+            children: [
+              Expanded(
+                child: _buildStatCard(
+                  context,
+                  'TOTAL ROOMS',
+                  pg.totalRooms.toString(),
+                  Icons.door_front_door_outlined,
+                  context.primaryColor,
+                ),
+              ),
+              SizedBox(width: context.spacingMD),
+              Expanded(
+                child: _buildStatCard(
+                  context,
+                  'OCCUPIED BEDS',
+                  pg.occupiedBeds.toString(),
+                  Icons.people_outline,
+                  context.warningColor,
+                ),
+              ),
+              SizedBox(width: context.spacingMD),
+              Expanded(
+                child: _buildStatCard(
+                  context,
+                  'EMPTY BEDS',
+                  pg.emptyBeds.toString(),
+                  Icons.check_circle_outline,
+                  context.successColor,
+                ),
+              ),
+            ],
+          );
+        } else {
+          return Column(
+            children: [
+              _buildStatCard(
+                context,
+                'TOTAL ROOMS',
+                pg.totalRooms.toString(),
+                Icons.door_front_door_outlined,
+                context.primaryColor,
+              ),
+              SizedBox(height: context.spacingMD),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'OCCUPIED BEDS',
+                      pg.occupiedBeds.toString(),
+                      Icons.people_outline,
+                      context.warningColor,
+                    ),
+                  ),
+                  SizedBox(width: context.spacingMD),
+                  Expanded(
+                    child: _buildStatCard(
+                      context,
+                      'EMPTY BEDS',
+                      pg.emptyBeds.toString(),
+                      Icons.check_circle_outline,
+                      context.successColor,
+                    ),
+                  ),
+                ],
+              ),
+            ],
+          );
+        }
+      },
+    );
   }
 
   Widget _buildStatCard(
-      String title, String value, IconData icon, Color highlightColor) {
+    BuildContext context,
+    String title,
+    String value,
+    IconData icon,
+    Color highlightColor,
+  ) {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor, width: 1),
+        color: context.surfaceWhite,
+        borderRadius: BorderRadius.circular(context.radiusLG),
+        border: Border.all(color: context.surfaceBorder, width: 1),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: ClipRRect(
-        borderRadius: BorderRadius.circular(15),
+        borderRadius: BorderRadius.circular(context.radiusLG - 1),
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.stretch,
           children: [
             Container(height: 2, color: highlightColor),
             Padding(
-              padding: const EdgeInsets.all(18),
+              padding: EdgeInsets.all(context.spacingMD),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -310,21 +409,23 @@ class OwnerPgDetailsScreen extends StatelessWidget {
                     children: [
                       Text(
                         title,
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
+                        style: context.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w600,
-                          color: textGray,
+                          color: context.textHint,
                           letterSpacing: 0.5,
                         ),
                       ),
-                      Icon(icon, size: 20, color: textGray.withOpacity(0.5)),
+                      Icon(
+                        icon,
+                        size: 20,
+                        color: context.textHint.withOpacity(0.5),
+                      ),
                     ],
                   ),
-                  const SizedBox(height: 12),
+                  SizedBox(height: context.spacingSM),
                   Text(
                     value,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 28,
+                    style: context.textTheme.headlineMedium?.copyWith(
                       fontWeight: FontWeight.w800,
                       color: highlightColor,
                     ),
@@ -338,54 +439,107 @@ class OwnerPgDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildAboutCard() {
+  Widget _buildOccupancyCard(BuildContext context) {
+    final occupancyPercent = pg.totalBeds > 0
+        ? pg.occupiedBeds / pg.totalBeds
+        : 0.0;
+        
     return _buildSectionCard(
-      title: 'About PG',
-      icon: Icons.description_outlined,
-      iconColor: const Color(0xFF9E77ED),
-      child: Text(
-        'Quiet and peaceful environment perfect for students.',
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 14,
-          color: textGray,
-          height: 1.5,
-        ),
+      context: context,
+      title: 'Occupancy Rate',
+      icon: Icons.pie_chart_outline,
+      iconColor: context.primaryColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            mainAxisAlignment: MainAxisAlignment.spaceBetween,
+            children: [
+              Text(
+                'Current Occupancy',
+                style: context.textTheme.bodyMedium?.copyWith(
+                  fontWeight: FontWeight.w600,
+                  color: context.textHint,
+                ),
+              ),
+              Text(
+                '${(occupancyPercent * 100).toStringAsFixed(0)}%',
+                style: context.textTheme.titleMedium?.copyWith(
+                  fontWeight: FontWeight.w800,
+                  color: occupancyPercent >= 0.8
+                      ? context.errorColor
+                      : occupancyPercent >= 0.5
+                      ? context.warningColor
+                      : context.successColor,
+                ),
+              ),
+            ],
+          ),
+          SizedBox(height: context.spacingSM),
+          ClipRRect(
+            borderRadius: BorderRadius.circular(context.radiusSM),
+            child: LinearProgressIndicator(
+              value: occupancyPercent.clamp(0.0, 1.0),
+              minHeight: 8,
+              backgroundColor: context.surfaceBorder,
+              valueColor: AlwaysStoppedAnimation<Color>(
+                occupancyPercent >= 0.8
+                    ? context.errorColor
+                    : occupancyPercent >= 0.5
+                    ? context.warningColor
+                    : context.successColor,
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }
 
-  Widget _buildFacilitiesCard() {
+  Widget _buildAboutCard(BuildContext context) {
     return _buildSectionCard(
+      context: context,
+      title: 'About PG',
+      icon: Icons.description_outlined,
+      iconColor: context.accentColor,
+      child: Text(
+        pg.description ?? 'No description available.',
+        style: context.textTheme.bodyMedium?.copyWith(height: 1.5),
+      ),
+    );
+  }
+
+  Widget _buildFacilitiesCard(BuildContext context, WidgetRef ref) {
+    final facilitiesList = ref.watch(facilitiesListProvider).valueOrNull ?? [];
+    return _buildSectionCard(
+      context: context,
       title: 'Facilities',
       icon: Icons.business_rounded,
-      iconColor: const Color(0xFF6366F1),
+      iconColor: context.primaryColor,
       child: pg.facilities.isEmpty
-          ? Text(
-              'No facilities listed.',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                color: textGray,
-              ),
-            )
+          ? Text('No facilities listed.', style: context.textTheme.bodyMedium)
           : Wrap(
-              spacing: 8,
-              runSpacing: 8,
+              spacing: context.spacingXS,
+              runSpacing: context.spacingXS,
               children: pg.facilities.map((f) {
+                final facName = facilitiesList.firstWhere((fac) => fac['id'] == f, orElse: () => {'name': f})['name']!;
                 return Container(
-                  padding:
-                      const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                  padding: EdgeInsets.symmetric(
+                    horizontal: context.spacingSM,
+                    vertical: 6,
+                  ),
                   decoration: BoxDecoration(
-                    color: const Color(0xFF6366F1).withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(8),
+                    color: context.primaryColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(context.radiusXS),
                     border: Border.all(
-                        color: const Color(0xFF6366F1).withOpacity(0.2)),
+                      color: context.primaryColor.withOpacity(0.2),
+                    ),
                   ),
                   child: Text(
-                    f,
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 12,
+                    facName,
+                    style: context.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: const Color(0xFF6366F1),
+                      color: context.primaryColor,
                     ),
                   ),
                 );
@@ -394,45 +548,67 @@ class OwnerPgDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildOperationalDetailsCard() {
+  Widget _buildOperationalDetailsCard(BuildContext context) {
     return _buildSectionCard(
+      context: context,
       title: 'Operational Details',
       icon: null,
       child: Column(
         children: [
-          _buildDetailRow('Check In', pg.checkInTime, Icons.access_time),
-          const Divider(color: borderColor, height: 24),
-          _buildDetailRow('Check Out', pg.checkOutTime, Icons.access_time),
-          const Divider(color: borderColor, height: 24),
-          _buildDetailRow('Rent Due Day', 'Day 10', null,
-              valueColor: textWhite),
-          const Divider(color: borderColor, height: 24),
-          _buildDetailRow('Late Penalty', '₹0', null, valueColor: textWhite),
-          const Divider(color: borderColor, height: 24),
-          _buildDetailRow('Contact No', '—', null),
-          const Divider(color: borderColor, height: 24),
-          _buildDetailRow('Started Date', '—', null),
-          const Divider(color: borderColor, height: 24),
+          _buildDetailRow(
+            context,
+            'Check In',
+            pg.checkInTime,
+            Icons.access_time,
+          ),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
+          _buildDetailRow(
+            context,
+            'Check Out',
+            pg.checkOutTime,
+            Icons.access_time,
+          ),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
+          _buildDetailRow(
+            context,
+            'Rent Due Day',
+            'Day ${pg.dueDayOfMonth ?? 10}',
+            null,
+            valueColor: context.textPrimary,
+          ),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
+          _buildDetailRow(
+            context,
+            'Late Penalty',
+            '₹${pg.lateFee?.toStringAsFixed(0) ?? '0'}',
+            null,
+            valueColor: context.textPrimary,
+          ),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
+          _buildDetailRow(context, 'Contact No', pg.landline ?? '—', null),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
+          _buildDetailRow(
+            context, 
+            'Started Date', 
+            (pg.pgStartedDate != null && DateTime.tryParse(pg.pgStartedDate!) != null)
+                ? DateFormat('dd MMM yyyy').format(DateTime.parse(pg.pgStartedDate!)) 
+                : '—', 
+            null,
+          ),
+          Divider(color: AppTheme.dividerColor, height: context.spacingLG),
           Row(
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
-              Text(
-                'Rating',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
-                  color: textGray,
-                ),
-              ),
+              Text('Rating', style: context.textTheme.bodyMedium),
               Row(
                 children: [
-                  const Icon(Icons.star, color: Color(0xFFF59E0B), size: 16),
-                  const SizedBox(width: 4),
+                  Icon(Icons.star, color: context.warningColor, size: 16),
+                  SizedBox(width: context.spacingXXS),
                   Text(
                     pg.rating.toStringAsFixed(1),
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 14,
+                    style: context.textTheme.bodyMedium?.copyWith(
                       fontWeight: FontWeight.w700,
-                      color: textWhite,
+                      color: context.textPrimary,
                     ),
                   ),
                 ],
@@ -444,8 +620,9 @@ class OwnerPgDetailsScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildManagementCard() {
+  Widget _buildManagementCard(BuildContext context) {
     return _buildSectionCard(
+      context: context,
       title: 'Management',
       icon: null,
       child: Column(
@@ -453,105 +630,164 @@ class OwnerPgDetailsScreen extends StatelessWidget {
         children: [
           Text(
             'OWNER',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+            style: context.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textGray,
+              color: context.textHint,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacingXS),
           Text(
-            'sagar thakare', // Hardcoded as per the image for now
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
+            pg.ownerName ?? 'Owner',
+            style: context.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: textWhite,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            '9123456789',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: textGray,
-            ),
-          ),
-          const SizedBox(height: 20),
+          SizedBox(height: 2),
+          Text(pg.ownerMobNo1 ?? '—', style: context.textTheme.bodySmall),
+          SizedBox(height: context.spacingXL),
           Text(
             'MANAGER',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 11,
+            style: context.textTheme.labelSmall?.copyWith(
               fontWeight: FontWeight.w600,
-              color: textGray,
+              color: context.textHint,
               letterSpacing: 0.5,
             ),
           ),
-          const SizedBox(height: 8),
+          SizedBox(height: context.spacingXS),
           Text(
             pg.managerName ?? 'Manager',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 15,
+            style: context.textTheme.titleSmall?.copyWith(
               fontWeight: FontWeight.w700,
-              color: textWhite,
             ),
           ),
-          const SizedBox(height: 2),
-          Text(
-            '9876543210',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              color: textGray,
-            ),
-          ),
+          SizedBox(height: 2),
+          Text(pg.managerMobNo1 ?? '—', style: context.textTheme.bodySmall),
         ],
       ),
     );
   }
 
-  Widget _buildDetailRow(String label, String value, IconData? icon,
-      {Color? valueColor}) {
+  Widget _buildPaymentCard(BuildContext context) {
+    return _buildSectionCard(
+      context: context,
+      title: 'Payment Details',
+      icon: Icons.payments_outlined,
+      iconColor: context.successColor,
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          if (pg.upiId != null) ...[
+            Text(
+              'UPI ID',
+              style: context.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.textHint,
+                letterSpacing: 0.5,
+              ),
+            ),
+            SizedBox(height: context.spacingXS),
+            Container(
+              padding: EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+              decoration: BoxDecoration(
+                color: context.surfaceWhite,
+                borderRadius: BorderRadius.circular(context.radiusSM),
+                border: Border.all(color: context.surfaceBorder),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.qr_code_scanner_outlined, size: 16, color: context.primaryColor),
+                  SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      pg.upiId!,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
+                      ),
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ],
+          if (pg.paymentQrImage != null) ...[
+            if (pg.upiId != null) SizedBox(height: context.spacingLG),
+            Text(
+              'QR CODE',
+              style: context.textTheme.labelSmall?.copyWith(
+                fontWeight: FontWeight.w600,
+                color: context.textHint,
+                letterSpacing: 0.5,
+              ),
+            ),
+            SizedBox(height: context.spacingXS),
+            ClipRRect(
+              borderRadius: BorderRadius.circular(context.radiusMD),
+              child: Image.network(
+                pg.paymentQrImage!,
+                height: 200,
+                width: double.infinity,
+                fit: BoxFit.contain,
+                errorBuilder: (context, error, stackTrace) => Container(
+                  height: 100,
+                  color: context.surfaceWhite,
+                  child: Center(
+                    child: Icon(Icons.broken_image_outlined, color: context.textHint),
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ],
+      ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context,
+    String label,
+    String value,
+    IconData? icon, {
+    Color? valueColor,
+  }) {
     return Row(
       mainAxisAlignment: MainAxisAlignment.spaceBetween,
       children: [
         Row(
           children: [
             if (icon != null) ...[
-              Icon(icon, size: 16, color: textGray),
-              const SizedBox(width: 8),
+              Icon(icon, size: 16, color: context.textHint),
+              SizedBox(width: context.spacingXS),
             ],
-            Text(
-              label,
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
-                color: textGray,
-              ),
-            ),
+            Text(label, style: context.textTheme.bodyMedium),
           ],
         ),
         Text(
           value,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 14,
+          style: context.textTheme.bodyMedium?.copyWith(
             fontWeight: FontWeight.w600,
-            color: valueColor ?? textWhite,
+            color: valueColor ?? context.textPrimary,
           ),
         ),
       ],
     );
   }
 
-  Widget _buildSectionCard(
-      {required String title,
-      required Widget child,
-      IconData? icon,
-      Color? iconColor}) {
+  Widget _buildSectionCard({
+    required BuildContext context,
+    required String title,
+    required Widget child,
+    IconData? icon,
+    Color? iconColor,
+  }) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.all(context.spacingXL),
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: borderColor),
+        color: context.surfaceWhite,
+        borderRadius: BorderRadius.circular(context.radiusLG),
+        border: Border.all(color: context.surfaceBorder),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -559,23 +795,89 @@ class OwnerPgDetailsScreen extends StatelessWidget {
           Row(
             children: [
               if (icon != null) ...[
-                Icon(icon, color: iconColor ?? textWhite, size: 20),
-                const SizedBox(width: 10),
+                Icon(icon, color: iconColor ?? context.textPrimary, size: 20),
+                SizedBox(width: context.spacingXS),
               ],
               Text(
                 title,
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 18,
+                style: context.textTheme.titleMedium?.copyWith(
                   fontWeight: FontWeight.w700,
-                  color: textWhite,
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          SizedBox(height: context.spacingMD),
           child,
         ],
       ),
+    );
+  }
+}
+
+class _PgImageCarousel extends StatefulWidget {
+  final List<String> images;
+
+  const _PgImageCarousel({required this.images});
+
+  @override
+  State<_PgImageCarousel> createState() => _PgImageCarouselState();
+}
+
+class _PgImageCarouselState extends State<_PgImageCarousel> {
+  int _currentIndex = 0;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      children: [
+        SizedBox(
+          height: 250,
+          child: PageView.builder(
+            itemCount: widget.images.length,
+            onPageChanged: (index) {
+              setState(() {
+                _currentIndex = index;
+              });
+            },
+            itemBuilder: (context, index) {
+              return Container(
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(context.radiusLG),
+                  child: PgImageWidget(
+                    imageUrl: widget.images[index],
+                    fallbackWidget: Container(
+                      color: context.primaryColor.withOpacity(0.1),
+                      child: Icon(Icons.apartment_rounded, size: 64, color: context.primaryColor),
+                    ),
+                  ),
+                ),
+              );
+            },
+          ),
+        ),
+        if (widget.images.length > 1) ...[
+          const SizedBox(height: 16),
+          Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: List.generate(
+              widget.images.length,
+              (index) => AnimatedContainer(
+                duration: const Duration(milliseconds: 300),
+                margin: const EdgeInsets.symmetric(horizontal: 4),
+                width: _currentIndex == index ? 24 : 8,
+                height: 8,
+                decoration: BoxDecoration(
+                  color: _currentIndex == index
+                      ? context.primaryColor
+                      : context.primaryColor.withOpacity(0.2),
+                  borderRadius: BorderRadius.circular(4),
+                ),
+              ),
+            ),
+          ),
+        ],
+      ],
     );
   }
 }

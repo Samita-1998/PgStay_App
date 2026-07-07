@@ -4,25 +4,46 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/enquiries/providers/enquiries_provider.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
-class EnquiriesScreen extends ConsumerWidget {
+class EnquiriesScreen extends ConsumerStatefulWidget {
   const EnquiriesScreen({super.key});
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    final enquiriesAsync = ref.watch(enquiriesListProvider);
+  ConsumerState<EnquiriesScreen> createState() => _EnquiriesScreenState();
+}
+
+class _EnquiriesScreenState extends ConsumerState<EnquiriesScreen> {
+  final ScrollController _scrollController = ScrollController();
+
+  @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >= _scrollController.position.maxScrollExtent - 200) {
+      ref.read(userEnquiriesProvider.notifier).loadMore();
+    }
+  }
+
+  @override
+  void dispose() {
+    _scrollController.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final enquiriesAsync = ref.watch(userEnquiriesProvider);
+    final selectedFilter = ref.watch(userEnquiriesFilterProvider);
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        title: Text(
-          'My Enquiries',
-          style: GoogleFonts.plusJakartaSans(
-            fontWeight: FontWeight.w800,
-            fontSize: 18,
-            color: AppTheme.textPrimary,
-          ),
-        ),
+      appBar: CustomAppBar(
+        title: 'My Enquiries',
+        showBackButton: true,
       ),
       body: enquiriesAsync.when(
         data: (enquiries) {
@@ -35,7 +56,7 @@ class EnquiriesScreen extends ConsumerWidget {
                   const SizedBox(height: 16),
                   Text(
                     'No enquiries submitted yet',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontSize: 18,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
@@ -47,7 +68,7 @@ class EnquiriesScreen extends ConsumerWidget {
                     child: Text(
                       'Browse active stay listings in the Discover tab and click "Submit Enquiry" to get started.',
                       textAlign: TextAlign.center,
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         color: AppTheme.textSecondary,
                         fontSize: 13,
                         fontWeight: FontWeight.w500,
@@ -64,14 +85,67 @@ class EnquiriesScreen extends ConsumerWidget {
             );
           }
 
+          final filteredEnquiries = selectedFilter == 'All'
+              ? enquiries
+              : enquiries.where((e) => e.status.toLowerCase().replaceAll(' ', '') == selectedFilter.toLowerCase().replaceAll(' ', '')).toList();
+
           return RefreshIndicator(
-            onRefresh: () async => ref.refresh(enquiriesListProvider),
+            onRefresh: () async => ref.refresh(userEnquiriesProvider),
             color: AppTheme.primary,
-            child: ListView.builder(
-              padding: const EdgeInsets.fromLTRB(24, 16, 24, 100),
-              itemCount: enquiries.length,
-              itemBuilder: (context, index) {
-                final enquiry = enquiries[index];
+            child: CustomScrollView(
+              controller: _scrollController,
+              physics: const AlwaysScrollableScrollPhysics(),
+              slivers: [
+                SliverToBoxAdapter(
+                  child: Padding(
+                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                    child: SingleChildScrollView(
+                      scrollDirection: Axis.horizontal,
+                      child: Row(
+                        children: ['All', 'interested', 'contacted', 'visited', 'dealDone', 'rejected']
+                            .map((filter) {
+                          final isSelected = selectedFilter == filter;
+                          return Padding(
+                            padding: const EdgeInsets.only(right: 8.0),
+                            child: ChoiceChip(
+                              label: Text(filter),
+                              selected: isSelected,
+                              onSelected: (selected) {
+                                if (selected) {
+                                  ref.read(userEnquiriesFilterProvider.notifier).state = filter;
+                                }
+                              },
+                              selectedColor: AppTheme.primary.withOpacity(0.1),
+                              labelStyle: TextStyle(
+                                color: isSelected ? AppTheme.primary : AppTheme.textSecondary,
+                                fontWeight: isSelected ? FontWeight.w800 : FontWeight.w600,
+                              ),
+                            ),
+                          );
+                        }).toList(),
+                      ),
+                    ),
+                  ),
+                ),
+                if (filteredEnquiries.isEmpty)
+                  const SliverFillRemaining(
+                    hasScrollBody: false,
+                    child: Center(
+                      child: Text('No enquiries match the filter.'),
+                    ),
+                  )
+                else
+                  SliverPadding(
+                    padding: const EdgeInsets.fromLTRB(24, 8, 24, 100),
+                    sliver: SliverList(
+                      delegate: SliverChildBuilderDelegate((context, index) {
+                        if (index == filteredEnquiries.length) {
+                          return const Padding(
+                            padding: EdgeInsets.symmetric(vertical: 20),
+                            child: Center(child: CircularProgressIndicator(color: AppTheme.accentColor)),
+                          );
+                        }
+                        final enquiry = filteredEnquiries[index];
 
                 return Container(
                   margin: const EdgeInsets.only(bottom: 16.0),
@@ -83,11 +157,9 @@ class EnquiriesScreen extends ConsumerWidget {
                   ),
                   child: InkWell(
                     onTap: () {
-                      if (enquiry.post != null) {
-                        context.push('/pg-details/${enquiry.post!.id}');
-                      }
+                      context.push('/enquiry-details/${enquiry.id}', extra: enquiry);
                     },
-                    borderRadius: BorderRadius.circular(20),
+                    borderRadius: BorderRadius.circular(AppTheme.radiusXL),
                     child: Padding(
                       padding: const EdgeInsets.all(20.0),
                       child: Column(
@@ -99,7 +171,7 @@ class EnquiriesScreen extends ConsumerWidget {
                               Expanded(
                                 child: Text(
                                   enquiry.pg?.name ?? 'StaySync PG',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 16,
                                     fontWeight: FontWeight.w800,
                                     color: AppTheme.textPrimary,
@@ -115,7 +187,7 @@ class EnquiriesScreen extends ConsumerWidget {
                           const SizedBox(height: 8),
                           Text(
                             enquiry.post?.title ?? 'Vacancy Inquiry',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: GoogleFonts.inter(
                               color: AppTheme.textSecondary,
                               fontSize: 13,
                               fontWeight: FontWeight.w500,
@@ -129,7 +201,7 @@ class EnquiriesScreen extends ConsumerWidget {
                             children: [
                               Text(
                                 'Submitted: ${_formatDate(enquiry.createdAt)}',
-                                style: GoogleFonts.plusJakartaSans(
+                                style: GoogleFonts.inter(
                                   color: AppTheme.textHint,
                                   fontSize: 11,
                                   fontWeight: FontWeight.w600,
@@ -139,7 +211,7 @@ class EnquiriesScreen extends ConsumerWidget {
                                 children: [
                                   Text(
                                     'View Details',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: GoogleFonts.inter(
                                       color: AppTheme.primary,
                                       fontSize: 12,
                                       fontWeight: FontWeight.w800,
@@ -156,10 +228,13 @@ class EnquiriesScreen extends ConsumerWidget {
                     ),
                   ),
                 );
-              },
+              }, childCount: filteredEnquiries.length + (enquiries.length >= 10 ? 1 : 0)),
             ),
-          );
-        },
+          ),
+        ],
+      ),
+    );
+  },
         loading: () => const Center(
           child: CircularProgressIndicator(color: AppTheme.accentColor),
         ),
@@ -173,7 +248,7 @@ class EnquiriesScreen extends ConsumerWidget {
                 const SizedBox(height: 16),
                 Text(
                   'Failed to load enquiries',
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 18,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.error,
@@ -183,7 +258,7 @@ class EnquiriesScreen extends ConsumerWidget {
                 Text(err.toString(), textAlign: TextAlign.center),
                 const SizedBox(height: 16),
                 ElevatedButton(
-                  onPressed: () => ref.refresh(enquiriesListProvider),
+                  onPressed: () => ref.refresh(userEnquiriesProvider),
                   child: const Text('Retry'),
                 ),
               ],
@@ -233,7 +308,7 @@ class EnquiriesScreen extends ConsumerWidget {
       ),
       child: Text(
         status.toUpperCase(),
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.inter(
           color: textColor,
           fontSize: 10,
           fontWeight: FontWeight.w800,

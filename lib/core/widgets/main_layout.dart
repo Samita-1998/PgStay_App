@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/auth/providers/auth_provider.dart';
+import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
   final Widget child;
@@ -130,6 +131,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             'icon': Icons.question_answer_outlined,
             'label': 'Enquiries',
           },
+          {
+            'path': '/staff-tracker',
+            'icon': Icons.people_outline,
+            'label': 'Staff & Expense Tracker',
+          },
           ...common,
         ];
       case 'manager':
@@ -143,6 +149,11 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         ];
       default: // Tenant / user / staff
         return [
+          {
+            'path': '/browse-posts',
+            'icon': Icons.travel_explore_rounded,
+            'label': "Browse PG's",
+          },
           {
             'path': '/rent',
             'icon': Icons.receipt_long_outlined,
@@ -192,80 +203,27 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // ── Drawer ────────────────────────────────────────────────────────────
       endDrawer: _buildDrawer(user, role, drawerItems, currentPath),
       // ── Bottom Nav ────────────────────────────────────────────────────────
-      bottomNavigationBar: Container(
-        margin: const EdgeInsets.fromLTRB(24, 0, 24, 20),
-        child: ClipRRect(
-          borderRadius: BorderRadius.circular(24),
-          child: BackdropFilter(
-            filter: ImageFilter.blur(sigmaX: 16, sigmaY: 16),
-            child: Container(
-              height: 72,
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.92),
-                borderRadius: BorderRadius.circular(24),
-                border: Border.all(
-                  color: AppTheme.primary.withValues(alpha: 0.06),
-                  width: 1.5,
-                ),
-                boxShadow: [
-                  BoxShadow(
-                    color: AppTheme.primary.withValues(alpha: 0.04),
-                    blurRadius: 24,
-                    spreadRadius: 0,
-                    offset: const Offset(0, 8),
-                  ),
-                ],
-              ),
-              child: Row(
-                mainAxisAlignment: MainAxisAlignment.spaceAround,
-                children: [
-                  ...List.generate(navItems.length, (index) {
-                    final item = navItems[index];
-                    final isSelected = selectedIndex == index;
-                    return _buildNavItem(
-                      index: index,
-                      icon: item['icon'],
-                      activeIcon: item['activeIcon'],
-                      label: item['label'],
-                      isSelected: isSelected,
-                      context: context,
-                      navItems: navItems,
-                    );
-                  }),
-                ],
-              ),
-            ),
-          ),
-        ),
-      ),
-    );
-  }
-
-  // ── Drawer trigger in bottom nav ──────────────────────────────────────────
-  Widget _buildDrawerTrigger() {
-    return GestureDetector(
-      onTap: () => _scaffoldKey.currentState?.openEndDrawer(),
-      behavior: HitTestBehavior.opaque,
-      child: AnimatedContainer(
-        duration: const Duration(milliseconds: 250),
-        curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: [
-            Icon(Icons.menu_rounded, color: AppTheme.textSecondary, size: 22),
-            const SizedBox(height: 4),
-            Text(
-              'More',
-              style: TextStyle(
-                color: AppTheme.textSecondary,
-                fontSize: 10,
-                fontWeight: FontWeight.w500,
-                fontFamily: 'PlusJakartaSans',
-              ),
-            ),
-          ],
-        ),
+      bottomNavigationBar: CurvedNavigationBar(
+        index: selectedIndex,
+        backgroundColor: Colors.transparent,
+        color: AppTheme.primary,
+        buttonBackgroundColor: AppTheme.primary,
+        animationDuration: const Duration(milliseconds: 300),
+        items: navItems.asMap().entries.map((entry) {
+          final int idx = entry.key;
+          final item = entry.value;
+          final isSelected = selectedIndex == idx;
+          return Icon(
+            isSelected ? item['activeIcon'] : item['icon'],
+            color: Colors.white,
+            size: 25,
+          );
+        }).toList(),
+        onTap: (index) {
+          if (index != selectedIndex) {
+            _onItemTapped(index, context, navItems);
+          }
+        },
       ),
     );
   }
@@ -570,7 +528,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       child: AnimatedContainer(
         duration: const Duration(milliseconds: 250),
         curve: Curves.easeOutCubic,
-        padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 8),
         decoration: BoxDecoration(
           color: isSelected
               ? AppTheme.primary.withValues(alpha: 0.05)

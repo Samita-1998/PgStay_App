@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/core/widgets/staggered_fade_in.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class StaffDashboardScreen extends ConsumerStatefulWidget {
   const StaffDashboardScreen({super.key});
@@ -42,55 +43,31 @@ class _StaffDashboardScreenState extends ConsumerState<StaffDashboardScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      body: SafeArea(
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: "Task Workspace",
+        subtitle: "Your assigned maintenance & schedules",
+        showBackButton: false,
+        pinnedSCurve: true,
+        actionWidget: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            onPressed: () {},
+          ),
+        ),
+      ),
+      body: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
         child: SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
+          padding: EdgeInsets.fromLTRB(24, 110 + MediaQuery.of(context).padding.top + 32, 24, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ─── Header ─────────────────────────────────
-              StaggeredFadeIn(
-                delay: const Duration(milliseconds: 100),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Task Workspace",
-                          style: AppTheme.textTheme.displayMedium?.copyWith(
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Your assigned maintenance & schedules",
-                          style: AppTheme.textTheme.bodyMedium?.copyWith(
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: AppTheme.surfaceWhite,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.surfaceBorder),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(
-                          Icons.notifications_none_rounded,
-                          color: AppTheme.textPrimary,
-                        ),
-                        onPressed: () {},
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
               // ─── Completion Tracker ──────────────────────
               StaggeredFadeIn(
                 delay: const Duration(milliseconds: 180),

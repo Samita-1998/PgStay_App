@@ -80,7 +80,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     delay: const Duration(milliseconds: 100),
                     child: Text(
                       'Create Account',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
@@ -94,7 +94,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                     delay: const Duration(milliseconds: 200),
                     child: Text(
                       'Join PGStay and experience clean living management',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: AppTheme.textSecondary,
@@ -234,7 +234,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                                     )
                                   : Text(
                                       'Create Account',
-                                      style: GoogleFonts.plusJakartaSans(
+                                      style: GoogleFonts.inter(
                                         color: Colors.white,
                                         fontWeight: FontWeight.w700,
                                         fontSize: 15,
@@ -265,7 +265,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                       child: RichText(
                         text: TextSpan(
                           text: "Already have an account? ",
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -273,7 +273,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
                           children: [
                             TextSpan(
                               text: 'Log in',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.inter(
                                 color: AppTheme.primary,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -296,7 +296,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: GoogleFonts.plusJakartaSans(
+      style: GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: AppTheme.textPrimary,
@@ -323,7 +323,7 @@ class _RegisterScreenState extends ConsumerState<RegisterScreen> {
           child: Text(
             label,
             textAlign: TextAlign.center,
-            style: GoogleFonts.plusJakartaSans(
+            style: GoogleFonts.inter(
               fontSize: 11,
               fontWeight: isSelected ? FontWeight.w700 : FontWeight.w500,
               color: isSelected ? AppTheme.primary : AppTheme.textSecondary,

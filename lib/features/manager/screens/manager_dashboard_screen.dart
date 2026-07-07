@@ -3,6 +3,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/core/widgets/staggered_fade_in.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class ManagerDashboardScreen extends ConsumerStatefulWidget {
   const ManagerDashboardScreen({super.key});
@@ -30,57 +31,27 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
+      appBar: CustomAppBar(
+        title: "Operations Hub",
+        subtitle: "Manager dashboard & tasks",
+        showBackButton: false,
+        actionWidget: Container(
+          decoration: BoxDecoration(
+            color: Colors.white.withOpacity(0.15),
+            shape: BoxShape.circle,
+          ),
+          child: IconButton(
+            icon: const Icon(Icons.notifications_none_rounded, color: Colors.white),
+            onPressed: () {},
+          ),
+        ),
+      ),
       body: SafeArea(
         child: SingleChildScrollView(
           padding: const EdgeInsets.fromLTRB(24, 16, 24, 120),
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: [
-              // ─── Header ─────────────────────────────────
-              StaggeredFadeIn(
-                delay: const Duration(milliseconds: 100),
-                child: Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                  children: [
-                    Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Text(
-                          "Operations Hub",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 28,
-                            fontWeight: FontWeight.w800,
-                            color: AppTheme.textPrimary,
-                            letterSpacing: -0.8,
-                          ),
-                        ),
-                        const SizedBox(height: 2),
-                        Text(
-                          "Manager dashboard & task assignments",
-                          style: GoogleFonts.plusJakartaSans(
-                            fontSize: 14,
-                            color: AppTheme.textSecondary,
-                            fontWeight: FontWeight.w500,
-                          ),
-                        ),
-                      ],
-                    ),
-                    Container(
-                      decoration: BoxDecoration(
-                        color: Colors.white,
-                        shape: BoxShape.circle,
-                        border: Border.all(color: AppTheme.surfaceBorder),
-                      ),
-                      child: IconButton(
-                        icon: const Icon(Icons.notifications_none_rounded, color: AppTheme.textPrimary),
-                        onPressed: () {},
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-              const SizedBox(height: 24),
-
               // ─── Stats Banner ────────────────────────────
               StaggeredFadeIn(
                 delay: const Duration(milliseconds: 180),
@@ -133,7 +104,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     children: [
                       Text(
                         'Active Resident Log',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.textPrimary,
@@ -168,7 +139,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                     children: [
                       Text(
                         'Complaints Registry',
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontSize: 16,
                           fontWeight: FontWeight.w800,
                           color: AppTheme.textPrimary,
@@ -215,12 +186,12 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
           const SizedBox(height: 12),
           Text(
             value,
-            style: GoogleFonts.plusJakartaSans(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
+            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: AppTheme.textPrimary),
           ),
           const SizedBox(height: 2),
           Text(
             title,
-            style: GoogleFonts.plusJakartaSans(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
+            style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: AppTheme.textSecondary),
             maxLines: 1,
             overflow: TextOverflow.ellipsis,
           ),
@@ -264,7 +235,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                 children: [
                   Text(
                     resident['name']!,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontSize: 13,
                       fontWeight: FontWeight.w700,
                       color: AppTheme.textPrimary,
@@ -273,7 +244,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   const SizedBox(height: 2),
                   Text(
                     resident['room']!,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontSize: 11,
                       fontWeight: FontWeight.w600,
                       color: AppTheme.textSecondary,
@@ -291,7 +262,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
             ),
             child: Text(
               resident['status']!,
-              style: GoogleFonts.plusJakartaSans(
+              style: GoogleFonts.inter(
                 fontSize: 10,
                 color: statusColor,
                 fontWeight: FontWeight.w800,
@@ -327,7 +298,7 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
               children: [
                 Text(
                   complaint['title']!,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 13,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
@@ -338,14 +309,14 @@ class _ManagerDashboardScreenState extends ConsumerState<ManagerDashboardScreen>
                   children: [
                     Text(
                       complaint['tenant']!,
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
+                      style: GoogleFonts.inter(fontSize: 11, color: AppTheme.textSecondary, fontWeight: FontWeight.w600),
                     ),
                     const SizedBox(width: 8),
                     Container(width: 4, height: 4, decoration: const BoxDecoration(color: AppTheme.textHint, shape: BoxShape.circle)),
                     const SizedBox(width: 8),
                     Text(
                       'Priority: ${complaint['priority']}',
-                      style: GoogleFonts.plusJakartaSans(fontSize: 11, color: priorityColor, fontWeight: FontWeight.w700),
+                      style: GoogleFonts.inter(fontSize: 11, color: priorityColor, fontWeight: FontWeight.w700),
                     ),
                   ],
                 ),

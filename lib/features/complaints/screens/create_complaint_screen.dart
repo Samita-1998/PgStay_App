@@ -72,7 +72,7 @@ class _CreateComplaintScreenState extends ConsumerState<CreateComplaintScreen> {
       appBar: AppBar(
         title: Text(
           'Report an Issue',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: AppTheme.textPrimary,
@@ -91,7 +91,7 @@ class _CreateComplaintScreenState extends ConsumerState<CreateComplaintScreen> {
             children: [
               Text(
                 'Category',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,
@@ -117,7 +117,7 @@ class _CreateComplaintScreenState extends ConsumerState<CreateComplaintScreen> {
                       ),
                       child: Text(
                         cat,
-                        style: GoogleFonts.plusJakartaSans(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.w600,
                           fontSize: 13,
                           color: isSelected ? Colors.white : AppTheme.textSecondary,
@@ -130,7 +130,7 @@ class _CreateComplaintScreenState extends ConsumerState<CreateComplaintScreen> {
               const SizedBox(height: 32),
               Text(
                 'Description',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontSize: 14,
                   fontWeight: FontWeight.w700,
                   color: AppTheme.textPrimary,

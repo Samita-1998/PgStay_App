@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/core/widgets/staggered_fade_in.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class PgDetailsScreen extends ConsumerStatefulWidget {
   final String postId;
@@ -72,20 +73,13 @@ class _PgDetailsScreenState extends ConsumerState<PgDetailsScreen> {
   @override
   Widget build(BuildContext context) {
     final pgDetailsAsync = ref.watch(pgDetailsProvider(widget.postId));
+    final facilitiesList = ref.watch(facilitiesListProvider).valueOrNull ?? [];
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        title: Text(
-          'Stay Details',
-          style: AppTheme.textTheme.titleLarge?.copyWith(
-            fontWeight: FontWeight.w800,
-          ),
-        ),
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-          onPressed: () => context.pop(),
-        ),
+      appBar: CustomAppBar(
+        title: 'Stay Details',
+        showBackButton: true,
       ),
       body: SafeArea(
         child: pgDetailsAsync.when(
@@ -264,6 +258,14 @@ class _PgDetailsScreenState extends ConsumerState<PgDetailsScreen> {
                             'Check Timing',
                             'Check-in: ${post.pg.checkInTime} • Check-out: ${post.pg.checkOutTime}',
                           ),
+                          if (post.pg.dueDayOfMonth != null)
+                            _buildDetailRow('Rent Due', 'By ${post.pg.dueDayOfMonth}th of month'),
+                          if (post.pg.lateFee != null && post.pg.lateFee! > 0)
+                            _buildDetailRow('Late Fee', '₹${post.pg.lateFee!.toStringAsFixed(0)}'),
+                          if (post.pg.location != null)
+                            _buildDetailRow('Coordinates', '${post.pg.location!.coordinates[1].toStringAsFixed(4)}° N, ${post.pg.location!.coordinates[0].toStringAsFixed(4)}° E'),
+                          if (post.pg.locationLink != null && post.pg.locationLink!.isNotEmpty)
+                            _buildDetailRow('Maps Link', post.pg.locationLink!),
                         ],
                       ),
                     ),
@@ -280,7 +282,8 @@ class _PgDetailsScreenState extends ConsumerState<PgDetailsScreen> {
                         child: Wrap(
                           spacing: 8,
                           runSpacing: 8,
-                          children: post.pg.facilities.map((fac) {
+                          children: post.pg.facilities.map((f) {
+                            final facName = facilitiesList.firstWhere((fac) => fac['id'] == f, orElse: () => {'name': f})['name']!;
                             return Container(
                               padding: const EdgeInsets.symmetric(
                                 horizontal: 12,
@@ -299,13 +302,13 @@ class _PgDetailsScreenState extends ConsumerState<PgDetailsScreen> {
                                 mainAxisSize: MainAxisSize.min,
                                 children: [
                                   Icon(
-                                    _getFacilityIcon(fac),
+                                    _getFacilityIcon(facName),
                                     size: 16,
                                     color: AppTheme.accentColor,
                                   ),
                                   const SizedBox(width: 6),
                                   Text(
-                                    fac,
+                                    facName,
                                     style: AppTheme.textTheme.labelSmall
                                         ?.copyWith(fontWeight: FontWeight.w700),
                                   ),
@@ -544,10 +547,28 @@ class _PgDetailsScreenState extends ConsumerState<PgDetailsScreen> {
           if (post.enquiryData!.owner?.mobNo1 != null) ...[
             const SizedBox(height: 8),
             _buildStatusRow(
-              'Phone',
+              'Owner Phone',
               post.enquiryData!.owner!.mobNo1,
               AppTheme.primary,
             ),
+          ],
+          if (post.enquiryData!.manager != null) ...[
+            const SizedBox(height: 14),
+            Divider(color: AppTheme.dividerColor, height: 1),
+            const SizedBox(height: 14),
+            _buildStatusRow(
+              'Manager',
+              post.enquiryData!.manager!.name,
+              AppTheme.textPrimary,
+            ),
+            if (post.enquiryData!.manager!.mobNo1.isNotEmpty) ...[
+              const SizedBox(height: 8),
+              _buildStatusRow(
+                'Manager Phone',
+                post.enquiryData!.manager!.mobNo1,
+                AppTheme.primary,
+              ),
+            ],
           ],
         ],
       ),

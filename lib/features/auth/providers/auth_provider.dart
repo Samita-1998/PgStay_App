@@ -4,10 +4,12 @@ import 'package:pgstay/features/auth/models/user_model.dart';
 import 'package:pgstay/features/auth/repositories/auth_repository.dart';
 
 // Provider for ApiClient
-final apiClientProvider = Provider((ref) => ApiClient());
+final apiClientProvider = Provider<ApiClient>((ref) {
+  return ApiClient();
+});
 
 // Provider for AuthRepository
-final authRepositoryProvider = Provider((ref) {
+final authRepositoryProvider = Provider<AuthRepository>((ref) {
   return AuthRepository(ref.watch(apiClientProvider));
 });
 
@@ -16,6 +18,9 @@ class AuthNotifier extends StateNotifier<AsyncValue<User?>> {
   final AuthRepository _repository;
 
   AuthNotifier(this._repository) : super(const AsyncValue.loading()) {
+    _repository.setOnUnauthorized(() {
+      logout();
+    });
     _checkAuthStatus();
   }
 

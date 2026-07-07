@@ -23,3 +23,50 @@ final paginatedEnquiriesProvider = FutureProvider.family<List<EnquiryModel>, int
   final repository = ref.watch(enquiriesRepositoryProvider);
   return repository.fetchPaginatedEnquiries(page: page, limit: 10);
 });
+
+final userEnquiriesFilterProvider = StateProvider<String>((ref) => 'All');
+
+class UserEnquiriesNotifier extends StateNotifier<AsyncValue<List<EnquiryModel>>> {
+  final EnquiriesRepository repository;
+  int _page = 1;
+  bool _hasMore = true;
+  bool _isLoadingMore = false;
+
+  UserEnquiriesNotifier(this.repository) : super(const AsyncValue.loading()) {
+    fetchInitial();
+  }
+
+  Future<void> fetchInitial() async {
+    try {
+      state = const AsyncValue.loading();
+      _page = 1;
+      _hasMore = true;
+      final enquiries = await repository.fetchPaginatedEnquiries(page: _page, limit: 10);
+      if (enquiries.length < 10) _hasMore = false;
+      state = AsyncValue.data(enquiries);
+    } catch (e, st) {
+      state = AsyncValue.error(e, st);
+    }
+  }
+
+  Future<void> loadMore() async {
+    if (_isLoadingMore || !_hasMore) return;
+    final currentList = state.valueOrNull ?? [];
+    _isLoadingMore = true;
+    _page++;
+    try {
+      final newList = await repository.fetchPaginatedEnquiries(page: _page, limit: 10);
+      if (newList.length < 10) _hasMore = false;
+      state = AsyncValue.data([...currentList, ...newList]);
+    } catch (e) {
+      _page--;
+    } finally {
+      _isLoadingMore = false;
+    }
+  }
+}
+
+final userEnquiriesProvider = StateNotifierProvider<UserEnquiriesNotifier, AsyncValue<List<EnquiryModel>>>((ref) {
+  final repository = ref.watch(enquiriesRepositoryProvider);
+  return UserEnquiriesNotifier(repository);
+});

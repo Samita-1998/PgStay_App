@@ -17,6 +17,9 @@ class RentModel {
   final String? userName;
   final String? pgName;
   final String? bedNumber;
+  final String? roomNumber;
+  final String? userPhone;
+  final String? userEmail;
 
   RentModel({
     required this.id,
@@ -35,6 +38,9 @@ class RentModel {
     this.userName,
     this.pgName,
     this.bedNumber,
+    this.roomNumber,
+    this.userPhone,
+    this.userEmail,
   });
 
   factory RentModel.fromJson(Map<String, dynamic> json) {
@@ -55,6 +61,7 @@ class RentModel {
       userId: json['userId'] is Map ? json['userId']['_id'] : (json['userId'] ?? ''),
       userName: json['userId'] is Map ? json['userId']['name'] : null,
       bedNumber: json['bedId'] is Map ? json['bedId']['bedNumber'] : null,
+      roomNumber: json['roomId'] is Map ? json['roomId']['roomNumber'] : null,
       month: json['rentMonth'] ?? json['month'] ?? '',
       amount: (json['amount'] ?? 0).toDouble(),
       dueDate: parsedDueDate,
@@ -65,6 +72,8 @@ class RentModel {
       receiptNo: json['referenceNo'] ?? json['receiptNo'],
       staffRemarks: json['notes'] ?? json['staffRemarks'],
       penaltyAmount: (json['penaltyAmount'] ?? 0).toDouble(),
+      userPhone: json['userId'] is Map ? (json['userId']['phone'] ?? json['userId']['mobile']) : null,
+      userEmail: json['userId'] is Map ? json['userId']['email'] : null,
     );
   }
 

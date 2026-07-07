@@ -68,7 +68,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: AppTheme.primary,
+      backgroundColor: context.primaryColor,
       body: Center(
         child: AnimatedBuilder(
           animation: _controller,
@@ -102,7 +102,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 24),
                     Text(
                       'PGStay',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 36,
                         fontWeight: FontWeight.w800,
                         color: Colors.white,
@@ -112,7 +112,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
                     const SizedBox(height: 6),
                     Text(
                       'Premium Living, Simplified',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
                         color: Colors.white.withOpacity(0.7),

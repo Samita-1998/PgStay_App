@@ -39,7 +39,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 child: Text(
                   'Booking Confirmed!',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 28,
                     fontWeight: FontWeight.w800,
                     color: AppTheme.textPrimary,
@@ -52,7 +52,7 @@ class BookingSuccessScreen extends StatelessWidget {
                 child: Text(
                   'Your booking has been successfully placed. The PG manager will contact you shortly.',
                   textAlign: TextAlign.center,
-                  style: GoogleFonts.plusJakartaSans(
+                  style: GoogleFonts.inter(
                     fontSize: 16,
                     color: AppTheme.textSecondary,
                   ),

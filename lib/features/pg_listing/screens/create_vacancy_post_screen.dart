@@ -1,9 +1,14 @@
+import 'dart:io';
+import 'dart:convert';
+import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
+import 'package:pgstay/features/pg_listing/widgets/pg_image_widget.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class CreateVacancyPostScreen extends ConsumerStatefulWidget {
   final PgPost? existingPost;
@@ -30,7 +35,9 @@ class _CreateVacancyPostScreenState
   DateTime? _availableFrom;
   bool _isSubmitting = false;
   bool _isActive = true;
-  List<String> _images = [];
+  List<String> _existingImages = [];
+  List<XFile> _selectedImages = [];
+  final ImagePicker _picker = ImagePicker();
 
   PgModel? _selectedPg;
   List<dynamic> _pgRooms = [];
@@ -124,7 +131,7 @@ class _CreateVacancyPostScreenState
       }
     }
     _isActive = post.isActive;
-    _images = List.from(post.images);
+    _existingImages = List.from(post.images);
   }
 
   int get _totalVacancy {
@@ -339,6 +346,19 @@ class _CreateVacancyPostScreenState
 
     try {
       final repo = ref.read(pgListingRepositoryProvider);
+      List<String> finalImages = List.from(_existingImages);
+      for (var file in _selectedImages) {
+        final bytes = await file.readAsBytes();
+        
+        final uploadData = await repo.getUploadUrl(file.name, 'image/jpeg');
+        final uploadUrl = uploadData['uploadUrl']!;
+        
+        await repo.uploadFileToS3(uploadUrl, bytes, 'image/jpeg');
+        
+        final publicUrl = uploadUrl.split('?').first;
+        finalImages.add(publicUrl);
+      }
+
       final payload = <String, dynamic>{
         'pgId': _selectedPg!.id,
         'title': _titleController.text.trim(),
@@ -349,7 +369,7 @@ class _CreateVacancyPostScreenState
         'maxPrice': double.tryParse(_maxPriceController.text.trim()) ?? 0.0,
         'pgType': _selectedPg!.pgType,
         'availableFrom': _availableFrom!.toIso8601String(),
-        'images': _images,
+        'images': finalImages,
       };
 
       if (_isEditMode) {
@@ -396,6 +416,23 @@ class _CreateVacancyPostScreenState
     }
   }
 
+  Future<void> _pickImages() async {
+    try {
+      final List<XFile> images = await _picker.pickMultiImage(
+        imageQuality: 30,
+        maxWidth: 600,
+        maxHeight: 600,
+      );
+      if (images.isNotEmpty) {
+        setState(() {
+          _selectedImages.addAll(images);
+        });
+      }
+    } catch (e) {
+      _showSnack('Error picking images: $e');
+    }
+  }
+
   void _showSnack(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
@@ -418,38 +455,9 @@ class _CreateVacancyPostScreenState
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
-              ),
-            ],
-          ),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppTheme.textPrimary,
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        title: Text(
-          _isEditMode ? 'Edit Vacancy Post' : 'Create New Post',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
-            fontSize: isSmallScreen ? 20 : 24,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
+      appBar: CustomAppBar(
+        title: _isEditMode ? 'Edit Vacancy Post' : 'Create New Post',
+        showBackButton: true,
       ),
       body: pgsAsync.when(
         data: (pgs) => FadeTransition(
@@ -488,7 +496,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(height: 16),
               Text(
                 'Loading PGs...',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
                 ),
@@ -508,7 +516,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(height: 16),
               Text(
                 'Failed to load PGs',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   color: AppTheme.error,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -517,7 +525,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(height: 8),
               Text(
                 'Please check your connection',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   color: AppTheme.textSecondary,
                   fontSize: 13,
                 ),
@@ -734,7 +742,7 @@ class _CreateVacancyPostScreenState
                             _selectedPg != null
                                 ? _capitalize(_selectedPg!.pgType)
                                 : 'Not selected',
-                            style: GoogleFonts.poppins(
+                            style: GoogleFonts.inter(
                               fontSize: isSmallScreen ? 13 : 14,
                               fontWeight: FontWeight.w500,
                               color: _selectedPg != null
@@ -809,7 +817,7 @@ class _CreateVacancyPostScreenState
                           _isActive
                               ? 'Active (Visible to tenants)'
                               : 'Inactive (Hidden)',
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.inter(
                             fontSize: isSmallScreen ? 13 : 14,
                             fontWeight: FontWeight.w500,
                             color: _isActive
@@ -883,7 +891,7 @@ class _CreateVacancyPostScreenState
               children: [
                 Text(
                   'Share Your Vacancy',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.inter(
                     fontSize: isSmallScreen ? 16 : 18,
                     fontWeight: FontWeight.w700,
                     color: AppTheme.textPrimary,
@@ -892,7 +900,7 @@ class _CreateVacancyPostScreenState
                 const SizedBox(height: 4),
                 Text(
                   'Fill in the details below to attract potential tenants',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.inter(
                     fontSize: isSmallScreen ? 11 : 12,
                     color: AppTheme.textSecondary,
                   ),
@@ -949,7 +957,7 @@ class _CreateVacancyPostScreenState
           child: Center(
             child: Text(
               step.toString(),
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 color: Colors.white,
                 fontWeight: FontWeight.w600,
                 fontSize: isSmallScreen ? 12 : 14,
@@ -960,7 +968,7 @@ class _CreateVacancyPostScreenState
         const SizedBox(height: 4),
         Text(
           label,
-          style: GoogleFonts.poppins(
+          style: GoogleFonts.inter(
             fontSize: isSmallScreen ? 9 : 10,
             fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
             color: isActive ? AppTheme.accentColor : AppTheme.textHint,
@@ -1032,7 +1040,7 @@ class _CreateVacancyPostScreenState
                       RichText(
                         text: TextSpan(
                           text: title,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.inter(
                             fontSize: isSmallScreen ? 14 : 15,
                             fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimary,
@@ -1041,7 +1049,7 @@ class _CreateVacancyPostScreenState
                               ? [
                                   TextSpan(
                                     text: ' *',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       color: AppTheme.error,
                                       fontWeight: FontWeight.w700,
                                     ),
@@ -1054,7 +1062,7 @@ class _CreateVacancyPostScreenState
                         const SizedBox(height: 2),
                         Text(
                           subtitle,
-                          style: GoogleFonts.poppins(
+                          style: GoogleFonts.inter(
                             fontSize: isSmallScreen ? 10 : 11,
                             color: AppTheme.textHint,
                           ),
@@ -1093,14 +1101,14 @@ class _CreateVacancyPostScreenState
         keyboardType: TextInputType.number,
         onChanged: (_) => setState(() {}),
         validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-        style: GoogleFonts.poppins(
+        style: GoogleFonts.inter(
           fontSize: isSmallScreen ? 13 : 14,
           fontWeight: FontWeight.w500,
         ),
         decoration: InputDecoration(
           prefixIcon: Icon(icon, color: color, size: 20),
           hintText: title,
-          hintStyle: GoogleFonts.poppins(
+          hintStyle: GoogleFonts.inter(
             fontSize: isSmallScreen ? 13 : 14,
             color: AppTheme.textHint,
           ),
@@ -1134,7 +1142,7 @@ class _CreateVacancyPostScreenState
           const SizedBox(width: 8),
           Text(
             'Total Vacancies: $_totalVacancy',
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.inter(
               fontSize: isSmallScreen ? 12 : 13,
               fontWeight: FontWeight.w600,
               color: AppTheme.accentColor,
@@ -1159,7 +1167,7 @@ class _CreateVacancyPostScreenState
           Expanded(
             child: Text(
               'PG has $_pgTotalVacancy vacant bed(s) • You can override this value',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 fontSize: isSmallScreen ? 10 : 11,
                 color: AppTheme.warning,
               ),
@@ -1179,19 +1187,19 @@ class _CreateVacancyPostScreenState
       controller: controller,
       keyboardType: TextInputType.number,
       validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.inter(
         fontSize: isSmallScreen ? 13 : 14,
         fontWeight: FontWeight.w500,
       ),
       decoration: InputDecoration(
         prefixText: '₹ ',
-        prefixStyle: GoogleFonts.poppins(
+        prefixStyle: GoogleFonts.inter(
           fontSize: isSmallScreen ? 13 : 14,
           fontWeight: FontWeight.w600,
           color: AppTheme.accentColor,
         ),
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(
+        hintStyle: GoogleFonts.inter(
           fontSize: isSmallScreen ? 13 : 14,
           color: AppTheme.textHint,
         ),
@@ -1235,7 +1243,7 @@ class _CreateVacancyPostScreenState
           Expanded(
             child: Text(
               'PG price range: ${_pgMinPrice != null ? '₹${_pgMinPrice!.toInt()}' : 'N/A'} - ${_pgMaxPrice != null ? '₹${_pgMaxPrice!.toInt()}' : 'N/A'}',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 fontSize: isSmallScreen ? 10 : 11,
                 color: AppTheme.accentColor,
               ),
@@ -1282,7 +1290,7 @@ class _CreateVacancyPostScreenState
                 _availableFrom != null
                     ? _formatDate(_availableFrom!)
                     : 'Select availability date',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   fontSize: isSmallScreen ? 13 : 14,
                   fontWeight: _availableFrom != null
                       ? FontWeight.w600
@@ -1317,7 +1325,7 @@ class _CreateVacancyPostScreenState
         const SizedBox(height: 16),
         Text(
           'Loading room information...',
-          style: GoogleFonts.poppins(fontSize: 12, color: AppTheme.textHint),
+          style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textHint),
         ),
         const SizedBox(height: 16),
       ],
@@ -1418,7 +1426,7 @@ class _CreateVacancyPostScreenState
                     Expanded(
                       child: Text(
                         typeNames[type]!,
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.inter(
                           fontSize: isSmallScreen ? 13 : 14,
                           fontWeight: FontWeight.w600,
                           color: isSelected
@@ -1512,7 +1520,7 @@ class _CreateVacancyPostScreenState
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 fontSize: isSmallScreen ? 9 : 10,
                 fontWeight: highlight ? FontWeight.w600 : FontWeight.w400,
                 color: highlight ? AppTheme.success : AppTheme.textHint,
@@ -1527,6 +1535,7 @@ class _CreateVacancyPostScreenState
   }
 
   Widget _buildImageGrid(bool isSmallScreen) {
+    int totalImages = _existingImages.length + _selectedImages.length;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -1534,8 +1543,9 @@ class _CreateVacancyPostScreenState
           spacing: 12,
           runSpacing: 12,
           children: [
-            ..._images.map((img) => _buildImageItem(img, isSmallScreen)),
-            if (_images.length < 5) _buildAddImageButton(isSmallScreen),
+            ..._existingImages.map((img) => _buildImageItem(img, true, isSmallScreen)),
+            ..._selectedImages.map((file) => _buildImageItem(file, false, isSmallScreen)),
+            if (totalImages < 5) _buildAddImageButton(isSmallScreen),
           ],
         ),
         const SizedBox(height: 12),
@@ -1556,7 +1566,7 @@ class _CreateVacancyPostScreenState
               Expanded(
                 child: Text(
                   'Upload up to 5 images (JPEG, PNG, WEBP) • Max 5MB each',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.inter(
                     fontSize: isSmallScreen ? 9 : 10,
                     color: AppTheme.textHint,
                   ),
@@ -1569,7 +1579,7 @@ class _CreateVacancyPostScreenState
     );
   }
 
-  Widget _buildImageItem(String img, bool isSmallScreen) {
+  Widget _buildImageItem(dynamic img, bool isExisting, bool isSmallScreen) {
     return Container(
       width: isSmallScreen ? 100 : 110,
       height: isSmallScreen ? 100 : 110,
@@ -1588,22 +1598,40 @@ class _CreateVacancyPostScreenState
         children: [
           ClipRRect(
             borderRadius: BorderRadius.circular(16),
-            child: Image.network(
-              img,
-              fit: BoxFit.cover,
-              errorBuilder: (_, __, ___) => Container(
-                color: AppTheme.surfaceBorder,
-                child: const Icon(Icons.broken_image, color: Colors.grey),
-              ),
-            ),
+            child: isExisting
+                ? PgImageWidget(
+                    imageUrl: img as String,
+                    fit: BoxFit.cover,
+                    fallbackWidget: Container(
+                      color: AppTheme.surfaceBorder,
+                      child: const Icon(Icons.broken_image, color: Colors.grey),
+                    ),
+                  )
+                : Image.file(
+                    File((img as XFile).path),
+                    fit: BoxFit.cover,
+                  ),
           ),
           Positioned(
             top: 6,
             right: 6,
             child: GestureDetector(
-              onTap: () {
+              onTap: () async {
+                if (isExisting) {
+                  try {
+                    final repo = ref.read(pgListingRepositoryProvider);
+                    await repo.deleteFile(img as String);
+                  } catch (e) {
+                    _showSnack('Failed to delete image: $e');
+                    return;
+                  }
+                }
                 setState(() {
-                  _images.remove(img);
+                  if (isExisting) {
+                    _existingImages.remove(img);
+                  } else {
+                    _selectedImages.remove(img);
+                  }
                 });
               },
               child: Container(
@@ -1627,9 +1655,7 @@ class _CreateVacancyPostScreenState
 
   Widget _buildAddImageButton(bool isSmallScreen) {
     return GestureDetector(
-      onTap: () {
-        _showSnack('Image upload will be implemented soon');
-      },
+      onTap: _pickImages,
       child: Container(
         width: isSmallScreen ? 100 : 110,
         height: isSmallScreen ? 100 : 110,
@@ -1660,7 +1686,7 @@ class _CreateVacancyPostScreenState
             const SizedBox(height: 8),
             Text(
               'Upload',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 fontSize: isSmallScreen ? 11 : 12,
                 fontWeight: FontWeight.w600,
                 color: AppTheme.accentColor,
@@ -1668,7 +1694,7 @@ class _CreateVacancyPostScreenState
             ),
             Text(
               'Image',
-              style: GoogleFonts.poppins(
+              style: GoogleFonts.inter(
                 fontSize: isSmallScreen ? 10 : 11,
                 color: AppTheme.textHint,
               ),
@@ -1697,7 +1723,7 @@ class _CreateVacancyPostScreenState
           ),
           child: Text(
             'Cancel',
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.inter(
               fontWeight: FontWeight.w600,
               color: AppTheme.textSecondary,
               fontSize: isSmallScreen ? 13 : 14,
@@ -1734,7 +1760,7 @@ class _CreateVacancyPostScreenState
                     children: [
                       Text(
                         _isEditMode ? 'Update Post' : 'Create Post',
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.inter(
                           fontWeight: FontWeight.w700,
                           color: Colors.white,
                           fontSize: isSmallScreen ? 13 : 14,
@@ -1778,7 +1804,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(width: 8),
               Text(
                 'Search or select PG...',
-                style: GoogleFonts.poppins(
+                style: GoogleFonts.inter(
                   color: AppTheme.textHint,
                   fontSize: isSmallScreen ? 13 : 14,
                 ),
@@ -1799,7 +1825,7 @@ class _CreateVacancyPostScreenState
                   children: [
                     Text(
                       pg.name,
-                      style: GoogleFonts.poppins(
+                      style: GoogleFonts.inter(
                         fontSize: isSmallScreen ? 13 : 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1809,7 +1835,7 @@ class _CreateVacancyPostScreenState
                       const SizedBox(height: 2),
                       Text(
                         _formatAddress(pg.address!),
-                        style: GoogleFonts.poppins(
+                        style: GoogleFonts.inter(
                           fontSize: isSmallScreen ? 10 : 11,
                           color: AppTheme.textHint,
                         ),
@@ -1855,18 +1881,18 @@ class _CreateVacancyPostScreenState
       keyboardType: keyboardType,
       validator: validator,
       onChanged: onChanged,
-      style: GoogleFonts.poppins(
+      style: GoogleFonts.inter(
         fontSize: isSmallScreen ? 13 : 14,
         color: AppTheme.textPrimary,
       ),
       decoration: InputDecoration(
         hintText: hint,
-        hintStyle: GoogleFonts.poppins(
+        hintStyle: GoogleFonts.inter(
           color: AppTheme.textHint,
           fontSize: isSmallScreen ? 13 : 14,
         ),
         helperText: helperText,
-        helperStyle: GoogleFonts.poppins(
+        helperStyle: GoogleFonts.inter(
           color: AppTheme.textHint,
           fontSize: isSmallScreen ? 9 : 10,
         ),
@@ -1896,7 +1922,7 @@ class _CreateVacancyPostScreenState
           borderRadius: BorderRadius.circular(12),
           borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
         ),
-        errorStyle: GoogleFonts.poppins(
+        errorStyle: GoogleFonts.inter(
           color: AppTheme.error,
           fontSize: isSmallScreen ? 9 : 10,
         ),

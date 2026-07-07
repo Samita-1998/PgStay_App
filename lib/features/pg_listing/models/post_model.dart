@@ -89,13 +89,31 @@ class PgModel {
   final int emptyBeds;
   final bool isActive;
   final String pgType;
+  // Manager
   final String? managerId;
   final String? managerName;
+  final String? managerMobNo1;
+  final String? managerMobNo2;
+  final String? managerEmail;
+  // Owner
+  final String? ownerId;
+  final String? ownerName;
+  final String? ownerMobNo1;
+  final String? ownerEmail;
+  // Extras
   final String? description;
   final String? pgStartedDate;
   final int? dueDayOfMonth;
   final String? landline;
   final String? locationLink;
+  final List<String> images;
+  final double? lateFee;
+  final String? createdAt;
+  final String? updatedAt;
+  final PgLocation? location;
+  final String? upiId;
+  final String? paymentQrImage;
+  final String? pgDisplayId;
 
   PgModel({
     required this.id,
@@ -113,11 +131,26 @@ class PgModel {
     required this.pgType,
     this.managerId,
     this.managerName,
+    this.managerMobNo1,
+    this.managerMobNo2,
+    this.managerEmail,
+    this.ownerId,
+    this.ownerName,
+    this.ownerMobNo1,
+    this.ownerEmail,
     this.description,
     this.pgStartedDate,
     this.dueDayOfMonth,
     this.landline,
     this.locationLink,
+    this.images = const [],
+    this.lateFee,
+    this.createdAt,
+    this.updatedAt,
+    this.location,
+    this.upiId,
+    this.paymentQrImage,
+    this.pgDisplayId,
   });
 
   factory PgModel.fromJson(Map<String, dynamic> json) {
@@ -133,10 +166,13 @@ class PgModel {
       }
     }
 
+    final ownerRaw = json['ownerId'];
+    final managerRaw = json['managerId'];
+
     return PgModel(
       id: json['_id'] ?? json['id'] ?? '',
       name: json['name'] ?? '',
-      rating: (json['rating'] as num?)?.toDouble() ?? 4.0,
+      rating: (json['rating'] as num?)?.toDouble() ?? 0.0,
       checkInTime: json['checkInTime'] ?? '12:00 PM',
       checkOutTime: json['checkOutTime'] ?? '11:00 AM',
       address: json['address'] is Map<String, dynamic>
@@ -149,17 +185,35 @@ class PgModel {
       emptyBeds: (json['emptyBeds'] as num?)?.toInt() ?? 0,
       isActive: json['isActive'] ?? true,
       pgType: json['pgType'] ?? 'Co-Living',
-      managerId: json['managerId'] is Map
-          ? (json['managerId']['_id'] ?? json['managerId']['id'])?.toString()
-          : json['managerId']?.toString(),
-      managerName: json['managerId'] is Map
-          ? json['managerId']['name']?.toString()
-          : null,
+      // Manager
+      managerId: managerRaw is Map
+          ? (managerRaw['_id'] ?? managerRaw['id'])?.toString()
+          : managerRaw?.toString(),
+      managerName: managerRaw is Map ? managerRaw['name']?.toString() : null,
+      managerMobNo1: managerRaw is Map ? managerRaw['mobNo1']?.toString() : null,
+      managerMobNo2: managerRaw is Map ? managerRaw['mobNo2']?.toString() : null,
+      managerEmail: managerRaw is Map ? managerRaw['email']?.toString() : null,
+      // Owner
+      ownerId: ownerRaw is Map
+          ? (ownerRaw['_id'] ?? ownerRaw['id'])?.toString()
+          : ownerRaw?.toString(),
+      ownerName: ownerRaw is Map ? ownerRaw['name']?.toString() : null,
+      ownerMobNo1: ownerRaw is Map ? ownerRaw['mobNo1']?.toString() : null,
+      ownerEmail: ownerRaw is Map ? ownerRaw['email']?.toString() : null,
+      // Extras
       description: json['description']?.toString(),
       pgStartedDate: json['pgStartedDate']?.toString(),
       dueDayOfMonth: (json['dueDayOfMonth'] as num?)?.toInt(),
       landline: json['landline']?.toString(),
       locationLink: json['locationLink']?.toString(),
+      images: (json['images'] as List<dynamic>?)?.map((e) => e.toString()).toList() ?? [],
+      lateFee: (json['lateFee'] as num?)?.toDouble(),
+      createdAt: json['createdAt']?.toString(),
+      updatedAt: json['updatedAt']?.toString(),
+      location: json['location'] != null ? PgLocation.fromJson(json['location']) : null,
+      upiId: json['upiId']?.toString(),
+      paymentQrImage: json['paymentQrImage']?.toString() ?? json['paymentQrUrl']?.toString(),
+      pgDisplayId: json['pgDisplayId']?.toString(),
     );
   }
 
@@ -167,7 +221,7 @@ class PgModel {
     return PgModel(
       id: '',
       name: 'StaySync PG',
-      rating: 4.0,
+      rating: 0.0,
       checkInTime: '12:00 PM',
       checkOutTime: '11:00 AM',
       address: PgAddress.empty(),
@@ -178,9 +232,35 @@ class PgModel {
       emptyBeds: 0,
       isActive: true,
       pgType: 'Co-Living',
-      managerId: null,
-      managerName: null,
+      location: null,
     );
+  }
+}
+
+class PgLocation {
+  final String type;
+  final List<double> coordinates;
+
+  PgLocation({
+    required this.type,
+    required this.coordinates,
+  });
+
+  factory PgLocation.fromJson(Map<String, dynamic> json) {
+    return PgLocation(
+      type: json['type'] ?? 'Point',
+      coordinates: (json['coordinates'] as List<dynamic>?)
+              ?.map((e) => (e as num).toDouble())
+              .toList() ??
+          [],
+    );
+  }
+
+  Map<String, dynamic> toJson() {
+    return {
+      'type': type,
+      'coordinates': coordinates,
+    };
   }
 }
 

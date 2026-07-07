@@ -21,7 +21,7 @@ class ComplaintsListScreen extends ConsumerWidget {
       appBar: AppBar(
         title: Text(
           isStaff ? 'Property Complaints' : 'My Complaints',
-          style: GoogleFonts.plusJakartaSans(
+          style: GoogleFonts.inter(
             fontWeight: FontWeight.w800,
             fontSize: 18,
             color: AppTheme.textPrimary,
@@ -35,7 +35,7 @@ class ComplaintsListScreen extends ConsumerWidget {
               icon: const Icon(Icons.add_rounded, color: Colors.white),
               label: Text(
                 'Raise Issue',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   fontWeight: FontWeight.w700,
                   color: Colors.white,
                 ),
@@ -46,7 +46,7 @@ class ComplaintsListScreen extends ConsumerWidget {
           ? Center(
               child: Text(
                 'No complaints found.',
-                style: GoogleFonts.plusJakartaSans(
+                style: GoogleFonts.inter(
                   color: AppTheme.textSecondary,
                   fontSize: 16,
                 ),
@@ -82,7 +82,7 @@ class ComplaintsListScreen extends ConsumerWidget {
                               ),
                               child: Text(
                                 complaint.category,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: GoogleFonts.inter(
                                   fontWeight: FontWeight.w700,
                                   fontSize: 12,
                                   color: AppTheme.textPrimary,
@@ -95,7 +95,7 @@ class ComplaintsListScreen extends ConsumerWidget {
                         const SizedBox(height: 16),
                         Text(
                           complaint.description,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             color: AppTheme.textPrimary,
                             fontSize: 15,
                             height: 1.4,
@@ -109,14 +109,14 @@ class ComplaintsListScreen extends ConsumerWidget {
                           children: [
                             Text(
                               'By: ${complaint.userName}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.inter(
                                 color: AppTheme.textSecondary,
                                 fontSize: 13,
                               ),
                             ),
                             Text(
                               '${complaint.createdAt.day}/${complaint.createdAt.month}/${complaint.createdAt.year}',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.inter(
                                 color: AppTheme.textHint,
                                 fontSize: 12,
                               ),
@@ -182,7 +182,7 @@ class ComplaintsListScreen extends ConsumerWidget {
       ),
       child: Text(
         status,
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.inter(
           color: color,
           fontWeight: FontWeight.w700,
           fontSize: 11,

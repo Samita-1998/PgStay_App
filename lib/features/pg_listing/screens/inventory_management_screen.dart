@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class BedData {
   final String id;
@@ -84,64 +86,100 @@ class InventoryManagementScreen extends ConsumerStatefulWidget {
 
 class _InventoryManagementScreenState
     extends ConsumerState<InventoryManagementScreen> {
-  // Dark Theme Colors
-  static const Color bgColor = Color(0xFF0F111A);
-  static const Color panelColor = Color(0xFF1A1D2D);
-  static const Color cardColor = Color(0xFF161A28);
-  static const Color bedBgColor = Color(0xFF1E2336);
-  static const Color borderColor = Color(0xFF2A2E3D);
-  static const Color textWhite = Colors.white;
-  static const Color textGray = Color(0xFF94A3B8);
-  static const Color primaryPurple = Color(0xFF6366F1);
-  static const Color buttonPurple = Color(0xFF8B5CF6);
-  static const Color successGreen = Color(0xFF10B981);
-  static const Color warningOrange = Color(0xFFF59E0B);
+  String _searchQuery = '';
+  String _selectedType = 'All Types';
+  String _selectedStatus = 'All Status';
 
   @override
   Widget build(BuildContext context) {
     final roomsAsyncValue = ref.watch(pgRoomsProvider(widget.pg.id));
 
     return Scaffold(
-      backgroundColor: bgColor,
+      backgroundColor: context.backgroundLight,
+      appBar: CustomAppBar(
+        title: 'Inventory',
+        showBackButton: true,
+      ),
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () {
+          showDialog(
+            context: context,
+            builder: (context) => _AddRoomDialog(
+              pgId: widget.pg.id,
+              pgName: widget.pg.name,
+            ),
+          );
+        },
+        icon: const Icon(Icons.add),
+        label: const Text('Add Room'),
+      ),
       body: SafeArea(
         child: Column(
           children: [
-            _buildHeader(context),
-            _buildSearchAndFilterPanel(),
+            _buildSearchAndFilterPanel(context),
             Expanded(
               child: roomsAsyncValue.when(
                 data: (data) {
                   List<RoomData> rooms = data
                       .map((json) => RoomData.fromJson(json))
+                      .where((room) {
+                        if (_selectedType != 'All Types' &&
+                            room.roomType != _selectedType) {
+                          return false;
+                        }
+                        if (_selectedStatus == 'Occupancy') {
+                          if (!room.beds.any((b) => b.status == 'occupied'))
+                            return false;
+                        } else if (_selectedStatus == 'Vacancy') {
+                          if (!room.beds.any((b) => b.status == 'available'))
+                            return false;
+                        }
+                        if (_searchQuery.isNotEmpty) {
+                          final q = _searchQuery.toLowerCase();
+                          final matchRoom = room.roomNumber
+                              .toLowerCase()
+                              .contains(q);
+                          final matchBed = room.beds.any(
+                            (b) =>
+                                b.bedNumber.toLowerCase().contains(q) ||
+                                (b.tenantName?.toLowerCase().contains(q) ??
+                                    false),
+                          );
+                          if (!matchRoom && !matchBed) return false;
+                        }
+                        return true;
+                      })
                       .toList();
                   if (rooms.isEmpty) {
                     return Center(
                       child: Text(
                         'No rooms found.',
-                        style: GoogleFonts.plusJakartaSans(color: textGray),
+                        style: context.textTheme.bodyMedium?.copyWith(
+                          color: context.textHint,
+                        ),
                       ),
                     );
                   }
                   return ListView.separated(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16.0,
-                      vertical: 16.0,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacingMD,
+                      vertical: context.spacingMD,
                     ),
                     itemCount: rooms.length,
                     separatorBuilder: (context, index) =>
-                        const SizedBox(height: 16),
+                        SizedBox(height: context.spacingMD),
                     itemBuilder: (context, index) {
-                      return _buildRoomCard(rooms[index]);
+                      return _buildRoomCard(context, rooms[index]);
                     },
                   );
                 },
-                loading: () => const Center(
-                  child: CircularProgressIndicator(color: primaryPurple),
-                ),
+                loading: () => const Center(child: CircularProgressIndicator()),
                 error: (error, stack) => Center(
                   child: Text(
                     'Failed to load inventory.',
-                    style: GoogleFonts.plusJakartaSans(color: Colors.redAccent),
+                    style: context.textTheme.bodyMedium?.copyWith(
+                      color: context.errorColor,
+                    ),
                   ),
                 ),
               ),
@@ -152,139 +190,66 @@ class _InventoryManagementScreenState
     );
   }
 
-  Widget _buildHeader(BuildContext context) {
+  Widget _buildSearchAndFilterPanel(BuildContext context) {
     return Padding(
-      padding: const EdgeInsets.fromLTRB(16, 16, 16, 16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Row(
-            children: [
-              IconButton(
-                icon: const Icon(Icons.arrow_back, color: textGray),
-                onPressed: () => Navigator.pop(context),
-                padding: EdgeInsets.zero,
-                constraints: const BoxConstraints(),
-              ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: Text(
-                  'Inventory',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w800,
-                    color: textWhite,
-                  ),
-                ),
-              ),
-              ElevatedButton.icon(
-                onPressed: () {
-                  showDialog(
-                    context: context,
-                    builder: (context) => _AddRoomDialog(
-                      pgId: widget.pg.id,
-                      pgName: widget.pg.name,
-                    ),
-                  );
-                },
-                icon: const Icon(Icons.add, color: Colors.white, size: 16),
-                label: Text(
-                  'Add Room',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
-                  ),
-                ),
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: buttonPurple,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 12,
-                    vertical: 8,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 12),
-          Row(
-            children: [
-              Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 4,
-                ),
-                decoration: BoxDecoration(
-                  color: primaryPurple.withOpacity(0.15),
-                  borderRadius: BorderRadius.circular(20),
-                  border: Border.all(color: primaryPurple.withOpacity(0.3)),
-                ),
-                child: Text(
-                  widget.pg.name,
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 11,
-                    fontWeight: FontWeight.w700,
-                    color: buttonPurple,
-                  ),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 8),
-          Text(
-            'Track occupancy, rooms, and beds for this property',
-            style: GoogleFonts.plusJakartaSans(fontSize: 12, color: textGray),
-          ),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildSearchAndFilterPanel() {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 16.0),
+      padding: EdgeInsets.symmetric(horizontal: context.spacingMD),
       child: Container(
-        padding: const EdgeInsets.all(12),
+        padding: EdgeInsets.all(context.spacingSM),
         decoration: BoxDecoration(
-          color: panelColor,
-          borderRadius: BorderRadius.circular(16),
-          border: Border.all(color: borderColor),
+          color: context.surfaceWhite,
+          borderRadius: BorderRadius.circular(context.radiusLG),
+          border: Border.all(color: context.surfaceBorder),
+          boxShadow: AppTheme.cardShadow,
         ),
         child: Column(
           children: [
             TextField(
-              style: GoogleFonts.plusJakartaSans(
-                color: textWhite,
-                fontSize: 13,
-              ),
+              onChanged: (val) {
+                setState(() {
+                  _searchQuery = val;
+                });
+              },
+              style: context.textTheme.bodyMedium,
               decoration: InputDecoration(
                 hintText: 'Search Room, Bed, Tenant...',
-                hintStyle: GoogleFonts.plusJakartaSans(
-                  color: textGray,
-                  fontSize: 13,
+                hintStyle: context.textTheme.bodySmall,
+                prefixIcon: Icon(
+                  Icons.search,
+                  color: context.textHint,
+                  size: 18,
                 ),
-                prefixIcon: const Icon(Icons.search, color: textGray, size: 18),
                 border: OutlineInputBorder(
-                  borderRadius: BorderRadius.circular(12),
+                  borderRadius: BorderRadius.circular(context.radiusSM),
                   borderSide: BorderSide.none,
                 ),
                 filled: true,
-                fillColor: bgColor,
-                contentPadding: const EdgeInsets.symmetric(
-                  horizontal: 12,
+                fillColor: context.backgroundLight,
+                contentPadding: EdgeInsets.symmetric(
+                  horizontal: context.spacingSM,
                   vertical: 0,
                 ),
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacingSM),
             Row(
               children: [
-                Expanded(child: _buildDropdown('All Types')),
-                const SizedBox(width: 12),
-                Expanded(child: _buildDropdown('All Status')),
+                Expanded(
+                  child: _buildDropdown(
+                    context,
+                    _selectedType,
+                    ['All Types', 'AC', 'Non-AC'],
+                    (val) => setState(() => _selectedType = val!),
+                  ),
+                ),
+                SizedBox(width: context.spacingSM),
+                Expanded(
+                  child: _buildDropdown(
+                    context,
+                    _selectedStatus,
+                    ['All Status', 'Occupancy', 'Vacancy'],
+                    (val) => setState(() => _selectedStatus = val!),
+                  ),
+                ),
               ],
             ),
           ],
@@ -293,43 +258,55 @@ class _InventoryManagementScreenState
     );
   }
 
-  Widget _buildDropdown(String hint) {
+  Widget _buildDropdown(
+    BuildContext context,
+    String value,
+    List<String> items,
+    Function(String?) onChanged,
+  ) {
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+      padding: EdgeInsets.symmetric(horizontal: context.spacingSM),
       decoration: BoxDecoration(
-        color: bgColor,
-        borderRadius: BorderRadius.circular(10),
+        color: context.backgroundLight,
+        borderRadius: BorderRadius.circular(context.radiusSM),
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-        children: [
-          Text(
-            hint,
-            style: GoogleFonts.plusJakartaSans(
-              color: textWhite,
-              fontWeight: FontWeight.w600,
-              fontSize: 12,
-            ),
+      child: DropdownButtonHideUnderline(
+        child: DropdownButton<String>(
+          value: value,
+          isExpanded: true,
+          icon: Icon(
+            Icons.keyboard_arrow_down,
+            color: context.textHint,
+            size: 16,
           ),
-          const Icon(Icons.keyboard_arrow_down, color: textGray, size: 16),
-        ],
+          dropdownColor: context.surfaceWhite,
+          style: context.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w600,
+            color: context.textPrimary,
+          ),
+          onChanged: onChanged,
+          items: items.map((e) {
+            return DropdownMenuItem(value: e, child: Text(e));
+          }).toList(),
+        ),
       ),
     );
   }
 
-  Widget _buildRoomCard(RoomData room) {
+  Widget _buildRoomCard(BuildContext context, RoomData room) {
     return Container(
       decoration: BoxDecoration(
-        color: cardColor,
-        borderRadius: BorderRadius.circular(20),
-        border: Border.all(color: borderColor),
+        color: context.surfaceWhite,
+        borderRadius: BorderRadius.circular(context.radiusXL),
+        border: Border.all(color: context.surfaceBorder),
+        boxShadow: AppTheme.cardShadow,
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Room Header
           Padding(
-            padding: const EdgeInsets.all(16.0),
+            padding: EdgeInsets.all(context.spacingMD),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
@@ -338,21 +315,16 @@ class _InventoryManagementScreenState
                   children: [
                     Text(
                       'Room ${room.roomNumber}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 18,
+                      style: context.textTheme.titleLarge?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: textWhite,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacingXS),
                     Padding(
-                      padding: const EdgeInsets.only(bottom: 2),
+                      padding: EdgeInsets.only(bottom: 2),
                       child: Text(
                         'F${room.floor} • ${room.roomType}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: textGray,
-                        ),
+                        style: context.textTheme.bodySmall,
                       ),
                     ),
                   ],
@@ -360,112 +332,132 @@ class _InventoryManagementScreenState
                 Row(
                   children: [
                     Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 10,
-                        vertical: 4,
+                      padding: EdgeInsets.symmetric(
+                        horizontal: context.spacingXS,
+                        vertical: context.spacingXXS,
                       ),
                       decoration: BoxDecoration(
-                        color: successGreen.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(12),
+                        color: context.successColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(context.radiusSM),
                         border: Border.all(
-                          color: successGreen.withOpacity(0.3),
+                          color: context.successColor.withOpacity(0.3),
                         ),
                       ),
                       child: Text(
                         '${room.beds.length} Beds',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 11,
+                        style: context.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: successGreen,
+                          color: context.successColor,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacingXS),
                     InkWell(
                       onTap: () {
                         showDialog(
                           context: context,
                           builder: (context) => _EditRoomDialog(
                             room: room,
+                            pgId: widget.pg.id,
                             pgName: widget.pg.name,
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(context.radiusXL),
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: primaryPurple.withOpacity(0.15),
+                          color: context.primaryColor.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.edit_outlined,
-                          color: primaryPurple,
+                          color: context.primaryColor,
                           size: 16,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacingXS),
                     InkWell(
                       onTap: () {
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
-                            backgroundColor: cardColor,
+                            backgroundColor: context.surfaceWhite,
                             title: Text(
                               'Delete Room',
-                              style: GoogleFonts.plusJakartaSans(color: textWhite),
+                              style: context.textTheme.headlineSmall,
                             ),
                             content: Text(
                               'Are you sure you want to delete this room?',
-                              style: GoogleFonts.plusJakartaSans(color: textGray),
+                              style: context.textTheme.bodyMedium,
                             ),
                             actions: [
                               TextButton(
                                 onPressed: () => Navigator.pop(context),
                                 child: Text(
                                   'Cancel',
-                                  style: GoogleFonts.plusJakartaSans(color: textGray),
+                                  style: context.textTheme.labelMedium
+                                      ?.copyWith(color: context.textHint),
                                 ),
                               ),
                               TextButton(
                                 onPressed: () async {
                                   Navigator.pop(context);
                                   try {
-                                    await ref.read(pgListingRepositoryProvider).deleteRoom(room.id);
-                                    ref.invalidate(pgRoomsProvider(widget.pg.id));
+                                    await ref
+                                        .read(pgListingRepositoryProvider)
+                                        .deleteRoom(room.id);
+                                    ref.invalidate(
+                                      pgRoomsProvider(widget.pg.id),
+                                    );
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        const SnackBar(content: Text('Room deleted successfully')),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(
+                                            'Room deleted successfully',
+                                            style: context.textTheme.bodyMedium
+                                                ?.copyWith(color: Colors.white),
+                                          ),
+                                          backgroundColor: context.primaryColor,
+                                        ),
                                       );
                                     }
                                   } catch (e) {
                                     if (mounted) {
-                                      ScaffoldMessenger.of(context).showSnackBar(
-                                        SnackBar(content: Text(e.toString())),
+                                      ScaffoldMessenger.of(
+                                        context,
+                                      ).showSnackBar(
+                                        SnackBar(
+                                          content: Text(e.toString()),
+                                          backgroundColor: context.errorColor,
+                                        ),
                                       );
                                     }
                                   }
                                 },
                                 child: Text(
                                   'Delete',
-                                  style: GoogleFonts.plusJakartaSans(color: Colors.redAccent),
+                                  style: context.textTheme.labelMedium
+                                      ?.copyWith(color: context.errorColor),
                                 ),
                               ),
                             ],
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(20),
+                      borderRadius: BorderRadius.circular(context.radiusXL),
                       child: Container(
-                        padding: const EdgeInsets.all(6),
+                        padding: EdgeInsets.all(6),
                         decoration: BoxDecoration(
-                          color: Colors.redAccent.withOpacity(0.15),
+                          color: context.errorColor.withOpacity(0.15),
                           shape: BoxShape.circle,
                         ),
-                        child: const Icon(
+                        child: Icon(
                           Icons.delete_outline,
-                          color: Colors.redAccent,
+                          color: context.errorColor,
                           size: 16,
                         ),
                       ),
@@ -479,11 +471,17 @@ class _InventoryManagementScreenState
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: const EdgeInsets.fromLTRB(12, 0, 12, 12),
+            padding: EdgeInsets.fromLTRB(
+              context.spacingSM,
+              0,
+              context.spacingSM,
+              context.spacingSM,
+            ),
             itemCount: room.beds.length,
-            separatorBuilder: (context, index) => const SizedBox(height: 8),
+            separatorBuilder: (context, index) =>
+                SizedBox(height: context.spacingXS),
             itemBuilder: (context, index) {
-              return _buildBedItem(room, room.beds[index]);
+              return _buildBedItem(context, room, room.beds[index]);
             },
           ),
         ],
@@ -491,27 +489,27 @@ class _InventoryManagementScreenState
     );
   }
 
-  Widget _buildBedItem(RoomData room, BedData bed) {
+  Widget _buildBedItem(BuildContext context, RoomData room, BedData bed) {
     bool isAvailable = bed.status == 'available';
     String bedLetter = bed.bedNumber.contains('-')
         ? bed.bedNumber.split('-').last
         : bed.bedNumber;
 
     return Container(
-      padding: const EdgeInsets.all(12),
+      padding: EdgeInsets.all(context.spacingSM),
       decoration: BoxDecoration(
-        color: bedBgColor,
-        borderRadius: BorderRadius.circular(16),
+        color: context.backgroundLight,
+        borderRadius: BorderRadius.circular(context.radiusLG),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
           Icon(
             Icons.bed_outlined,
-            color: isAvailable ? successGreen : warningOrange,
+            color: isAvailable ? context.successColor : context.warningColor,
             size: 20,
           ),
-          const SizedBox(width: 12),
+          SizedBox(width: context.spacingSM),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
@@ -521,35 +519,29 @@ class _InventoryManagementScreenState
                   children: [
                     Text(
                       'Bed\n$bedLetter',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
+                      style: context.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        color: textWhite,
                         height: 1.2,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    SizedBox(width: context.spacingXS),
                     Expanded(
                       child: Text(
                         '(${bed.position} • ₹${bed.price.toStringAsFixed(0)})',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: textGray,
-                        ),
+                        style: context.textTheme.bodySmall,
                         maxLines: 2,
                         overflow: TextOverflow.ellipsis,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 4),
+                SizedBox(height: context.spacingXXS),
                 if (isAvailable)
                   Text(
                     'Available',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 11,
+                    style: context.textTheme.labelSmall?.copyWith(
                       fontWeight: FontWeight.w600,
-                      color: successGreen,
+                      color: context.successColor,
                     ),
                   )
                 else
@@ -557,17 +549,15 @@ class _InventoryManagementScreenState
                     children: [
                       Text(
                         bed.tenantName ?? 'Occupied',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
+                        style: context.textTheme.labelMedium?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: primaryPurple,
+                          color: context.primaryColor,
                         ),
                       ),
                       Text(
                         ' • ...',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 12,
-                          color: primaryPurple,
+                        style: context.textTheme.labelMedium?.copyWith(
+                          color: context.primaryColor,
                         ),
                       ),
                     ],
@@ -575,7 +565,7 @@ class _InventoryManagementScreenState
               ],
             ),
           ),
-          const SizedBox(width: 8),
+          SizedBox(width: context.spacingXS),
           InkWell(
             onTap: () {
               if (isAvailable) {
@@ -588,14 +578,77 @@ class _InventoryManagementScreenState
                     bed: bed,
                   ),
                 );
+              } else {
+                showDialog(
+                  context: context,
+                  builder: (context) => AlertDialog(
+                    backgroundColor: context.surfaceWhite,
+                    title: Text(
+                      'Vacate Bed',
+                      style: context.textTheme.headlineSmall,
+                    ),
+                    content: Text(
+                      'Are you sure you want to vacate this bed?',
+                      style: context.textTheme.bodyMedium,
+                    ),
+                    actions: [
+                      TextButton(
+                        onPressed: () => Navigator.pop(context),
+                        child: Text(
+                          'Cancel',
+                          style: context.textTheme.labelMedium?.copyWith(
+                            color: context.textHint,
+                          ),
+                        ),
+                      ),
+                      TextButton(
+                        onPressed: () async {
+                          Navigator.pop(context);
+                          try {
+                            await ref
+                                .read(pgListingRepositoryProvider)
+                                .unassignBedFromTenant(bed.id);
+                            ref.invalidate(pgRoomsProvider(widget.pg.id));
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(
+                                    'Tenant removed from bed successfully',
+                                    style: context.textTheme.bodyMedium
+                                        ?.copyWith(color: Colors.white),
+                                  ),
+                                  backgroundColor: context.primaryColor,
+                                ),
+                              );
+                            }
+                          } catch (e) {
+                            if (context.mounted) {
+                              ScaffoldMessenger.of(context).showSnackBar(
+                                SnackBar(
+                                  content: Text(e.toString()),
+                                  backgroundColor: context.errorColor,
+                                ),
+                              );
+                            }
+                          }
+                        },
+                        child: Text(
+                          'Vacate',
+                          style: context.textTheme.labelMedium?.copyWith(
+                            color: context.errorColor,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                );
               }
             },
             child: Text(
               isAvailable ? 'Assign' : 'Vacate',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 12,
+              style: context.textTheme.labelMedium?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: isAvailable ? textWhite : textGray,
+                color: isAvailable ? context.textPrimary : context.errorColor,
               ),
             ),
           ),
@@ -646,7 +699,7 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
     }
   }
 
-  Future<void> _pickDate() async {
+  Future<void> _pickDate(BuildContext context) async {
     final date = await showDatePicker(
       context: context,
       initialDate: _checkInDate,
@@ -654,10 +707,10 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) {
         return Theme(
-          data: ThemeData.dark().copyWith(
-            colorScheme: const ColorScheme.dark(
-              primary: _InventoryManagementScreenState.primaryPurple,
-              surface: _InventoryManagementScreenState.cardColor,
+          data: Theme.of(context).copyWith(
+            colorScheme: ColorScheme.light(
+              primary: context.primaryColor,
+              surface: context.surfaceWhite,
             ),
           ),
           child: child!,
@@ -682,11 +735,12 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
       insetPadding: const EdgeInsets.all(20),
       child: Container(
         width: double.infinity,
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.all(context.spacingLG),
         decoration: BoxDecoration(
-          color: const Color(0xFF161A28),
-          borderRadius: BorderRadius.circular(20),
-          border: Border.all(color: const Color(0xFF2A2E3D)),
+          color: context.surfaceWhite,
+          borderRadius: BorderRadius.circular(context.radiusXL),
+          border: Border.all(color: context.surfaceBorder),
+          boxShadow: AppTheme.elevatedShadow,
         ),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -695,113 +749,86 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
             Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
-                Text(
-                  'Assign Tenant',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 20,
-                    fontWeight: FontWeight.bold,
-                    color: Colors.white,
-                  ),
-                ),
+                Text('Assign Tenant', style: context.textTheme.headlineMedium),
                 InkWell(
                   onTap: () => Navigator.pop(context),
-                  child: const Icon(
-                    Icons.close,
-                    color: Colors.white54,
-                    size: 20,
-                  ),
+                  child: Icon(Icons.close, color: context.textHint, size: 20),
                 ),
               ],
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacingLG),
             Container(
-              padding: const EdgeInsets.all(12),
+              padding: EdgeInsets.all(context.spacingSM),
               decoration: BoxDecoration(
-                color: const Color(0xFF1E2336),
-                borderRadius: BorderRadius.circular(24),
+                color: context.backgroundLight,
+                borderRadius: BorderRadius.circular(context.radiusLG),
               ),
               child: Wrap(
                 crossAxisAlignment: WrapCrossAlignment.center,
-                spacing: 8,
-                runSpacing: 8,
+                spacing: context.spacingXS,
+                runSpacing: context.spacingXS,
                 children: [
                   Text(
                     'Assigning tenant to Room ${widget.room.roomNumber} - Bed $bedLetter',
-                    style: GoogleFonts.plusJakartaSans(
-                      fontSize: 13,
-                      color: Colors.white70,
-                    ),
+                    style: context.textTheme.bodyMedium,
                   ),
                   Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 10,
-                      vertical: 4,
+                    padding: EdgeInsets.symmetric(
+                      horizontal: context.spacingXS,
+                      vertical: context.spacingXXS,
                     ),
                     decoration: BoxDecoration(
-                      color: _InventoryManagementScreenState.primaryPurple
-                          .withOpacity(0.15),
-                      borderRadius: BorderRadius.circular(20),
+                      color: context.primaryColor.withOpacity(0.15),
+                      borderRadius: BorderRadius.circular(context.radiusXL),
                       border: Border.all(
-                        color: _InventoryManagementScreenState.primaryPurple
-                            .withOpacity(0.3),
+                        color: context.primaryColor.withOpacity(0.3),
                       ),
                     ),
                     child: Text(
                       widget.pgName,
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 11,
+                      style: context.textTheme.labelSmall?.copyWith(
                         fontWeight: FontWeight.w700,
-                        color: _InventoryManagementScreenState.buttonPurple,
+                        color: context.primaryColor,
                       ),
                     ),
                   ),
                 ],
               ),
             ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacingLG),
             Text(
               'Select Tenant (with "Deal Done" status)',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
+              style: context.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacingMD),
             if (_isLoading)
-              const Padding(
-                padding: EdgeInsets.all(32.0),
-                child: Center(
-                  child: CircularProgressIndicator(
-                    color: _InventoryManagementScreenState.primaryPurple,
-                  ),
-                ),
+              Padding(
+                padding: EdgeInsets.all(context.spacingXL),
+                child: const Center(child: CircularProgressIndicator()),
               )
             else if (_eligibleTenants == null || _eligibleTenants!.isEmpty)
               Padding(
-                padding: const EdgeInsets.symmetric(vertical: 32.0),
+                padding: EdgeInsets.symmetric(vertical: context.spacingXL),
                 child: Column(
                   children: [
-                    const Icon(
+                    Icon(
                       Icons.group_off_outlined,
-                      color: Colors.white24,
+                      color: context.textHint,
                       size: 48,
                     ),
-                    const SizedBox(height: 16),
+                    SizedBox(height: context.spacingMD),
                     Text(
                       'No eligible tenants found.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: Colors.white54,
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.textHint,
                       ),
                     ),
-                    const SizedBox(height: 8),
+                    SizedBox(height: context.spacingXS),
                     Text(
                       'Users must have an enquiry with "Deal Done" status.',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 12,
-                        color: Colors.white38,
-                      ),
+                      style: context.textTheme.bodySmall,
                       textAlign: TextAlign.center,
                     ),
                   ],
@@ -809,27 +836,29 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
               )
             else
               Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 4,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacingMD,
+                  vertical: context.spacingXXS,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2336),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2A2E3D)),
+                  color: context.backgroundLight,
+                  borderRadius: BorderRadius.circular(context.radiusSM),
+                  border: Border.all(color: context.surfaceBorder),
                 ),
                 child: DropdownButtonHideUnderline(
                   child: DropdownButton<String>(
                     value: _selectedTenantId,
                     hint: Text(
                       'Select a tenant',
-                      style: GoogleFonts.plusJakartaSans(color: Colors.white54),
+                      style: context.textTheme.bodyMedium?.copyWith(
+                        color: context.textHint,
+                      ),
                     ),
                     isExpanded: true,
-                    dropdownColor: const Color(0xFF1E2336),
-                    icon: const Icon(
+                    dropdownColor: context.surfaceWhite,
+                    icon: Icon(
                       Icons.keyboard_arrow_down,
-                      color: Colors.white54,
+                      color: context.textHint,
                     ),
                     items: _eligibleTenants!.map((t) {
                       final name =
@@ -838,9 +867,7 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
                         value: t['_id']?.toString() ?? t['id']?.toString(),
                         child: Text(
                           name.toString(),
-                          style: GoogleFonts.plusJakartaSans(
-                            color: Colors.white,
-                          ),
+                          style: context.textTheme.bodyMedium,
                         ),
                       );
                     }).toList(),
@@ -852,80 +879,97 @@ class _AssignTenantDialogState extends ConsumerState<_AssignTenantDialog> {
                   ),
                 ),
               ),
-            const SizedBox(height: 24),
+            SizedBox(height: context.spacingLG),
             Text(
               'Check-in / Joining Date *',
-              style: GoogleFonts.plusJakartaSans(
-                fontSize: 14,
+              style: context.textTheme.titleSmall?.copyWith(
                 fontWeight: FontWeight.w700,
-                color: Colors.white,
               ),
             ),
-            const SizedBox(height: 12),
+            SizedBox(height: context.spacingSM),
             InkWell(
-              onTap: _pickDate,
-              borderRadius: BorderRadius.circular(12),
+              onTap: () => _pickDate(context),
+              borderRadius: BorderRadius.circular(context.radiusSM),
               child: Container(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 16,
-                  vertical: 16,
+                padding: EdgeInsets.symmetric(
+                  horizontal: context.spacingMD,
+                  vertical: context.spacingMD,
                 ),
                 decoration: BoxDecoration(
-                  color: const Color(0xFF1E2336),
-                  borderRadius: BorderRadius.circular(12),
-                  border: Border.all(color: const Color(0xFF2A2E3D)),
+                  color: context.backgroundLight,
+                  borderRadius: BorderRadius.circular(context.radiusSM),
+                  border: Border.all(color: context.surfaceBorder),
                 ),
                 child: Row(
                   mainAxisAlignment: MainAxisAlignment.spaceBetween,
                   children: [
                     Text(
                       "${_checkInDate.day.toString().padLeft(2, '0')}-${_checkInDate.month.toString().padLeft(2, '0')}-${_checkInDate.year}",
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 14,
-                        color: Colors.white,
-                      ),
+                      style: context.textTheme.bodyMedium,
                     ),
-                    const Icon(
+                    Icon(
                       Icons.calendar_today_outlined,
-                      color: Colors.white54,
+                      color: context.textHint,
                       size: 18,
                     ),
                   ],
                 ),
               ),
             ),
-            const SizedBox(height: 32),
-            Divider(color: Colors.white.withOpacity(0.1)),
-            const SizedBox(height: 16),
+            SizedBox(height: context.spacingXL),
+            Divider(color: AppTheme.dividerColor),
+            SizedBox(height: context.spacingMD),
             ElevatedButton(
               onPressed:
                   (_eligibleTenants != null &&
                       _eligibleTenants!.isNotEmpty &&
                       _selectedTenantId != null)
-                  ? () {
-                      // TODO: submit assignment
-                      Navigator.pop(context);
-                      ScaffoldMessenger.of(context).showSnackBar(
-                        const SnackBar(
-                          content: Text('Tenant Assigned Successfully (Mock)'),
-                        ),
-                      );
+                  ? () async {
+                      try {
+                        await ref
+                            .read(pgListingRepositoryProvider)
+                            .assignBedToTenant(
+                              widget.bed.id,
+                              _selectedTenantId!,
+                            );
+                        ref.invalidate(pgRoomsProvider(widget.pgId));
+                        if (mounted) {
+                          Navigator.pop(context);
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(
+                                'Tenant Assigned Successfully',
+                                style: context.textTheme.bodyMedium?.copyWith(
+                                  color: Colors.white,
+                                ),
+                              ),
+                              backgroundColor: context.primaryColor,
+                            ),
+                          );
+                        }
+                      } catch (e) {
+                        if (mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(
+                              content: Text(e.toString()),
+                              backgroundColor: context.errorColor,
+                            ),
+                          );
+                        }
+                      }
                     }
                   : null,
               style: ElevatedButton.styleFrom(
-                backgroundColor: _InventoryManagementScreenState.primaryPurple,
-                disabledBackgroundColor: _InventoryManagementScreenState
-                    .primaryPurple
-                    .withOpacity(0.3),
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                backgroundColor: context.primaryColor,
+                disabledBackgroundColor: context.primaryColor.withOpacity(0.3),
+                padding: EdgeInsets.symmetric(vertical: context.spacingMD),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(context.radiusLG),
                 ),
               ),
               child: Text(
                 'Confirm Assignment',
-                style: GoogleFonts.plusJakartaSans(
-                  fontSize: 14,
+                style: context.textTheme.labelLarge?.copyWith(
                   fontWeight: FontWeight.bold,
                   color: Colors.white,
                 ),
@@ -991,7 +1035,10 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     if (_roomNumberController.text.trim().isEmpty ||
         _floorController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all room fields')),
+        SnackBar(
+          content: const Text('Please fill all room fields'),
+          backgroundColor: context.errorColor,
+        ),
       );
       return;
     }
@@ -1004,7 +1051,10 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
       final posText = _positionControllers[i].text.trim();
       if (priceText.isEmpty || posText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all bed fields')),
+          SnackBar(
+            content: const Text('Please fill all bed fields'),
+            backgroundColor: context.errorColor,
+          ),
         );
         return;
       }
@@ -1034,14 +1084,20 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
         ref.invalidate(pgRoomsProvider(widget.pgId));
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Room added successfully')),
+          SnackBar(
+            content: const Text('Room added successfully'),
+            backgroundColor: context.primaryColor,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: context.errorColor,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -1052,14 +1108,13 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     }
   }
 
-  Widget _buildLabel(String text) {
+  Widget _buildLabel(BuildContext context, String text) {
     if (!text.contains('*')) {
       return Text(
         text,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 12,
+        style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.white70,
+          color: context.textSecondary,
         ),
       );
     }
@@ -1068,18 +1123,16 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     return RichText(
       text: TextSpan(
         text: parts[0],
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 12,
+        style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.white70,
+          color: context.textSecondary,
         ),
         children: [
           TextSpan(
             text: '*',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
+            style: context.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFFEF4444), // Red asterisk
+              color: context.errorColor,
             ),
           ),
           if (parts.length > 1) TextSpan(text: parts[1]),
@@ -1089,6 +1142,7 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
   }
 
   Widget _buildTextField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     String hint,
@@ -1096,31 +1150,25 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(label),
-        const SizedBox(height: 8),
+        _buildLabel(context, label),
+        SizedBox(height: context.spacingXS),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1E2336),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2A2E3D)),
+            color: context.backgroundLight,
+            borderRadius: BorderRadius.circular(context.radiusSM),
+            border: Border.all(color: context.surfaceBorder),
           ),
           child: TextField(
             controller: controller,
-            cursorColor: Colors.black,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.black,
-              fontSize: 13,
-            ),
+            cursorColor: context.primaryColor,
+            style: context.textTheme.bodyMedium,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.plusJakartaSans(
-                color: Colors.white24,
-                fontSize: 13,
-              ),
+              hintStyle: context.textTheme.bodySmall,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: context.spacingMD,
+                vertical: context.spacingSM,
               ),
             ),
           ),
@@ -1136,14 +1184,14 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
       insetPadding: const EdgeInsets.all(20),
       elevation: 0,
       child: Material(
-        color: const Color(0xFF161A28),
+        color: context.surfaceWhite,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2A2E3D)),
+          borderRadius: BorderRadius.circular(context.radiusXL),
+          side: BorderSide(color: context.surfaceBorder),
         ),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacingLG),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1155,36 +1203,34 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                     Expanded(
                       child: Text(
                         'Add New Room to ${widget.pgName}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: context.textTheme.headlineSmall,
                       ),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
-                        color: Colors.white54,
+                        color: context.textHint,
                         size: 20,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacingLG),
                 Row(
                   children: [
                     Expanded(
                       child: _buildTextField(
+                        context,
                         'Room Number *',
                         _roomNumberController,
                         'e.g. 101',
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.spacingMD),
                     Expanded(
                       child: _buildTextField(
+                        context,
                         'Floor *',
                         _floorController,
                         'e.g. 1',
@@ -1192,32 +1238,34 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacingMD),
                 Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Occupancy (Beds) *'),
-                          const SizedBox(height: 8),
+                          _buildLabel(context, 'Occupancy (Beds) *'),
+                          SizedBox(height: context.spacingXS),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingMD,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E2336),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF2A2E3D),
+                              color: context.backgroundLight,
+                              borderRadius: BorderRadius.circular(
+                                context.radiusSM,
                               ),
+                              border: Border.all(color: context.surfaceBorder),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
                                 value: _occupancy,
                                 isExpanded: true,
-                                dropdownColor: const Color(0xFF1E2336),
-                                icon: const Icon(
+                                dropdownColor: context.surfaceWhite,
+                                icon: Icon(
                                   Icons.keyboard_arrow_down,
-                                  color: Colors.white54,
+                                  color: context.textHint,
                                 ),
                                 items: [1, 2, 3, 4, 5, 6]
                                     .map(
@@ -1225,9 +1273,7 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                                         value: e,
                                         child: Text(
                                           e.toString(),
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                          ),
+                                          style: context.textTheme.bodyMedium,
                                         ),
                                       ),
                                     )
@@ -1246,30 +1292,32 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.spacingMD),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Room Type'),
-                          const SizedBox(height: 8),
+                          _buildLabel(context, 'Room Type'),
+                          SizedBox(height: context.spacingXS),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingMD,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E2336),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF2A2E3D),
+                              color: context.backgroundLight,
+                              borderRadius: BorderRadius.circular(
+                                context.radiusSM,
                               ),
+                              border: Border.all(color: context.surfaceBorder),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _roomType,
                                 isExpanded: true,
-                                dropdownColor: const Color(0xFF1E2336),
-                                icon: const Icon(
+                                dropdownColor: context.surfaceWhite,
+                                icon: Icon(
                                   Icons.keyboard_arrow_down,
-                                  color: Colors.white54,
+                                  color: context.textHint,
                                 ),
                                 items: ['Non-AC', 'AC']
                                     .map(
@@ -1277,9 +1325,7 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                                         value: e,
                                         child: Text(
                                           e,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                          ),
+                                          style: context.textTheme.bodyMedium,
                                         ),
                                       ),
                                     )
@@ -1299,18 +1345,16 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacingLG),
                 Text(
                   'Bed Configurations',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
+                  style: context.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Divider(color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacingXS),
+                Divider(color: AppTheme.dividerColor),
+                SizedBox(height: context.spacingXS),
                 ...List.generate(_occupancy, (index) {
                   final letter = [
                     'A',
@@ -1323,7 +1367,7 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                     'H',
                   ][index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
+                    padding: EdgeInsets.only(bottom: context.spacingMD),
                     child: Row(
                       children: [
                         Expanded(
@@ -1333,49 +1377,49 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                             children: [
                               Text(
                                 'Bed $letter',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                style: context.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white70,
+                                  color: context.textSecondary,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: context.spacingXS),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: context.spacingMD,
+                                  vertical: context.spacingSM,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1E2336),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: context.backgroundLight,
+                                  borderRadius: BorderRadius.circular(
+                                    context.radiusSM,
+                                  ),
                                   border: Border.all(
-                                    color: const Color(0xFF2A2E3D),
+                                    color: context.surfaceBorder,
                                   ),
                                 ),
                                 child: Text(
                                   letter,
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                  ),
+                                  style: context.textTheme.bodySmall,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSM),
                         Expanded(
                           flex: 2,
                           child: _buildTextField(
+                            context,
                             'Price *',
                             _priceControllers[index],
                             'Price',
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSM),
                         Expanded(
                           flex: 2,
                           child: _buildTextField(
+                            context,
                             'Position',
                             _positionControllers[index],
                             'Window Side',
@@ -1385,9 +1429,9 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                     ),
                   );
                 }),
-                const SizedBox(height: 16),
-                Divider(color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacingMD),
+                Divider(color: AppTheme.dividerColor),
+                SizedBox(height: context.spacingMD),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -1395,28 +1439,27 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                       onPressed: () => Navigator.pop(context),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white54,
+                        style: context.textTheme.labelLarge?.copyWith(
+                          color: context.textHint,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 24),
+                    SizedBox(width: context.spacingLG),
                     ElevatedButton(
                       onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _InventoryManagementScreenState.primaryPurple,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 14,
+                        backgroundColor: context.primaryColor,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacingXL,
+                          vertical: context.spacingSM,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(context.radiusLG),
                         ),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
@@ -1426,7 +1469,7 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
                             )
                           : Text(
                               'Create Room & Beds',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: context.textTheme.labelLarge?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),
@@ -1445,8 +1488,13 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
 
 class _EditRoomDialog extends ConsumerStatefulWidget {
   final RoomData room;
+  final String pgId;
   final String pgName;
-  const _EditRoomDialog({required this.room, required this.pgName});
+  const _EditRoomDialog({
+    required this.room,
+    required this.pgId,
+    required this.pgName,
+  });
 
   @override
   ConsumerState<_EditRoomDialog> createState() => _EditRoomDialogState();
@@ -1496,7 +1544,11 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     }
     if (initializeWithData) {
       for (int i = 0; i < widget.room.beds.length && i < _occupancy; i++) {
-        _priceControllers[i].text = widget.room.beds[i].price.toString();
+        // Drop the .0 if it's a whole number for cleaner UI
+        final price = widget.room.beds[i].price;
+        _priceControllers[i].text = price == price.toInt()
+            ? price.toInt().toString()
+            : price.toString();
         _positionControllers[i].text = widget.room.beds[i].position;
       }
     }
@@ -1506,7 +1558,10 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     if (_roomNumberController.text.trim().isEmpty ||
         _floorController.text.trim().isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Please fill all room fields')),
+        SnackBar(
+          content: const Text('Please fill all room fields'),
+          backgroundColor: context.errorColor,
+        ),
       );
       return;
     }
@@ -1519,16 +1574,25 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
       final posText = _positionControllers[i].text.trim();
       if (priceText.isEmpty || posText.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Please fill all bed fields')),
+          SnackBar(
+            content: const Text('Please fill all bed fields'),
+            backgroundColor: context.errorColor,
+          ),
         );
         return;
       }
 
-      beds.add({
+      final bedPayload = <String, dynamic>{
         'bedNumber': '${_roomNumberController.text.trim()}-${letters[i]}',
         'price': double.tryParse(priceText) ?? 0.0,
         'position': posText,
-      });
+      };
+
+      if (i < widget.room.beds.length) {
+        bedPayload['_id'] = widget.room.beds[i].id;
+      }
+
+      beds.add(bedPayload);
     }
 
     setState(() {
@@ -1545,17 +1609,23 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
         'beds': beds,
       });
       if (mounted) {
-        ref.invalidate(pgRoomsProvider(widget.room.id));
+        ref.invalidate(pgRoomsProvider(widget.pgId));
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Room updated successfully')),
+          SnackBar(
+            content: const Text('Room updated successfully'),
+            backgroundColor: context.primaryColor,
+          ),
         );
       }
     } catch (e) {
       if (mounted) {
-        ScaffoldMessenger.of(
-          context,
-        ).showSnackBar(SnackBar(content: Text(e.toString())));
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text(e.toString()),
+            backgroundColor: context.errorColor,
+          ),
+        );
       }
     } finally {
       if (mounted) {
@@ -1566,14 +1636,13 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     }
   }
 
-  Widget _buildLabel(String text) {
+  Widget _buildLabel(BuildContext context, String text) {
     if (!text.contains('*')) {
       return Text(
         text,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 12,
+        style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.white70,
+          color: context.textSecondary,
         ),
       );
     }
@@ -1582,18 +1651,16 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     return RichText(
       text: TextSpan(
         text: parts[0],
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 12,
+        style: context.textTheme.labelMedium?.copyWith(
           fontWeight: FontWeight.bold,
-          color: Colors.white70,
+          color: context.textSecondary,
         ),
         children: [
           TextSpan(
             text: '*',
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 12,
+            style: context.textTheme.labelMedium?.copyWith(
               fontWeight: FontWeight.bold,
-              color: const Color(0xFFEF4444),
+              color: context.errorColor,
             ),
           ),
           if (parts.length > 1) TextSpan(text: parts[1]),
@@ -1603,6 +1670,7 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
   }
 
   Widget _buildTextField(
+    BuildContext context,
     String label,
     TextEditingController controller,
     String hint,
@@ -1610,31 +1678,25 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        _buildLabel(label),
-        const SizedBox(height: 8),
+        _buildLabel(context, label),
+        SizedBox(height: context.spacingXS),
         Container(
           decoration: BoxDecoration(
-            color: const Color(0xFF1E2336),
-            borderRadius: BorderRadius.circular(12),
-            border: Border.all(color: const Color(0xFF2A2E3D)),
+            color: context.backgroundLight,
+            borderRadius: BorderRadius.circular(context.radiusSM),
+            border: Border.all(color: context.surfaceBorder),
           ),
           child: TextField(
             controller: controller,
-            cursorColor: Colors.black,
-            style: GoogleFonts.plusJakartaSans(
-              color: Colors.black,
-              fontSize: 13,
-            ),
+            cursorColor: context.primaryColor,
+            style: context.textTheme.bodyMedium,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: GoogleFonts.plusJakartaSans(
-                color: Colors.white24,
-                fontSize: 13,
-              ),
+              hintStyle: context.textTheme.bodySmall,
               border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+              contentPadding: EdgeInsets.symmetric(
+                horizontal: context.spacingMD,
+                vertical: context.spacingSM,
               ),
             ),
           ),
@@ -1650,14 +1712,14 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
       insetPadding: const EdgeInsets.all(20),
       elevation: 0,
       child: Material(
-        color: const Color(0xFF161A28),
+        color: context.surfaceWhite,
         shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(20),
-          side: const BorderSide(color: Color(0xFF2A2E3D)),
+          borderRadius: BorderRadius.circular(context.radiusXL),
+          side: BorderSide(color: context.surfaceBorder),
         ),
         child: Container(
           width: double.infinity,
-          padding: const EdgeInsets.all(24),
+          padding: EdgeInsets.all(context.spacingLG),
           child: SingleChildScrollView(
             child: Column(
               mainAxisSize: MainAxisSize.min,
@@ -1669,36 +1731,34 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                     Expanded(
                       child: Text(
                         'Edit Room Details - ${widget.pgName}',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 18,
-                          fontWeight: FontWeight.bold,
-                          color: Colors.white,
-                        ),
+                        style: context.textTheme.headlineSmall,
                       ),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: const Icon(
+                      child: Icon(
                         Icons.close,
-                        color: Colors.white54,
+                        color: context.textHint,
                         size: 20,
                       ),
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacingLG),
                 Row(
                   children: [
                     Expanded(
                       child: _buildTextField(
+                        context,
                         'Room Number *',
                         _roomNumberController,
                         'e.g. 101',
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.spacingMD),
                     Expanded(
                       child: _buildTextField(
+                        context,
                         'Floor *',
                         _floorController,
                         'e.g. 1',
@@ -1706,32 +1766,34 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacingMD),
                 Row(
                   children: [
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Occupancy (Beds) *'),
-                          const SizedBox(height: 8),
+                          _buildLabel(context, 'Occupancy (Beds) *'),
+                          SizedBox(height: context.spacingXS),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingMD,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E2336),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF2A2E3D),
+                              color: context.backgroundLight,
+                              borderRadius: BorderRadius.circular(
+                                context.radiusSM,
                               ),
+                              border: Border.all(color: context.surfaceBorder),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<int>(
                                 value: _occupancy,
                                 isExpanded: true,
-                                dropdownColor: const Color(0xFF1E2336),
-                                icon: const Icon(
+                                dropdownColor: context.surfaceWhite,
+                                icon: Icon(
                                   Icons.keyboard_arrow_down,
-                                  color: Colors.white54,
+                                  color: context.textHint,
                                 ),
                                 items: [1, 2, 3, 4, 5, 6]
                                     .map(
@@ -1739,9 +1801,7 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                                         value: e,
                                         child: Text(
                                           e.toString(),
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                          ),
+                                          style: context.textTheme.bodyMedium,
                                         ),
                                       ),
                                     )
@@ -1760,30 +1820,32 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                         ],
                       ),
                     ),
-                    const SizedBox(width: 16),
+                    SizedBox(width: context.spacingMD),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          _buildLabel('Room Type'),
-                          const SizedBox(height: 8),
+                          _buildLabel(context, 'Room Type'),
+                          SizedBox(height: context.spacingXS),
                           Container(
-                            padding: const EdgeInsets.symmetric(horizontal: 16),
+                            padding: EdgeInsets.symmetric(
+                              horizontal: context.spacingMD,
+                            ),
                             decoration: BoxDecoration(
-                              color: const Color(0xFF1E2336),
-                              borderRadius: BorderRadius.circular(12),
-                              border: Border.all(
-                                color: const Color(0xFF2A2E3D),
+                              color: context.backgroundLight,
+                              borderRadius: BorderRadius.circular(
+                                context.radiusSM,
                               ),
+                              border: Border.all(color: context.surfaceBorder),
                             ),
                             child: DropdownButtonHideUnderline(
                               child: DropdownButton<String>(
                                 value: _roomType,
                                 isExpanded: true,
-                                dropdownColor: const Color(0xFF1E2336),
-                                icon: const Icon(
+                                dropdownColor: context.surfaceWhite,
+                                icon: Icon(
                                   Icons.keyboard_arrow_down,
-                                  color: Colors.white54,
+                                  color: context.textHint,
                                 ),
                                 items: ['Non-AC', 'AC']
                                     .map(
@@ -1791,9 +1853,7 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                                         value: e,
                                         child: Text(
                                           e,
-                                          style: GoogleFonts.plusJakartaSans(
-                                            color: Colors.white,
-                                          ),
+                                          style: context.textTheme.bodyMedium,
                                         ),
                                       ),
                                     )
@@ -1813,18 +1873,16 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                     ),
                   ],
                 ),
-                const SizedBox(height: 24),
+                SizedBox(height: context.spacingLG),
                 Text(
                   'Bed Configurations',
-                  style: GoogleFonts.plusJakartaSans(
-                    fontSize: 16,
+                  style: context.textTheme.titleMedium?.copyWith(
                     fontWeight: FontWeight.bold,
-                    color: Colors.white,
                   ),
                 ),
-                const SizedBox(height: 8),
-                Divider(color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 8),
+                SizedBox(height: context.spacingXS),
+                Divider(color: AppTheme.dividerColor),
+                SizedBox(height: context.spacingXS),
                 ...List.generate(_occupancy, (index) {
                   final letter = [
                     'A',
@@ -1837,7 +1895,7 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                     'H',
                   ][index];
                   return Padding(
-                    padding: const EdgeInsets.only(bottom: 16.0),
+                    padding: EdgeInsets.only(bottom: context.spacingMD),
                     child: Row(
                       children: [
                         Expanded(
@@ -1847,49 +1905,49 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                             children: [
                               Text(
                                 'Bed ${_roomNumberController.text.isNotEmpty ? _roomNumberController.text : "Room"}-$letter',
-                                style: GoogleFonts.plusJakartaSans(
-                                  fontSize: 12,
+                                style: context.textTheme.labelMedium?.copyWith(
                                   fontWeight: FontWeight.bold,
-                                  color: Colors.white70,
+                                  color: context.textSecondary,
                                 ),
                               ),
-                              const SizedBox(height: 8),
+                              SizedBox(height: context.spacingXS),
                               Container(
-                                padding: const EdgeInsets.symmetric(
-                                  horizontal: 16,
-                                  vertical: 14,
+                                padding: EdgeInsets.symmetric(
+                                  horizontal: context.spacingMD,
+                                  vertical: context.spacingSM,
                                 ),
                                 decoration: BoxDecoration(
-                                  color: const Color(0xFF1E2336),
-                                  borderRadius: BorderRadius.circular(12),
+                                  color: context.backgroundLight,
+                                  borderRadius: BorderRadius.circular(
+                                    context.radiusSM,
+                                  ),
                                   border: Border.all(
-                                    color: const Color(0xFF2A2E3D),
+                                    color: context.surfaceBorder,
                                   ),
                                 ),
                                 child: Text(
                                   '${_roomNumberController.text.isNotEmpty ? _roomNumberController.text : "Room"}-$letter',
-                                  style: GoogleFonts.plusJakartaSans(
-                                    color: Colors.white54,
-                                    fontSize: 13,
-                                  ),
+                                  style: context.textTheme.bodySmall,
                                 ),
                               ),
                             ],
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSM),
                         Expanded(
                           flex: 2,
                           child: _buildTextField(
+                            context,
                             'Price *',
                             _priceControllers[index],
                             'Price',
                           ),
                         ),
-                        const SizedBox(width: 12),
+                        SizedBox(width: context.spacingSM),
                         Expanded(
                           flex: 2,
                           child: _buildTextField(
+                            context,
                             'Position',
                             _positionControllers[index],
                             'Window Side',
@@ -1899,9 +1957,9 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                     ),
                   );
                 }),
-                const SizedBox(height: 16),
-                Divider(color: Colors.white.withOpacity(0.1)),
-                const SizedBox(height: 16),
+                SizedBox(height: context.spacingMD),
+                Divider(color: AppTheme.dividerColor),
+                SizedBox(height: context.spacingMD),
                 Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
@@ -1909,28 +1967,27 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                       onPressed: () => Navigator.pop(context),
                       child: Text(
                         'Cancel',
-                        style: GoogleFonts.plusJakartaSans(
-                          color: Colors.white54,
+                        style: context.textTheme.labelLarge?.copyWith(
+                          color: context.textHint,
                           fontWeight: FontWeight.bold,
                         ),
                       ),
                     ),
-                    const SizedBox(width: 24),
+                    SizedBox(width: context.spacingLG),
                     ElevatedButton(
                       onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor:
-                            _InventoryManagementScreenState.primaryPurple,
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 14,
+                        backgroundColor: context.primaryColor,
+                        padding: EdgeInsets.symmetric(
+                          horizontal: context.spacingXL,
+                          vertical: context.spacingSM,
                         ),
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
+                          borderRadius: BorderRadius.circular(context.radiusLG),
                         ),
                       ),
                       child: _isSubmitting
-                          ? const SizedBox(
+                          ? SizedBox(
                               width: 16,
                               height: 16,
                               child: CircularProgressIndicator(
@@ -1940,7 +1997,7 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
                             )
                           : Text(
                               'Update Room',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: context.textTheme.labelLarge?.copyWith(
                                 color: Colors.white,
                                 fontWeight: FontWeight.bold,
                               ),

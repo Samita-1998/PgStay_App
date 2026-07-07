@@ -10,17 +10,44 @@ class RentRepository {
   Future<List<RentModel>> fetchRents({String? pgId, String? month, String? status}) async {
     try {
       final queryParams = <String, dynamic>{};
-      if (pgId != null) queryParams['pgId'] = pgId;
-      if (month != null) queryParams['rentMonth'] = month;
-      if (status != null) queryParams['status'] = status;
+      if (pgId != null && pgId.trim().isNotEmpty) queryParams['pgId'] = pgId;
+      if (month != null && month.trim().isNotEmpty) queryParams['rentMonth'] = month;
+      if (status != null && status.trim().isNotEmpty) queryParams['status'] = status;
 
       final response = await _apiClient.dio.get('/rent', queryParameters: queryParams);
 
       if (response.data['success'] == true) {
-        final List<dynamic> rentsJson = response.data['data']['records'] ?? [];
+        final data = response.data['data'];
+        List<dynamic> rentsJson = [];
+        if (data is List) {
+          rentsJson = data;
+        } else if (data is Map) {
+          rentsJson = data['records'] ?? data['rents'] ?? [];
+        }
         return rentsJson.map((json) => RentModel.fromJson(json)).toList();
       } else {
         throw Exception(response.data['message'] ?? 'Failed to fetch rents');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error occurred');
+    }
+  }
+
+  Future<List<RentModel>> fetchMyRents() async {
+    try {
+      final response = await _apiClient.dio.get('/rent/my-rent');
+
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        List<dynamic> rentsJson = [];
+        if (data is List) {
+          rentsJson = data;
+        } else if (data is Map) {
+          rentsJson = data['records'] ?? data['rents'] ?? [];
+        }
+        return rentsJson.map((json) => RentModel.fromJson(json)).toList();
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to fetch my rents');
       }
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Network error occurred');
@@ -39,9 +66,9 @@ class RentRepository {
     }
   }
 
-  Future<void> generateRent(String pgId, String month, String dueDate) async {
+  Future<Map<String, dynamic>> generateRent(String pgId, String month, String dueDate) async {
     try {
-      final response = await _apiClient.dio.post('/rent/auto-generate', data: {
+      final response = await _apiClient.dio.post('/rent/generate', data: {
         'pgId': pgId,
         'rentMonth': month,
         'dueDate': dueDate,
@@ -50,6 +77,7 @@ class RentRepository {
       if (response.data['success'] != true) {
         throw Exception(response.data['message'] ?? 'Failed to generate rent');
       }
+      return response.data;
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Network error occurred');
     }

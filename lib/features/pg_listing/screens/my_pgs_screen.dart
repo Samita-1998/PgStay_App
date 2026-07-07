@@ -1,13 +1,13 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
-import 'package:pgstay/core/theme/app_theme.dart';
+import 'package:go_router/go_router.dart';
 import 'package:pgstay/core/widgets/staggered_fade_in.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
-import 'package:pgstay/features/pg_listing/screens/add_pg_screen.dart';
-import 'package:pgstay/features/pg_listing/screens/inventory_management_screen.dart';
-import 'package:pgstay/features/pg_listing/screens/owner_pg_details_screen.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
+import 'package:pgstay/features/pg_listing/widgets/pg_image_widget.dart';
+import 'package:animated_flip_counter/animated_flip_counter.dart';
 
 class MyPgsScreen extends ConsumerStatefulWidget {
   const MyPgsScreen({super.key});
@@ -19,6 +19,7 @@ class MyPgsScreen extends ConsumerStatefulWidget {
 class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
   String _selectedTab = 'all';
   final TextEditingController _searchController = TextEditingController();
+  final ScrollController _scrollController = ScrollController();
   String _searchQuery = '';
 
   // Custom color palette matching the dashboard
@@ -35,129 +36,99 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
   static const Color textHintColor = Color(0xFF9CA3AF);
 
   @override
+  void initState() {
+    super.initState();
+    _scrollController.addListener(_onScroll);
+  }
+
+  void _onScroll() {
+    if (_scrollController.position.pixels >=
+        _scrollController.position.maxScrollExtent - 200) {
+      ref.read(ownerPgsProvider.notifier).loadMore();
+    }
+  }
+
+  @override
   void dispose() {
     _searchController.dispose();
+    _scrollController.dispose();
     super.dispose();
   }
 
   @override
   Widget build(BuildContext context) {
     final ownerPgsAsync = ref.watch(ownerPgsProvider);
+    final facilitiesList = ref.watch(facilitiesListProvider).valueOrNull ?? [];
 
     return Scaffold(
+      key: GlobalKey<ScaffoldState>(),
       backgroundColor: backgroundColor,
-      body: SafeArea(
-        bottom: false,
-        child: RefreshIndicator(
-          onRefresh: () async => ref.refresh(ownerPgsProvider),
-          color: primaryColor,
-          child: ownerPgsAsync.when(
-            data: (pgs) {
-              var filteredPgs = pgs.where((pg) {
-                final q = _searchQuery.toLowerCase();
-                return pg.name.toLowerCase().contains(q) ||
-                    pg.address.city.toLowerCase().contains(q) ||
-                    pg.address.landmark.toLowerCase().contains(q);
-              }).toList();
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: "My Properties",
+        showBackButton: false,
+        showLeading: true,
+        pinnedSCurve: true,
+        isCompact: true,
+        backgroundColor: backgroundColor,
+        actionWidget: Material(
+          color: Colors.transparent,
+          child: InkWell(
+            onTap: () => context.push('/add-pg'),
+            borderRadius: BorderRadius.circular(16),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              child: const Icon(
+                Icons.add_rounded,
+                color: Colors.white,
+                size: 24,
+              ),
+            ),
+          ),
+        ),
+      ),
+      floatingActionButton: FloatingActionButton(onPressed: () {}),
+      body: RefreshIndicator(
+        onRefresh: () async =>
+            ref.read(ownerPgsProvider.notifier).fetchInitial(),
+        color: primaryColor,
+        child: ownerPgsAsync.when(
+          data: (pgs) {
+            var filteredPgs = pgs.where((pg) {
+              final q = _searchQuery.toLowerCase();
+              return pg.name.toLowerCase().contains(q) ||
+                  pg.address.city.toLowerCase().contains(q) ||
+                  pg.address.landmark.toLowerCase().contains(q);
+            }).toList();
 
-              if (_selectedTab == 'active') {
-                filteredPgs = filteredPgs
-                    .where((pg) => pg.isActive == true)
-                    .toList();
-              } else if (_selectedTab == 'pending') {
-                filteredPgs = filteredPgs
-                    .where((pg) => pg.isActive == false)
-                    .toList();
-              }
+            if (_selectedTab == 'active') {
+              filteredPgs = filteredPgs
+                  .where((pg) => pg.isActive == true)
+                  .toList();
+            } else if (_selectedTab == 'pending') {
+              filteredPgs = filteredPgs
+                  .where((pg) => pg.isActive == false)
+                  .toList();
+            }
 
-              return CustomScrollView(
-                physics: const AlwaysScrollableScrollPhysics(),
+            return MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: CustomScrollView(
+                controller: _scrollController,
+                physics: const ClampingScrollPhysics(),
                 slivers: [
-                  // Header Section
                   SliverToBoxAdapter(
-                    child: Container(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
+                    child: Padding(
+                      padding: EdgeInsets.fromLTRB(
+                        24,
+                        100 + MediaQuery.of(context).padding.top + 16,
+                        24,
+                        0,
+                      ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
-                          // Title Row
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    Text(
-                                      "My Properties",
-                                      style: GoogleFonts.inter(
-                                        fontSize: 28,
-                                        fontWeight: FontWeight.w800,
-                                        color: textPrimaryColor,
-                                        letterSpacing: -0.5,
-                                      ),
-                                    ),
-                                    const SizedBox(height: 4),
-                                    Container(
-                                      padding: const EdgeInsets.symmetric(
-                                        horizontal: 10,
-                                        vertical: 4,
-                                      ),
-                                      decoration: BoxDecoration(
-                                        color: primaryColor.withOpacity(0.08),
-                                        borderRadius: BorderRadius.circular(20),
-                                      ),
-                                      child: Text(
-                                        '${pgs.length} propert${pgs.length == 1 ? 'y' : 'ies'} registered',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 12,
-                                          fontWeight: FontWeight.w600,
-                                          color: primaryColor,
-                                        ),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              // Add Property Button
-                              Container(
-                                decoration: BoxDecoration(
-                                  gradient: LinearGradient(
-                                    colors: [primaryColor, secondaryColor],
-                                  ),
-                                  borderRadius: BorderRadius.circular(16),
-                                  boxShadow: [
-                                    BoxShadow(
-                                      color: primaryColor.withOpacity(0.3),
-                                      blurRadius: 12,
-                                      offset: const Offset(0, 4),
-                                    ),
-                                  ],
-                                ),
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: InkWell(
-                                    onTap: () => Navigator.push(
-                                      context,
-                                      MaterialPageRoute(
-                                        builder: (_) => const AddPgScreen(),
-                                      ),
-                                    ),
-                                    borderRadius: BorderRadius.circular(16),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(12),
-                                      child: const Icon(
-                                        Icons.add_rounded,
-                                        color: Colors.white,
-                                        size: 24,
-                                      ),
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 24),
-
                           // Search Bar
                           Container(
                             height: 52,
@@ -232,8 +203,6 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
                             ),
                           ),
                           const SizedBox(height: 20),
-
-                          // Filter Tabs
                           SizedBox(
                             height: 42,
                             child: ListView(
@@ -264,8 +233,6 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
                       ),
                     ),
                   ),
-
-                  // PG Cards List
                   if (filteredPgs.isEmpty)
                     SliverFillRemaining(
                       child: Center(
@@ -313,12 +280,7 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
                               ),
                               const SizedBox(height: 24),
                               ElevatedButton.icon(
-                                onPressed: () => Navigator.push(
-                                  context,
-                                  MaterialPageRoute(
-                                    builder: (_) => const AddPgScreen(),
-                                  ),
-                                ),
+                                onPressed: () => context.push('/add-pg'),
                                 icon: const Icon(Icons.add, size: 18),
                                 label: Text(
                                   'Add Property',
@@ -347,75 +309,96 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
                     SliverPadding(
                       padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
                       sliver: SliverList(
-                        delegate: SliverChildBuilderDelegate((context, index) {
-                          final pg = filteredPgs[index];
-                          return StaggeredFadeIn(
-                            delay: Duration(milliseconds: 60 * index),
-                            child: _PgCard(pg: pg),
-                          );
-                        }, childCount: filteredPgs.length),
+                        delegate: SliverChildBuilderDelegate(
+                          (context, index) {
+                            if (index == filteredPgs.length) {
+                              return const Padding(
+                                padding: EdgeInsets.symmetric(vertical: 20),
+                                child: Center(
+                                  child: CircularProgressIndicator(
+                                    color: primaryColor,
+                                  ),
+                                ),
+                              );
+                            }
+                            final pg = filteredPgs[index];
+                            return StaggeredFadeIn(
+                              delay: Duration(milliseconds: 60 * (index % 10)),
+                              child: _PgCard(
+                                pg: pg,
+                                allFacilities: facilitiesList,
+                              ),
+                            );
+                          },
+                          childCount:
+                              filteredPgs.length +
+                              (ref.read(ownerPgsProvider.notifier).hasMore
+                                  ? 1
+                                  : 0),
+                        ),
                       ),
                     ),
                 ],
-              );
-            },
-            loading: () => const Center(
-              child: CircularProgressIndicator(color: primaryColor),
-            ),
-            error: (err, _) => Center(
-              child: Padding(
-                padding: const EdgeInsets.all(24),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      padding: const EdgeInsets.all(20),
-                      decoration: BoxDecoration(
-                        color: errorColor.withOpacity(0.1),
-                        shape: BoxShape.circle,
+              ),
+            );
+          },
+          loading: () => const Center(
+            child: CircularProgressIndicator(color: primaryColor),
+          ),
+          error: (err, _) => Center(
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  Container(
+                    padding: const EdgeInsets.all(20),
+                    decoration: BoxDecoration(
+                      color: errorColor.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.error_outline_rounded,
+                      size: 56,
+                      color: errorColor,
+                    ),
+                  ),
+                  const SizedBox(height: 20),
+                  Text(
+                    'Unable to Load Properties',
+                    style: GoogleFonts.inter(
+                      fontSize: 20,
+                      fontWeight: FontWeight.w700,
+                      color: textPrimaryColor,
+                    ),
+                  ),
+                  const SizedBox(height: 8),
+                  Text(
+                    err.toString(),
+                    style: GoogleFonts.inter(fontSize: 13),
+                    textAlign: TextAlign.center,
+                  ),
+                  const SizedBox(height: 24),
+                  ElevatedButton(
+                    onPressed: () =>
+                        ref.read(ownerPgsProvider.notifier).fetchInitial(),
+                    style: ElevatedButton.styleFrom(
+                      backgroundColor: primaryColor,
+                      foregroundColor: Colors.white,
+                      shape: RoundedRectangleBorder(
+                        borderRadius: BorderRadius.circular(16),
                       ),
-                      child: Icon(
-                        Icons.error_outline_rounded,
-                        size: 56,
-                        color: errorColor,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 32,
+                        vertical: 14,
                       ),
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Unable to Load Properties',
-                      style: GoogleFonts.inter(
-                        fontSize: 20,
-                        fontWeight: FontWeight.w700,
-                        color: textPrimaryColor,
-                      ),
+                    child: Text(
+                      'Try Again',
+                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
                     ),
-                    const SizedBox(height: 8),
-                    Text(
-                      err.toString(),
-                      style: GoogleFonts.inter(fontSize: 13),
-                      textAlign: TextAlign.center,
-                    ),
-                    const SizedBox(height: 24),
-                    ElevatedButton(
-                      onPressed: () => ref.refresh(ownerPgsProvider),
-                      style: ElevatedButton.styleFrom(
-                        backgroundColor: primaryColor,
-                        foregroundColor: Colors.white,
-                        shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(16),
-                        ),
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 32,
-                          vertical: 14,
-                        ),
-                      ),
-                      child: Text(
-                        'Try Again',
-                        style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                      ),
-                    ),
-                  ],
-                ),
+                  ),
+                ],
               ),
             ),
           ),
@@ -491,7 +474,8 @@ class _MyPgsScreenState extends ConsumerState<MyPgsScreen> {
 
 class _PgCard extends StatelessWidget {
   final PgModel pg;
-  const _PgCard({required this.pg});
+  final List<Map<String, String>> allFacilities;
+  const _PgCard({required this.pg, required this.allFacilities});
 
   @override
   Widget build(BuildContext context) {
@@ -506,12 +490,7 @@ class _PgCard extends StatelessWidget {
         borderRadius: BorderRadius.circular(24),
         child: InkWell(
           onTap: () {
-            Navigator.push(
-              context,
-              MaterialPageRoute(
-                builder: (context) => OwnerPgDetailsScreen(pg: pg),
-              ),
-            );
+            context.push('/owner/pg-details', extra: pg);
           },
           borderRadius: BorderRadius.circular(24),
           child: Container(
@@ -539,36 +518,128 @@ class _PgCard extends StatelessWidget {
                         width: 56,
                         height: 56,
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
+                          gradient: const LinearGradient(
                             colors: [
-                              const Color.fromRGBO(3, 4, 94, 1.0),
-                              const Color.fromRGBO(58, 63, 150, 1.0),
+                              Color.fromRGBO(3, 4, 94, 1.0),
+                              Color.fromRGBO(58, 63, 150, 1.0),
                             ],
                           ),
                           borderRadius: BorderRadius.circular(18),
                         ),
-                        child: const Icon(
-                          Icons.apartment_rounded,
-                          color: Colors.white,
-                          size: 28,
-                        ),
+                        clipBehavior: Clip.hardEdge,
+                        child: pg.images.isNotEmpty
+                            ? PgImageWidget(imageUrl: pg.images.first)
+                            : const Icon(
+                                Icons.apartment_rounded,
+                                color: Colors.white,
+                                size: 28,
+                              ),
                       ),
                       const SizedBox(width: 16),
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              pg.name,
-                              style: GoogleFonts.inter(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w800,
-                                color: const Color.fromRGBO(3, 4, 94, 1.0),
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                            Row(
+                              crossAxisAlignment: CrossAxisAlignment.center,
+                              children: [
+                                Expanded(
+                                  child: Text(
+                                    pg.name,
+                                    style: GoogleFonts.inter(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w800,
+                                      color: const Color.fromRGBO(3, 4, 94, 1.0),
+                                    ),
+                                    maxLines: 1,
+                                    overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                SizedBox(
+                                  height: 24,
+                                  width: 24,
+                                  child: PopupMenuButton<String>(
+                                    child: Container(
+                                      decoration: BoxDecoration(
+                                        color: const Color(0xFFF3F4F6),
+                                        shape: BoxShape.circle,
+                                      ),
+                                      child: const Icon(
+                                        Icons.more_vert_rounded,
+                                        color: Color(0xFF4B5563),
+                                        size: 16,
+                                      ),
+                                    ),
+                                    padding: EdgeInsets.zero,
+                                    shape: RoundedRectangleBorder(
+                                      borderRadius: BorderRadius.circular(12),
+                                    ),
+                                    onSelected: (value) {
+                                      if (value == 'inventory') {
+                                        context.push('/inventory', extra: pg);
+                                      } else if (value == 'edit') {
+                                        context.push('/add-pg', extra: pg);
+                                      } else if (value == 'delete') {
+                                        // TODO: Delete action
+                                      }
+                                    },
+                                    itemBuilder: (context) => [
+                                      PopupMenuItem(
+                                        value: 'inventory',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.inventory_2_outlined, color: Color(0xFF9E77ED), size: 20),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              'Inventory',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF1F2937),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'edit',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.edit_outlined, color: Color.fromRGBO(96, 102, 208, 1.0), size: 20),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              'Edit',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFF1F2937),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                      PopupMenuItem(
+                                        value: 'delete',
+                                        child: Row(
+                                          children: [
+                                            const Icon(Icons.delete_outline, color: Color(0xFFEF4444), size: 20),
+                                            const SizedBox(width: 12),
+                                            Text(
+                                              'Delete',
+                                              style: GoogleFonts.inter(
+                                                fontSize: 14,
+                                                fontWeight: FontWeight.w500,
+                                                color: const Color(0xFFEF4444),
+                                              ),
+                                            ),
+                                          ],
+                                        ),
+                                      ),
+                                    ],
+                                  ),
+                                ),
+                              ],
                             ),
-                            const SizedBox(height: 6),
                             Row(
                               children: [
                                 Icon(
@@ -598,50 +669,6 @@ class _PgCard extends StatelessWidget {
                           ],
                         ),
                       ),
-                      // Status Badge
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 12,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: pg.isActive
-                              ? const Color(0xFF10B981).withOpacity(0.1)
-                              : const Color(0xFFEF4444).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(30),
-                          border: Border.all(
-                            color: pg.isActive
-                                ? const Color(0xFF10B981).withOpacity(0.3)
-                                : const Color(0xFFEF4444).withOpacity(0.3),
-                          ),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Container(
-                              width: 6,
-                              height: 6,
-                              decoration: BoxDecoration(
-                                color: pg.isActive
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFEF4444),
-                                shape: BoxShape.circle,
-                              ),
-                            ),
-                            const SizedBox(width: 6),
-                            Text(
-                              pg.isActive ? 'Active' : 'Inactive',
-                              style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontWeight: FontWeight.w700,
-                                color: pg.isActive
-                                    ? const Color(0xFF10B981)
-                                    : const Color(0xFFEF4444),
-                              ),
-                            ),
-                          ],
-                        ),
-                      ),
                     ],
                   ),
                 ),
@@ -655,188 +682,27 @@ class _PgCard extends StatelessWidget {
                     children: [
                       _buildMiniStat(
                         'Total Beds',
-                        pg.totalBeds.toString(),
+                        pg.totalBeds,
                         Icons.bed_rounded,
                         const Color.fromRGBO(3, 4, 94, 1.0),
                       ),
                       _buildMiniStat(
                         'Occupied',
-                        pg.occupiedBeds.toString(),
+                        pg.occupiedBeds,
                         Icons.people_rounded,
                         const Color.fromRGBO(96, 102, 208, 1.0),
                       ),
                       _buildMiniStat(
                         'Available',
-                        pg.emptyBeds.toString(),
+                        pg.emptyBeds,
                         Icons.hotel_rounded,
                         const Color(0xFFF59E0B),
                       ),
                       _buildMiniStat(
                         'Rooms',
-                        pg.totalRooms.toString(),
+                        pg.totalRooms,
                         Icons.door_front_door_outlined,
                         const Color(0xFF10B981),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Occupancy Section
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 20),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                        children: [
-                          Text(
-                            'Occupancy Rate',
-                            style: GoogleFonts.inter(
-                              fontSize: 12,
-                              fontWeight: FontWeight.w600,
-                              color: const Color(0xFF6B7280),
-                            ),
-                          ),
-                          Text(
-                            '${(occupancyPercent * 100).toStringAsFixed(0)}%',
-                            style: GoogleFonts.inter(
-                              fontSize: 14,
-                              fontWeight: FontWeight.w800,
-                              color: occupancyPercent >= 0.8
-                                  ? const Color(0xFFEF4444)
-                                  : occupancyPercent >= 0.5
-                                  ? const Color(0xFFF59E0B)
-                                  : const Color(0xFF10B981),
-                            ),
-                          ),
-                        ],
-                      ),
-                      const SizedBox(height: 8),
-                      ClipRRect(
-                        borderRadius: BorderRadius.circular(8),
-                        child: LinearProgressIndicator(
-                          value: occupancyPercent.clamp(0.0, 1.0),
-                          minHeight: 8,
-                          backgroundColor: const Color(0xFFE5E7EB),
-                          valueColor: AlwaysStoppedAnimation<Color>(
-                            occupancyPercent >= 0.8
-                                ? const Color(0xFFEF4444)
-                                : occupancyPercent >= 0.5
-                                ? const Color(0xFFF59E0B)
-                                : const Color(0xFF10B981),
-                          ),
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-
-                // Facilities
-                if (pg.facilities.isNotEmpty) ...[
-                  const SizedBox(height: 16),
-                  Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
-                    child: Wrap(
-                      spacing: 8,
-                      runSpacing: 8,
-                      children: pg.facilities.take(4).map((f) {
-                        return Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 10,
-                            vertical: 5,
-                          ),
-                          decoration: BoxDecoration(
-                            color: const Color.fromRGBO(
-                              3,
-                              4,
-                              94,
-                              1.0,
-                            ).withOpacity(0.06),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(
-                            f,
-                            style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w600,
-                              color: const Color.fromRGBO(3, 4, 94, 1.0),
-                            ),
-                          ),
-                        );
-                      }).toList(),
-                    ),
-                  ),
-                ],
-
-                // Footer
-                Container(
-                  margin: const EdgeInsets.only(top: 16),
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 14,
-                  ),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFF9FAFB),
-                    borderRadius: const BorderRadius.only(
-                      bottomLeft: Radius.circular(24),
-                      bottomRight: Radius.circular(24),
-                    ),
-                  ),
-                  child: Row(
-                    children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 4,
-                        ),
-                        decoration: BoxDecoration(
-                          color: const Color.fromRGBO(
-                            96,
-                            102,
-                            208,
-                            1.0,
-                          ).withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(10),
-                        ),
-                        child: Text(
-                          pg.pgType.toUpperCase(),
-                          style: GoogleFonts.inter(
-                            fontSize: 10,
-                            fontWeight: FontWeight.w700,
-                            color: const Color.fromRGBO(96, 102, 208, 1.0),
-                          ),
-                        ),
-                      ),
-                      const Spacer(),
-                      const Icon(
-                        Icons.star_rounded,
-                        color: Color(0xFFFBBF24),
-                        size: 16,
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        pg.rating.toStringAsFixed(1),
-                        style: GoogleFonts.inter(
-                          fontSize: 13,
-                          fontWeight: FontWeight.w700,
-                          color: const Color.fromRGBO(3, 4, 94, 1.0),
-                        ),
-                      ),
-                      const SizedBox(width: 12),
-                      Icon(
-                        Icons.access_time_rounded,
-                        size: 12,
-                        color: const Color(0xFF9CA3AF),
-                      ),
-                      const SizedBox(width: 4),
-                      Text(
-                        'Check-in ${pg.checkInTime}',
-                        style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF9CA3AF),
-                        ),
                       ),
                     ],
                   ),
@@ -882,7 +748,7 @@ class _PgCard extends StatelessWidget {
                           ),
                           const SizedBox(width: 8),
                           Text(
-                            'Mgr: Sagar Thakare',
+                            'Mgr: ${pg.managerName ?? 'Unknown'}',
                             style: GoogleFonts.inter(
                               fontSize: 12,
                               fontWeight: FontWeight.w600,
@@ -893,34 +759,45 @@ class _PgCard extends StatelessWidget {
                       ),
                       Row(
                         children: [
-                          _buildActionButton(
-                            icon: Icons.inventory_2_outlined,
-                            color: const Color(0xFF9E77ED),
-                            onTap: () {
-                              Navigator.push(
-                                context,
-                                MaterialPageRoute(
-                                  builder: (context) =>
-                                      InventoryManagementScreen(pg: pg),
-                                ),
-                              );
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildActionButton(
-                            icon: Icons.edit_outlined,
-                            color: const Color.fromRGBO(96, 102, 208, 1.0),
-                            onTap: () {
-                              // TODO: Edit action
-                            },
-                          ),
-                          const SizedBox(width: 8),
-                          _buildActionButton(
-                            icon: Icons.delete_outline,
-                            color: const Color(0xFFEF4444),
-                            onTap: () {
-                              // TODO: Delete action
-                            },
+                          if (pg.rating > 0) ...[
+                            const Icon(
+                              Icons.star_rounded,
+                              color: Colors.amber,
+                              size: 16,
+                            ),
+                            const SizedBox(width: 4),
+                            Text(
+                              pg.rating.toStringAsFixed(1),
+                              style: GoogleFonts.inter(
+                                fontSize: 14,
+                                fontWeight: FontWeight.w700,
+                                color: const Color(0xFF4B5563),
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                          ],
+                          Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: const Color.fromRGBO(
+                                96,
+                                102,
+                                208,
+                                1.0,
+                              ).withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(10),
+                            ),
+                            child: Text(
+                              pg.pgType.toUpperCase(),
+                              style: GoogleFonts.inter(
+                                fontSize: 10,
+                                fontWeight: FontWeight.w700,
+                                color: const Color.fromRGBO(96, 102, 208, 1.0),
+                              ),
+                            ),
                           ),
                         ],
                       ),
@@ -959,7 +836,7 @@ class _PgCard extends StatelessWidget {
 
   Widget _buildMiniStat(
     String label,
-    String value,
+    num value,
     IconData icon,
     Color color,
   ) {
@@ -975,9 +852,10 @@ class _PgCard extends StatelessWidget {
             child: Icon(icon, size: 18, color: color),
           ),
           const SizedBox(height: 6),
-          Text(
-            value,
-            style: GoogleFonts.inter(
+          AnimatedFlipCounter(
+            value: value,
+            duration: const Duration(milliseconds: 500),
+            textStyle: GoogleFonts.inter(
               fontSize: 16,
               fontWeight: FontWeight.w800,
               color: const Color.fromRGBO(3, 4, 94, 1.0),

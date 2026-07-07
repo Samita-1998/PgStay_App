@@ -10,7 +10,7 @@ final rentRepositoryProvider = Provider<RentRepository>((ref) {
 
 final myRentsProvider = FutureProvider.autoDispose<List<RentModel>>((ref) async {
   final repo = ref.read(rentRepositoryProvider);
-  return repo.fetchRents();
+  return repo.fetchMyRents();
 });
 
 final pgRentsProvider = FutureProvider.autoDispose.family<List<RentModel>, String>((ref, pgId) async {

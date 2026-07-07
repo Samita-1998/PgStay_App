@@ -4,6 +4,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/enquiries/providers/enquiries_provider.dart';
 import 'package:pgstay/features/enquiries/models/enquiry_model.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
+import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 
 class OwnerEnquiriesScreen extends ConsumerStatefulWidget {
   const OwnerEnquiriesScreen({super.key});
@@ -22,6 +24,11 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
 
+  String _searchQuery = '';
+  String _selectedPg = 'All PGs';
+  String _selectedStatus = 'All';
+  final TextEditingController _searchController = TextEditingController();
+
   @override
   void initState() {
     super.initState();
@@ -39,6 +46,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
   @override
   void dispose() {
     _animationController.dispose();
+    _searchController.dispose();
     super.dispose();
   }
 
@@ -50,296 +58,449 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        backgroundColor: Colors.transparent,
-        elevation: 0,
-        leading: Container(
-          margin: const EdgeInsets.all(8),
-          decoration: BoxDecoration(
-            color: Colors.white,
-            borderRadius: BorderRadius.circular(12),
-            boxShadow: [
-              BoxShadow(
-                color: Colors.black.withOpacity(0.05),
-                blurRadius: 8,
-                offset: const Offset(0, 2),
+      extendBodyBehindAppBar: true,
+      appBar: CustomAppBar(
+        title: 'Enquiries',
+        showBackButton: true,
+        pinnedSCurve: true,
+      ),
+      body: Padding(
+        padding: EdgeInsets.only(
+          top: 110 + MediaQuery.of(context).padding.top + 32,
+        ),
+        child: Column(
+          children: [
+            _buildFilterBar(isSmallScreen),
+            Expanded(
+              child: asyncData.when(
+                data: (newEnquiries) {
+                  if (_currentPage == 1) {
+                    _enquiries.clear();
+                  }
+
+                  for (var item in newEnquiries) {
+                    if (!_enquiries.any((e) => e.id == item.id)) {
+                      _enquiries.add(item);
+                    }
+                  }
+
+                  if (newEnquiries.length < 10) {
+                    _hasMoreData = false;
+                  }
+
+                  if (_enquiries.isEmpty) {
+                    return FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 120,
+                              height: 120,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.accentColor.withOpacity(0.1),
+                                    AppTheme.accentColor.withOpacity(0.05),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                shape: BoxShape.circle,
+                              ),
+                              child: Icon(
+                                Icons.inbox_outlined,
+                                size: 60,
+                                color: AppTheme.accentColor.withOpacity(0.6),
+                              ),
+                            ),
+                            const SizedBox(height: 24),
+                            Text(
+                              'No enquiries yet',
+                              style: GoogleFonts.inter(
+                                fontSize: isSmallScreen ? 20 : 22,
+                                fontWeight: FontWeight.w700,
+                                color: AppTheme.textPrimary,
+                                letterSpacing: -0.5,
+                              ),
+                            ),
+                            const SizedBox(height: 8),
+                            Text(
+                              'Incoming enquiries from tenants will appear here',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textSecondary,
+                                fontSize: isSmallScreen ? 13 : 14,
+                              ),
+                            ),
+                            const SizedBox(height: 32),
+                            Container(
+                              padding: const EdgeInsets.symmetric(
+                                horizontal: 20,
+                                vertical: 12,
+                              ),
+                              decoration: BoxDecoration(
+                                color: AppTheme.accentColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(30),
+                              ),
+                              child: Row(
+                                mainAxisSize: MainAxisSize.min,
+                                children: [
+                                  Icon(
+                                    Icons.refresh_rounded,
+                                    size: 18,
+                                    color: AppTheme.accentColor,
+                                  ),
+                                  const SizedBox(width: 8),
+                                  Text(
+                                    'Pull down to refresh',
+                                    style: GoogleFonts.inter(
+                                      color: AppTheme.accentColor,
+                                      fontSize: 12,
+                                      fontWeight: FontWeight.w500,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ),
+                          ],
+                        ),
+                      ),
+                    );
+                  }
+
+                  final filteredEnquiries = _enquiries.where((e) {
+                    final nameMatches =
+                        _searchQuery.isEmpty ||
+                        (e.user?.name?.toLowerCase().contains(
+                              _searchQuery.toLowerCase(),
+                            ) ??
+                            false);
+                    final pgMatches =
+                        _selectedPg == 'All PGs' || e.pg?.name == _selectedPg;
+                    final statusMatches =
+                        _selectedStatus == 'All' ||
+                        e.status.toLowerCase().replaceAll(' ', '') ==
+                            _selectedStatus.toLowerCase().replaceAll(' ', '');
+                    return nameMatches && pgMatches && statusMatches;
+                  }).toList();
+
+                  return RefreshIndicator(
+                    onRefresh: () async {
+                      setState(() {
+                        _currentPage = 1;
+                        _hasMoreData = true;
+                      });
+                      await ref.refresh(paginatedEnquiriesProvider(1).future);
+                    },
+                    color: AppTheme.accentColor,
+                    backgroundColor: Colors.white,
+                    child: FadeTransition(
+                      opacity: _fadeAnimation,
+                      child: filteredEnquiries.isEmpty && _enquiries.isNotEmpty
+                          ? Center(
+                              child: Text('No enquiries match your filters.'),
+                            )
+                          : ListView.builder(
+                              padding: EdgeInsets.fromLTRB(
+                                isSmallScreen ? 16 : 20,
+                                16,
+                                isSmallScreen ? 16 : 20,
+                                100,
+                              ),
+                              itemCount:
+                                  filteredEnquiries.length +
+                                  (_hasMoreData &&
+                                          _searchQuery.isEmpty &&
+                                          _selectedPg == 'All PGs' &&
+                                          _selectedStatus == 'All'
+                                      ? 1
+                                      : 0),
+                              itemBuilder: (context, index) {
+                                if (index == filteredEnquiries.length) {
+                                  return _buildLoadMoreButton(isSmallScreen);
+                                }
+                                final enquiry = filteredEnquiries[index];
+                                return _buildEnquiryCard(
+                                  enquiry,
+                                  isSmallScreen,
+                                  index,
+                                );
+                              },
+                            ),
+                    ),
+                  );
+                },
+                loading: () => _enquiries.isEmpty
+                    ? Center(
+                        child: Column(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Container(
+                              width: 50,
+                              height: 50,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  colors: [
+                                    AppTheme.accentColor,
+                                    AppTheme.accentColor.withOpacity(0.6),
+                                  ],
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                ),
+                                borderRadius: BorderRadius.circular(25),
+                              ),
+                              child: const Center(
+                                child: SizedBox(
+                                  width: 25,
+                                  height: 25,
+                                  child: CircularProgressIndicator(
+                                    color: Colors.white,
+                                    strokeWidth: 2.5,
+                                  ),
+                                ),
+                              ),
+                            ),
+                            const SizedBox(height: 16),
+                            Text(
+                              'Loading enquiries...',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textSecondary,
+                                fontSize: 14,
+                              ),
+                            ),
+                          ],
+                        ),
+                      )
+                    : const Center(
+                        child: CircularProgressIndicator(
+                          color: AppTheme.accentColor,
+                        ),
+                      ),
+                error: (err, stack) => Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Container(
+                        width: 80,
+                        height: 80,
+                        decoration: BoxDecoration(
+                          color: AppTheme.error.withOpacity(0.1),
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.error_outline_rounded,
+                          size: 48,
+                          color: AppTheme.error.withOpacity(0.7),
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      Text(
+                        'Failed to load enquiries',
+                        style: GoogleFonts.inter(
+                          fontWeight: FontWeight.w700,
+                          fontSize: 18,
+                          color: AppTheme.textPrimary,
+                          letterSpacing: -0.5,
+                        ),
+                      ),
+                      const SizedBox(height: 8),
+                      Text(
+                        'Please check your connection and try again',
+                        style: GoogleFonts.inter(
+                          color: AppTheme.textSecondary,
+                          fontSize: 13,
+                        ),
+                      ),
+                      const SizedBox(height: 24),
+                      ElevatedButton(
+                        onPressed: () {
+                          ref.refresh(paginatedEnquiriesProvider(_currentPage));
+                        },
+                        style: ElevatedButton.styleFrom(
+                          backgroundColor: AppTheme.accentColor,
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 32,
+                            vertical: 12,
+                          ),
+                          shape: RoundedRectangleBorder(
+                            borderRadius: BorderRadius.circular(12),
+                          ),
+                        ),
+                        child: Text(
+                          'Retry',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: 14,
+                          ),
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildFilterBar(bool isSmallScreen) {
+    final ownerPgsAsync = ref.watch(ownerPgsProvider);
+    final Set<String> pgNames = {'All PGs'};
+    ownerPgsAsync.whenData((pgs) {
+      pgNames.addAll(pgs.map((pg) => pg.name));
+    });
+
+    final statuses = [
+      'All',
+      'interested',
+      'contacted',
+      'visited',
+      'dealDone',
+      'rejected',
+    ];
+
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+      decoration: BoxDecoration(
+        color: AppTheme.backgroundLight,
+        border: Border(bottom: BorderSide(color: AppTheme.surfaceBorder)),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              // Search Bar
+              Expanded(
+                flex: isSmallScreen ? 2 : 1,
+                child: TextField(
+                  controller: _searchController,
+                  onChanged: (val) {
+                    setState(() {
+                      _searchQuery = val;
+                    });
+                  },
+                  decoration: InputDecoration(
+                    hintText: 'Search by user name...',
+                    prefixIcon: const Icon(
+                      Icons.search_rounded,
+                      color: AppTheme.textHint,
+                      size: 20,
+                    ),
+                    contentPadding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 0,
+                    ),
+                    border: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppTheme.surfaceBorder,
+                      ),
+                    ),
+                    enabledBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(
+                        color: AppTheme.surfaceBorder,
+                      ),
+                    ),
+                    focusedBorder: OutlineInputBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      borderSide: const BorderSide(color: AppTheme.accentColor),
+                    ),
+                    filled: true,
+                    fillColor: Colors.white,
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              // PGs Dropdown
+              Expanded(
+                flex: 1,
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  decoration: BoxDecoration(
+                    color: Colors.white,
+                    border: Border.all(color: AppTheme.surfaceBorder),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: DropdownButtonHideUnderline(
+                    child: DropdownButton<String>(
+                      isExpanded: true,
+                      value: _selectedPg,
+                      icon: const Icon(
+                        Icons.keyboard_arrow_down_rounded,
+                        color: AppTheme.textSecondary,
+                      ),
+                      items: pgNames.map((name) {
+                        return DropdownMenuItem<String>(
+                          value: name,
+                          child: Text(
+                            name,
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textPrimary,
+                              fontSize: 14,
+                            ),
+                            maxLines: 1,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        );
+                      }).toList(),
+                      onChanged: (val) {
+                        if (val != null) {
+                          setState(() {
+                            _selectedPg = val;
+                          });
+                        }
+                      },
+                    ),
+                  ),
+                ),
               ),
             ],
           ),
-          child: IconButton(
-            icon: const Icon(Icons.arrow_back_ios_new_rounded, size: 18),
-            color: AppTheme.textPrimary,
-            onPressed: () => Navigator.pop(context),
-          ),
-        ),
-        title: Text(
-          'Enquiries',
-          style: GoogleFonts.poppins(
-            fontWeight: FontWeight.w700,
-            fontSize: isSmallScreen ? 22 : 26,
-            color: AppTheme.textPrimary,
-            letterSpacing: -0.5,
-          ),
-        ),
-        centerTitle: true,
-        actions: [
-          Container(
-            margin: const EdgeInsets.all(8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(12),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.05),
-                  blurRadius: 8,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: IconButton(
-              icon: const Icon(Icons.filter_list_rounded, size: 20),
-              color: AppTheme.textPrimary,
-              onPressed: () {
-                // Filter functionality can be added here
-              },
+          const SizedBox(height: 12),
+          // Status Chips
+          SingleChildScrollView(
+            scrollDirection: Axis.horizontal,
+            child: Row(
+              children: statuses.map((status) {
+                final isSelected = _selectedStatus == status;
+                return Padding(
+                  padding: const EdgeInsets.only(right: 8),
+                  child: ChoiceChip(
+                    label: Text(status),
+                    selected: isSelected,
+                    onSelected: (selected) {
+                      if (selected) {
+                        setState(() {
+                          _selectedStatus = status;
+                        });
+                      }
+                    },
+                    selectedColor: AppTheme.accentColor,
+                    labelStyle: GoogleFonts.inter(
+                      color: isSelected ? Colors.white : AppTheme.textSecondary,
+                      fontWeight: isSelected
+                          ? FontWeight.w600
+                          : FontWeight.w500,
+                      fontSize: 13,
+                    ),
+                    backgroundColor: Colors.white,
+                    side: BorderSide(
+                      color: isSelected
+                          ? AppTheme.accentColor
+                          : AppTheme.surfaceBorder,
+                    ),
+                  ),
+                );
+              }).toList(),
             ),
           ),
         ],
-      ),
-      body: asyncData.when(
-        data: (newEnquiries) {
-          if (_currentPage == 1) {
-            _enquiries.clear();
-          }
-
-          for (var item in newEnquiries) {
-            if (!_enquiries.any((e) => e.id == item.id)) {
-              _enquiries.add(item);
-            }
-          }
-
-          if (newEnquiries.length < 10) {
-            _hasMoreData = false;
-          }
-
-          if (_enquiries.isEmpty) {
-            return FadeTransition(
-              opacity: _fadeAnimation,
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 120,
-                      height: 120,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.accentColor.withOpacity(0.1),
-                            AppTheme.accentColor.withOpacity(0.05),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        shape: BoxShape.circle,
-                      ),
-                      child: Icon(
-                        Icons.inbox_outlined,
-                        size: 60,
-                        color: AppTheme.accentColor.withOpacity(0.6),
-                      ),
-                    ),
-                    const SizedBox(height: 24),
-                    Text(
-                      'No enquiries yet',
-                      style: GoogleFonts.poppins(
-                        fontSize: isSmallScreen ? 20 : 22,
-                        fontWeight: FontWeight.w700,
-                        color: AppTheme.textPrimary,
-                        letterSpacing: -0.5,
-                      ),
-                    ),
-                    const SizedBox(height: 8),
-                    Text(
-                      'Incoming enquiries from tenants will appear here',
-                      style: GoogleFonts.poppins(
-                        color: AppTheme.textSecondary,
-                        fontSize: isSmallScreen ? 13 : 14,
-                      ),
-                    ),
-                    const SizedBox(height: 32),
-                    Container(
-                      padding: const EdgeInsets.symmetric(
-                        horizontal: 20,
-                        vertical: 12,
-                      ),
-                      decoration: BoxDecoration(
-                        color: AppTheme.accentColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(30),
-                      ),
-                      child: Row(
-                        mainAxisSize: MainAxisSize.min,
-                        children: [
-                          Icon(
-                            Icons.refresh_rounded,
-                            size: 18,
-                            color: AppTheme.accentColor,
-                          ),
-                          const SizedBox(width: 8),
-                          Text(
-                            'Pull down to refresh',
-                            style: GoogleFonts.poppins(
-                              color: AppTheme.accentColor,
-                              fontSize: 12,
-                              fontWeight: FontWeight.w500,
-                            ),
-                          ),
-                        ],
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            );
-          }
-
-          return RefreshIndicator(
-            onRefresh: () async {
-              setState(() {
-                _currentPage = 1;
-                _hasMoreData = true;
-              });
-              await ref.refresh(paginatedEnquiriesProvider(1).future);
-            },
-            color: AppTheme.accentColor,
-            backgroundColor: Colors.white,
-            child: FadeTransition(
-              opacity: _fadeAnimation,
-              child: ListView.builder(
-                padding: EdgeInsets.fromLTRB(
-                  isSmallScreen ? 16 : 20,
-                  16,
-                  isSmallScreen ? 16 : 20,
-                  100,
-                ),
-                itemCount: _enquiries.length + (_hasMoreData ? 1 : 0),
-                itemBuilder: (context, index) {
-                  if (index == _enquiries.length) {
-                    return _buildLoadMoreButton(isSmallScreen);
-                  }
-                  final enquiry = _enquiries[index];
-                  return _buildEnquiryCard(enquiry, isSmallScreen, index);
-                },
-              ),
-            ),
-          );
-        },
-        loading: () => _enquiries.isEmpty
-            ? Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        gradient: LinearGradient(
-                          colors: [
-                            AppTheme.accentColor,
-                            AppTheme.accentColor.withOpacity(0.6),
-                          ],
-                          begin: Alignment.topLeft,
-                          end: Alignment.bottomRight,
-                        ),
-                        borderRadius: BorderRadius.circular(25),
-                      ),
-                      child: const Center(
-                        child: SizedBox(
-                          width: 25,
-                          height: 25,
-                          child: CircularProgressIndicator(
-                            color: Colors.white,
-                            strokeWidth: 2.5,
-                          ),
-                        ),
-                      ),
-                    ),
-                    const SizedBox(height: 16),
-                    Text(
-                      'Loading enquiries...',
-                      style: GoogleFonts.poppins(
-                        color: AppTheme.textSecondary,
-                        fontSize: 14,
-                      ),
-                    ),
-                  ],
-                ),
-              )
-            : const Center(
-                child: CircularProgressIndicator(color: AppTheme.accentColor),
-              ),
-        error: (err, stack) => Center(
-          child: Column(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Container(
-                width: 80,
-                height: 80,
-                decoration: BoxDecoration(
-                  color: AppTheme.error.withOpacity(0.1),
-                  shape: BoxShape.circle,
-                ),
-                child: Icon(
-                  Icons.error_outline_rounded,
-                  size: 48,
-                  color: AppTheme.error.withOpacity(0.7),
-                ),
-              ),
-              const SizedBox(height: 24),
-              Text(
-                'Failed to load enquiries',
-                style: GoogleFonts.poppins(
-                  fontWeight: FontWeight.w700,
-                  fontSize: 18,
-                  color: AppTheme.textPrimary,
-                  letterSpacing: -0.5,
-                ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                'Please check your connection and try again',
-                style: GoogleFonts.poppins(
-                  color: AppTheme.textSecondary,
-                  fontSize: 13,
-                ),
-              ),
-              const SizedBox(height: 24),
-              ElevatedButton(
-                onPressed: () {
-                  ref.refresh(paginatedEnquiriesProvider(_currentPage));
-                },
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.accentColor,
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 32,
-                    vertical: 12,
-                  ),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                ),
-                child: Text(
-                  'Retry',
-                  style: GoogleFonts.poppins(
-                    color: Colors.white,
-                    fontWeight: FontWeight.w600,
-                    fontSize: 14,
-                  ),
-                ),
-              ),
-            ],
-          ),
-        ),
       ),
     );
   }
@@ -378,7 +539,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
               children: [
                 Text(
                   'Load More',
-                  style: GoogleFonts.poppins(
+                  style: GoogleFonts.inter(
                     color: AppTheme.accentColor,
                     fontWeight: FontWeight.w600,
                     fontSize: isSmallScreen ? 13 : 14,
@@ -398,7 +559,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
     );
   }
 
-  Widget _buildEnquiryCard(
+  Widget _buildEnquiryCard_old(
     EnquiryModel enquiry,
     bool isSmallScreen,
     int index,
@@ -471,7 +632,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                           children: [
                             Text(
                               enquiry.user?.name ?? 'Unknown User',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.inter(
                                 fontSize: isSmallScreen ? 15 : 16,
                                 fontWeight: FontWeight.w700,
                                 color: AppTheme.textPrimary,
@@ -494,7 +655,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                     enquiry.user?.mobNo1 ??
                                         enquiry.user?.email ??
                                         'No contact info',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: 12,
                                       color: AppTheme.textSecondary,
                                       fontWeight: FontWeight.w500,
@@ -548,7 +709,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                 children: [
                                   Text(
                                     'Property',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                       color: AppTheme.textHint,
@@ -558,7 +719,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                   const SizedBox(height: 2),
                                   Text(
                                     enquiry.pg?.name ?? 'Unknown PG',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: isSmallScreen ? 12 : 13,
                                       fontWeight: FontWeight.w600,
                                       color: AppTheme.textPrimary,
@@ -593,7 +754,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                 children: [
                                   Text(
                                     'Room Type',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: 10,
                                       fontWeight: FontWeight.w600,
                                       color: AppTheme.textHint,
@@ -603,7 +764,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                   const SizedBox(height: 2),
                                   Text(
                                     enquiry.post?.title ?? 'Unknown Post',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: isSmallScreen ? 12 : 13,
                                       fontWeight: FontWeight.w500,
                                       color: AppTheme.textSecondary,
@@ -642,7 +803,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                           Expanded(
                             child: Text(
                               'Remarks: ${enquiry.staffRemarks}',
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.inter(
                                 fontSize: 11,
                                 fontStyle: FontStyle.italic,
                                 color: AppTheme.textSecondary,
@@ -677,7 +838,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                             const SizedBox(width: 4),
                             Text(
                               _formatDate(enquiry.createdAt),
-                              style: GoogleFonts.poppins(
+                              style: GoogleFonts.inter(
                                 color: AppTheme.textHint,
                                 fontSize: 10,
                                 fontWeight: FontWeight.w500,
@@ -713,7 +874,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                 children: [
                                   Text(
                                     'Take Action',
-                                    style: GoogleFonts.poppins(
+                                    style: GoogleFonts.inter(
                                       fontSize: 11,
                                       fontWeight: FontWeight.w700,
                                       color: Colors.white,
@@ -742,23 +903,301 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
     );
   }
 
+  Widget _buildEnquiryCard(
+    EnquiryModel enquiry,
+    bool isSmallScreen,
+    int index,
+  ) {
+    int days = 0;
+    try {
+      days = DateTime.now().difference(DateTime.parse(enquiry.createdAt).toLocal()).inDays;
+    } catch (_) {}
+    Color statusColor = _getCardColor(enquiry.status);
+
+    return AnimatedContainer(
+      duration: Duration(milliseconds: 300 + (index * 50)),
+      curve: Curves.easeOut,
+      margin: const EdgeInsets.only(bottom: 24.0, right: 24.0, left: 8.0),
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          // Background white card with shadow
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(24),
+              boxShadow: [
+                BoxShadow(
+                  color: Colors.black.withOpacity(0.06),
+                  blurRadius: 15,
+                  offset: const Offset(0, 6),
+                ),
+              ],
+            ),
+            child: IntrinsicHeight(
+              child: Row(
+                crossAxisAlignment: CrossAxisAlignment.stretch,
+                children: [
+                  // Left Colored Area
+                  Container(
+                    width: isSmallScreen ? 100 : 120,
+                    decoration: BoxDecoration(
+                      color: statusColor,
+                      borderRadius: const BorderRadius.only(
+                        topLeft: Radius.circular(24),
+                        bottomLeft: Radius.circular(24),
+                      ),
+                    ),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 16,
+                    ),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Text(
+                          enquiry.user?.name ?? 'User',
+                          style: GoogleFonts.inter(
+                            color: Colors.white,
+                            fontWeight: FontWeight.w600,
+                            fontSize: isSmallScreen ? 12 : 14,
+                          ),
+                          maxLines: 1,
+                          overflow: TextOverflow.ellipsis,
+                          textAlign: TextAlign.center,
+                        ),
+                        const SizedBox(height: 12),
+                        CircleAvatar(
+                          radius: isSmallScreen ? 28 : 34,
+                          backgroundColor: Colors.white.withOpacity(0.2),
+                          backgroundImage:
+                              (enquiry.user?.picture != null &&
+                                  enquiry.user!.picture!.isNotEmpty)
+                              ? NetworkImage(enquiry.user!.picture!)
+                              : null,
+                          child:
+                              (enquiry.user?.picture == null ||
+                                  enquiry.user!.picture!.isEmpty)
+                              ? Icon(
+                                  Icons.person_outline_rounded,
+                                  color: Colors.white,
+                                  size: isSmallScreen ? 28 : 34,
+                                )
+                              : null,
+                        ),
+                      ],
+                    ),
+                  ),
+
+                  // Right Area
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        // Top Status Banner
+                        Container(
+                          padding: const EdgeInsets.symmetric(
+                            horizontal: 16,
+                            vertical: 8,
+                          ),
+                          decoration: BoxDecoration(
+                            color: statusColor,
+                            borderRadius: const BorderRadius.only(
+                              bottomRight: Radius.circular(24),
+                            ),
+                          ),
+                          child: Row(
+                            mainAxisSize: MainAxisSize.min,
+                            children: [
+                              Text(
+                                enquiry.status.toUpperCase(),
+                                style: GoogleFonts.inter(
+                                  color: Colors.white,
+                                  fontWeight: FontWeight.w800,
+                                  fontSize: 11,
+                                  letterSpacing: 1.2,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+
+                        // Content
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(16, 12, 32, 16),
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                enquiry.pg?.name ?? 'Unknown Property',
+                                style: GoogleFonts.inter(
+                                  fontSize: isSmallScreen ? 14 : 16,
+                                  fontWeight: FontWeight.w700,
+                                  color: AppTheme.textPrimary,
+                                ),
+                                maxLines: 1,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 4),
+                              Text(
+                                enquiry.post?.title ?? 'Room details',
+                                style: GoogleFonts.inter(
+                                  fontSize: isSmallScreen ? 12 : 13,
+                                  color: AppTheme.textSecondary,
+                                ),
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                              ),
+                              const SizedBox(height: 8),
+                              Row(
+                                children: [
+                                  Icon(
+                                    Icons.phone_rounded,
+                                    size: 14,
+                                    color: AppTheme.textHint,
+                                  ),
+                                  const SizedBox(width: 4),
+                                  Expanded(
+                                    child: Text(
+                                      enquiry.user?.mobNo1 ??
+                                          enquiry.user?.email ??
+                                          'No contact info',
+                                      style: GoogleFonts.inter(
+                                        fontSize: 12,
+                                        color: AppTheme.textHint,
+                                        fontWeight: FontWeight.w500,
+                                      ),
+                                      maxLines: 1,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                  ),
+                                ],
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+
+          // Circular overlapping indicator on the right edge
+          Positioned(
+            right: -24,
+            top: 0,
+            bottom: 0,
+            child: Center(
+              child: Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  color: statusColor,
+                  shape: BoxShape.circle,
+                  border: Border.all(color: Colors.white, width: 4),
+                  boxShadow: [
+                    BoxShadow(
+                      color: statusColor.withOpacity(0.4),
+                      blurRadius: 8,
+                      offset: const Offset(0, 4),
+                    ),
+                  ],
+                ),
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    Text(
+                      '$days',
+                      style: GoogleFonts.inter(
+                        color: Colors.white,
+                        fontSize: 20,
+                        fontWeight: FontWeight.w800,
+                        height: 1.1,
+                      ),
+                    ),
+                    Text(
+                      days == 1 ? 'DAY' : 'DAYS',
+                      style: GoogleFonts.inter(
+                        color: Colors.white.withOpacity(0.9),
+                        fontSize: 8,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 0.5,
+                        height: 1.1,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+            ),
+          ),
+
+          // Touch target overlay
+          Positioned.fill(
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(24),
+              child: InkWell(
+                borderRadius: BorderRadius.circular(24),
+                onTap: () {
+                  _showActionBottomSheet(enquiry);
+                },
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Color _getCardColor(String status) {
+    switch (status.toLowerCase()) {
+      case 'approved':
+      case 'dealdone':
+      case 'deal done':
+      case 'confirmed':
+      case 'paid':
+        return const Color(0xFF4CAF50);
+      case 'rejected':
+      case 'cancelled':
+      case 'inventoryfull':
+        return const Color(0xFFE53935);
+      case 'interested':
+        return const Color(0xFFF07B3F);
+      case 'visited':
+        return const Color(0xFF8E24AA);
+      case 'contacted':
+        return const Color(0xFF1E88E5);
+      case 'pending':
+      default:
+        return const Color(0xFFF07B3F);
+    }
+  }
+
   void _showActionBottomSheet(EnquiryModel enquiry) {
     String selectedStatus = enquiry.status.toLowerCase();
+
+    // Map API status variations to our standard keys
+    if (selectedStatus == 'dealdone' ||
+        selectedStatus == 'confirmed' ||
+        selectedStatus == 'deal done') {
+      selectedStatus = 'dealDone';
+    } else if (selectedStatus == 'inventoryfull' ||
+        selectedStatus == 'cancelled') {
+      selectedStatus = 'rejected';
+    }
+
     final List<String> statuses = [
       'interested',
       'contacted',
       'visited',
       'rejected',
-      'dealdone',
+      'dealDone',
     ];
 
     if (!statuses.contains(selectedStatus)) {
-      if (selectedStatus == 'inventoryfull' || selectedStatus == 'cancelled')
-        selectedStatus = 'rejected';
-      else if (selectedStatus == 'confirmed')
-        selectedStatus = 'dealdone';
-      else
-        selectedStatus = 'interested';
+      selectedStatus = 'interested';
     }
 
     final TextEditingController remarksController = TextEditingController(
@@ -792,7 +1231,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
         'color': AppTheme.error,
         'gradient': [AppTheme.error, AppTheme.error.withOpacity(0.8)],
       },
-      'dealdone': {
+      'dealDone': {
         'label': 'Deal Done',
         'icon': Icons.check_circle_rounded,
         'color': AppTheme.success,
@@ -1590,7 +2029,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
           const SizedBox(width: 4),
           Text(
             status.toUpperCase(),
-            style: GoogleFonts.poppins(
+            style: GoogleFonts.inter(
               color: textColor,
               fontSize: isSmallScreen ? 9 : 10,
               fontWeight: FontWeight.w800,

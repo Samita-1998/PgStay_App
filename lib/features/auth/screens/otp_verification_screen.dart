@@ -106,7 +106,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                   delay: const Duration(milliseconds: 100),
                   child: Text(
                     'OTP Verification',
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       fontSize: 28,
                       fontWeight: FontWeight.w800,
                       color: AppTheme.textPrimary,
@@ -122,7 +122,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                     textAlign: TextAlign.center,
                     text: TextSpan(
                       text: "Enter the 4-digit code sent to ",
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppTheme.textSecondary,
                         height: 1.5,
@@ -130,7 +130,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                       children: [
                         TextSpan(
                           text: widget.email,
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             fontWeight: FontWeight.w700,
                             color: AppTheme.textPrimary,
                           ),
@@ -167,7 +167,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                                 focusNode: _focusNodes[index],
                                 keyboardType: TextInputType.number,
                                 textAlign: TextAlign.center,
-                                style: GoogleFonts.plusJakartaSans(
+                                style: GoogleFonts.inter(
                                   fontSize: 20,
                                   fontWeight: FontWeight.w700,
                                   color: AppTheme.textPrimary,
@@ -223,7 +223,7 @@ class _OtpVerificationScreenState extends ConsumerState<OtpVerificationScreen> {
                                   )
                                 : Text(
                                     'Verify Code',
-                                    style: GoogleFonts.plusJakartaSans(
+                                    style: GoogleFonts.inter(
                                       color: Colors.white,
                                       fontWeight: FontWeight.w700,
                                       fontSize: 15,

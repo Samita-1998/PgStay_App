@@ -22,6 +22,8 @@ class PGStayApp extends ConsumerWidget {
       title: 'StaySync',
       debugShowCheckedModeBanner: false,
       theme: AppTheme.lightTheme,
+      darkTheme: AppTheme.darkTheme,
+      themeMode: ThemeMode.system,
       routerConfig: router,
     );
   }

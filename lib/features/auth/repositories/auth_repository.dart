@@ -8,6 +8,10 @@ class AuthRepository {
 
   AuthRepository(this._apiClient);
 
+  void setOnUnauthorized(void Function() callback) {
+    _apiClient.onUnauthorized = callback;
+  }
+
   Future<User> login(String email, String password) async {
     try {
       final response = await _apiClient.dio.post('/auth/login', data: {

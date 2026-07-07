@@ -1,22 +1,22 @@
 import 'dart:ui';
+
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
-import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
-import 'package:pgstay/features/rent/repositories/rent_repository.dart';
+import 'package:pgstay/features/rent/models/rent_model.dart';
 import 'package:pgstay/features/rent/providers/rent_provider.dart';
 
-class RecordPaymentDialog extends ConsumerStatefulWidget {
-  const RecordPaymentDialog({super.key});
+class RecordPaymentScreen extends ConsumerStatefulWidget {
+  const RecordPaymentScreen({super.key});
 
   @override
-  ConsumerState<RecordPaymentDialog> createState() => _RecordPaymentDialogState();
+  ConsumerState<RecordPaymentScreen> createState() =>
+      _RecordPaymentScreenState();
 }
 
-class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
+class _RecordPaymentScreenState extends ConsumerState<RecordPaymentScreen> {
   final _formKey = GlobalKey<FormState>();
 
   String? _selectedPgId;
@@ -24,7 +24,11 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
   String? _selectedRoomId;
   String? _selectedUserId;
 
-  DateTime _selectedMonth = DateTime(DateTime.now().year, DateTime.now().month, 1);
+  DateTime _selectedMonth = DateTime(
+    DateTime.now().year,
+    DateTime.now().month,
+    1,
+  );
   DateTime? _joiningDate;
   DateTime? _paymentDate;
 
@@ -83,8 +87,12 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
       final rooms = await pgRepo.fetchRooms(_selectedPgId!);
 
       // 2. Fetch Existing Rents for this month
-      final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
-      final existingRents = await rentRepo.fetchRents(pgId: _selectedPgId, month: monthStr);
+      final monthStr =
+          '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+      final existingRents = await rentRepo.fetchRents(
+        pgId: _selectedPgId,
+        month: monthStr,
+      );
       final existingUserIds = existingRents.map((r) => r.userId).toSet();
 
       final List<Map<String, dynamic>> tenants = [];
@@ -97,11 +105,15 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
         for (var bed in beds) {
           final isOccupied = bed['userId'] != null || bed['tenantName'] != null;
           if (isOccupied) {
-            final userId = bed['userId']?['_id'] ?? bed['userId'] ?? 'unknown_user';
-            
+            final userId =
+                bed['userId']?['_id'] ?? bed['userId'] ?? 'unknown_user';
+
             // Filter out if already has rent
             if (!existingUserIds.contains(userId)) {
-              final tenantName = bed['tenantName'] ?? bed['userId']?['name'] ?? 'Unknown Tenant';
+              final tenantName =
+                  bed['tenantName'] ??
+                  bed['userId']?['name'] ??
+                  'Unknown Tenant';
               final bedId = bed['_id'];
               final bedNo = bed['bedNumber'] ?? '';
 
@@ -131,7 +143,20 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
   }
 
   String _monthLabel(DateTime d) {
-    const months = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
+    const months = [
+      'Jan',
+      'Feb',
+      'Mar',
+      'Apr',
+      'May',
+      'Jun',
+      'Jul',
+      'Aug',
+      'Sep',
+      'Oct',
+      'Nov',
+      'Dec',
+    ];
     return '${months[d.month - 1]}, ${d.year}';
   }
 
@@ -222,16 +247,18 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
 
     try {
       final repo = ref.read(rentRepositoryProvider);
-      
-      final monthStr = '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
-      
+
+      final monthStr =
+          '${_selectedMonth.year}-${_selectedMonth.month.toString().padLeft(2, '0')}';
+
       final payload = {
         'pgId': _selectedPgId,
         'userId': _selectedUserId,
         'roomId': _selectedRoomId,
         'bedId': _selectedTenantBedId,
         'rentMonth': monthStr,
-        'dueDate': _joiningDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
+        'dueDate':
+            _joiningDate?.toIso8601String() ?? DateTime.now().toIso8601String(),
         'amount': double.tryParse(_rentAmountCtrl.text) ?? 0,
         'status': _paymentStatus,
       };
@@ -239,8 +266,9 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
       if (_paymentStatus == 'paid' || _paymentStatus == 'partial') {
         payload['paidAmount'] = double.tryParse(_amountPaidCtrl.text) ?? 0;
         payload['paymentMode'] = _paymentMode;
-        payload['paidDate'] = _paymentDate?.toIso8601String() ?? DateTime.now().toIso8601String();
-        
+        payload['paidDate'] =
+            _paymentDate?.toIso8601String() ?? DateTime.now().toIso8601String();
+
         if (_referenceCtrl.text.isNotEmpty) {
           payload['referenceNo'] = _referenceCtrl.text;
         }
@@ -257,7 +285,10 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment recorded successfully!', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            content: Text(
+              'Payment recorded successfully!',
+              style: GoogleFonts.inter(fontWeight: FontWeight.w700),
+            ),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -286,419 +317,602 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
   @override
   Widget build(BuildContext context) {
     final pgsAsync = ref.watch(ownerPgsProvider);
-    final isPaidOrPartial = _paymentStatus == 'paid' || _paymentStatus == 'partial';
+    final isPaidOrPartial =
+        _paymentStatus == 'paid' || _paymentStatus == 'partial';
 
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: double.infinity,
-            constraints: const BoxConstraints(maxWidth: 500),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1B1E2B),
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withOpacity(0.08)),
-              boxShadow: [
-                BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 30, offset: const Offset(0, 15)),
-              ],
-            ),
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+        title: Text(
+          'Record Payment',
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Form(
+            key: _formKey,
             child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                // Header
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(24, 24, 20, 20),
-                  child: Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Record Payment',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.white70, size: 22),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
-                  ),
-                ),
-                
-                Flexible(
-                  child: SingleChildScrollView(
-                    padding: const EdgeInsets.fromLTRB(24, 0, 24, 24),
-                    child: Form(
-                      key: _formKey,
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          // Select PG
-                          _buildLabel('SELECT PG', required: true),
-                          const SizedBox(height: 8),
-                          pgsAsync.when(
-                            data: (pgs) => DropdownButtonFormField<String>(
-                              value: _selectedPgId,
-                              hint: Text('-- Select PG --', style: TextStyle(color: Colors.white.withOpacity(0.5))),
-                              dropdownColor: const Color(0xFF232635),
-                              items: pgs.map((p) => DropdownMenuItem(value: p.id, child: Text(p.name, style: const TextStyle(color: Colors.white)))).toList(),
-                              onChanged: (v) {
-                                setState(() {
-                                  _selectedPgId = v;
-                                });
-                                _fetchEligibleTenants();
-                              },
-                              decoration: _inputDeco(),
-                              validator: (v) => v == null ? 'Select PG' : null,
-                            ),
-                            loading: () => const Center(child: CircularProgressIndicator()),
-                            error: (_, __) => const Text('Error loading PGs', style: TextStyle(color: AppTheme.error)),
+                      // Select PG
+                      _buildLabel('SELECT PG', required: true),
+                      const SizedBox(height: 8),
+                      pgsAsync.when(
+                        data: (pgs) => DropdownButtonFormField<String>(
+                          value: _selectedPgId,
+                          hint: Text(
+                            '-- Select PG --',
+                            style: TextStyle(color: AppTheme.textHint),
                           ),
-                          const SizedBox(height: 20),
-
-                          // Select Tenant Bed
-                          _buildLabel('SELECT TENANT BED', required: true),
-                          const SizedBox(height: 8),
-                          Autocomplete<Map<String, dynamic>>(
-                            optionsBuilder: (TextEditingValue textEditingValue) {
-                              if (textEditingValue.text.isEmpty) return _eligibleTenants;
-                              return _eligibleTenants.where((t) => 
-                                t['display'].toLowerCase().contains(textEditingValue.text.toLowerCase())
-                              );
-                            },
-                            displayStringForOption: (option) => option['display'],
-                            onSelected: (option) {
-                              setState(() {
-                                _selectedTenantObj = option;
-                                _selectedTenantBedId = option['bedId'];
-                                _selectedRoomId = option['roomId'];
-                                _selectedUserId = option['userId'];
-                                
-                                if (_rentAmountCtrl.text.isEmpty) {
-                                  _rentAmountCtrl.text = option['price'].toString();
-                                }
-                                if (_amountPaidCtrl.text.isEmpty && _paymentStatus == 'paid') {
-                                  _amountPaidCtrl.text = option['price'].toString();
-                                }
-                              });
-                            },
-                            fieldViewBuilder: (context, textEditingController, focusNode, onFieldSubmitted) {
-                              return TextFormField(
-                                controller: textEditingController,
-                                focusNode: focusNode,
-                                style: const TextStyle(color: Colors.white),
-                                decoration: _inputDeco().copyWith(
-                                  hintText: 'Type tenant name, bed no, or room no...',
-                                  hintStyle: TextStyle(color: Colors.white.withOpacity(0.4)),
-                                  prefixIcon: const Icon(Icons.search_rounded, color: Colors.cyanAccent, size: 18),
-                                  suffixIcon: _isLoadingTenants 
-                                    ? const Padding(padding: EdgeInsets.all(12), child: SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2)))
-                                    : null,
-                                ),
-                                validator: (v) => _selectedTenantObj == null ? 'Select tenant' : null,
-                              );
-                            },
-                            optionsViewBuilder: (context, onSelected, options) {
-                              return Align(
-                                alignment: Alignment.topLeft,
-                                child: Material(
-                                  color: Colors.transparent,
-                                  child: Container(
-                                    width: MediaQuery.of(context).size.width - 88 > 400 ? 400 : MediaQuery.of(context).size.width - 88,
-                                    margin: const EdgeInsets.only(top: 4),
-                                    decoration: BoxDecoration(
-                                      color: const Color(0xFF232635),
-                                      borderRadius: BorderRadius.circular(12),
-                                      border: Border.all(color: Colors.white.withOpacity(0.1)),
-                                      boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.3), blurRadius: 10)],
-                                    ),
-                                    child: ListView.builder(
-                                      padding: EdgeInsets.zero,
-                                      shrinkWrap: true,
-                                      itemCount: options.length,
-                                      itemBuilder: (context, index) {
-                                        final option = options.elementAt(index);
-                                        return ListTile(
-                                          title: Text(option['display'], style: const TextStyle(color: Colors.white, fontSize: 14)),
-                                          onTap: () => onSelected(option),
-                                        );
-                                      },
+                          dropdownColor: Colors.white,
+                          items: pgs
+                              .map(
+                                (p) => DropdownMenuItem(
+                                  value: p.id,
+                                  child: Text(
+                                    p.name,
+                                    style: const TextStyle(
+                                      color: AppTheme.textPrimary,
                                     ),
                                   ),
                                 ),
+                              )
+                              .toList(),
+                          onChanged: (v) {
+                            setState(() {
+                              _selectedPgId = v;
+                            });
+                            _fetchEligibleTenants();
+                          },
+                          decoration: _inputDeco(),
+                          validator: (v) => v == null ? 'Select PG' : null,
+                        ),
+                        loading: () =>
+                            const Center(child: CircularProgressIndicator()),
+                        error: (_, __) => const Text(
+                          'Error loading PGs',
+                          style: TextStyle(color: AppTheme.error),
+                        ),
+                      ),
+                      const SizedBox(height: 20),
+
+                      // Select Tenant Bed
+                      _buildLabel('SELECT TENANT BED', required: true),
+                      const SizedBox(height: 8),
+                      Autocomplete<Map<String, dynamic>>(
+                        optionsBuilder: (TextEditingValue textEditingValue) {
+                          if (textEditingValue.text.isEmpty)
+                            return _eligibleTenants;
+                          return _eligibleTenants.where(
+                            (t) => t['display'].toLowerCase().contains(
+                              textEditingValue.text.toLowerCase(),
+                            ),
+                          );
+                        },
+                        displayStringForOption: (option) => option['display'],
+                        onSelected: (option) {
+                          setState(() {
+                            _selectedTenantObj = option;
+                            _selectedTenantBedId = option['bedId'];
+                            _selectedRoomId = option['roomId'];
+                            _selectedUserId = option['userId'];
+
+                            if (_rentAmountCtrl.text.isEmpty) {
+                              _rentAmountCtrl.text = option['price'].toString();
+                            }
+                            if (_amountPaidCtrl.text.isEmpty &&
+                                _paymentStatus == 'paid') {
+                              _amountPaidCtrl.text = option['price'].toString();
+                            }
+                          });
+                        },
+                        fieldViewBuilder:
+                            (
+                              context,
+                              textEditingController,
+                              focusNode,
+                              onFieldSubmitted,
+                            ) {
+                              return TextFormField(
+                                controller: textEditingController,
+                                focusNode: focusNode,
+                                style: const TextStyle(
+                                  color: AppTheme.textPrimary,
+                                ),
+                                decoration: _inputDeco().copyWith(
+                                  hintText:
+                                      'Type tenant name, bed no, or room no...',
+                                  hintStyle: TextStyle(
+                                    color: AppTheme.textHint,
+                                  ),
+                                  prefixIcon: const Icon(
+                                    Icons.search_rounded,
+                                    color: Colors.cyanAccent,
+                                    size: 18,
+                                  ),
+                                  suffixIcon: _isLoadingTenants
+                                      ? const Padding(
+                                          padding: EdgeInsets.all(12),
+                                          child: SizedBox(
+                                            width: 16,
+                                            height: 16,
+                                            child: CircularProgressIndicator(
+                                              strokeWidth: 2,
+                                            ),
+                                          ),
+                                        )
+                                      : null,
+                                ),
+                                validator: (v) => _selectedTenantObj == null
+                                    ? 'Select tenant'
+                                    : null,
                               );
                             },
-                          ),
-                          const SizedBox(height: 6),
-                          Row(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              const Icon(Icons.info_rounded, color: Colors.blueAccent, size: 14),
-                              const SizedBox(width: 6),
-                              Expanded(
-                                child: Text(
-                                  'Only displaying occupied beds that do not have an existing rent record for the selected month.',
-                                  style: TextStyle(color: Colors.white.withOpacity(0.4), fontSize: 11),
+                        optionsViewBuilder: (context, onSelected, options) {
+                          return Align(
+                            alignment: Alignment.topLeft,
+                            child: Material(
+                              color: Colors.transparent,
+                              child: Container(
+                                width:
+                                    MediaQuery.of(context).size.width - 88 > 400
+                                    ? 400
+                                    : MediaQuery.of(context).size.width - 88,
+                                margin: const EdgeInsets.only(top: 4),
+                                decoration: BoxDecoration(
+                                  color: Colors.white,
+                                  borderRadius: BorderRadius.circular(12),
+                                  border: Border.all(
+                                    color: AppTheme.surfaceBorder,
+                                  ),
+                                  boxShadow: AppTheme.cardShadow,
                                 ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Rent Month', required: true),
-                                    const SizedBox(height: 8),
-                                    InkWell(
-                                      onTap: _pickMonth,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.04),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.white.withOpacity(0.08)),
-                                        ),
-                                        child: Row(
-                                          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                                          children: [
-                                            Text(_monthLabel(_selectedMonth), style: const TextStyle(color: Colors.white, fontSize: 15, fontWeight: FontWeight.w600)),
-                                            Icon(Icons.calendar_month_rounded, color: Colors.white.withOpacity(0.4), size: 18),
-                                          ],
+                                child: ListView.builder(
+                                  padding: EdgeInsets.zero,
+                                  shrinkWrap: true,
+                                  itemCount: options.length,
+                                  itemBuilder: (context, index) {
+                                    final option = options.elementAt(index);
+                                    return ListTile(
+                                      title: Text(
+                                        option['display'],
+                                        style: const TextStyle(
+                                          color: AppTheme.textPrimary,
+                                          fontSize: 14,
                                         ),
                                       ),
-                                    ),
-                                  ],
+                                      onTap: () => onSelected(option),
+                                    );
+                                  },
                                 ),
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Check-in / Joining Date', required: true),
-                                    const SizedBox(height: 8),
-                                    InkWell(
-                                      onTap: _pickJoiningDate,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: Colors.white.withOpacity(0.04),
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.white.withOpacity(0.08)),
-                                        ),
-                                        child: Text(_dateLabel(_joiningDate), style: TextStyle(color: _joiningDate == null ? Colors.white.withOpacity(0.4) : Colors.white, fontSize: 14)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
+                            ),
+                          );
+                        },
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          const Icon(
+                            Icons.info_rounded,
+                            color: Colors.blueAccent,
+                            size: 14,
                           ),
-                          const SizedBox(height: 20),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Rent Amount (₹)', required: true),
-                                    const SizedBox(height: 8),
-                                    TextFormField(
-                                      controller: _rentAmountCtrl,
-                                      keyboardType: TextInputType.number,
-                                      style: const TextStyle(color: Colors.white),
-                                      decoration: _inputDeco(),
-                                      validator: (v) => v!.isEmpty ? 'Required' : null,
-                                    ),
-                                  ],
-                                ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              'Only displaying occupied beds that do not have an existing rent record for the selected month.',
+                              style: TextStyle(
+                                color: AppTheme.textHint,
+                                fontSize: 11,
                               ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('PAYMENT STATUS'),
-                                    const SizedBox(height: 8),
-                                    DropdownButtonFormField<String>(
-                                      value: _paymentStatus,
-                                      dropdownColor: const Color(0xFF232635),
-                                      items: const [
-                                        DropdownMenuItem(value: 'paid', child: Text('Paid (Full)', style: TextStyle(color: Colors.white))),
-                                        DropdownMenuItem(value: 'partial', child: Text('Partial', style: TextStyle(color: Colors.white))),
-                                        DropdownMenuItem(value: 'pending', child: Text('Pending', style: TextStyle(color: Colors.white))),
-                                      ],
-                                      onChanged: (v) {
-                                        setState(() {
-                                          _paymentStatus = v!;
-                                          if (v == 'paid') {
-                                            _amountPaidCtrl.text = _rentAmountCtrl.text;
-                                          }
-                                        });
-                                      },
-                                      decoration: _inputDeco(),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Amount Paid (₹)', required: isPaidOrPartial),
-                                    const SizedBox(height: 8),
-                                    TextFormField(
-                                      controller: _amountPaidCtrl,
-                                      enabled: isPaidOrPartial,
-                                      keyboardType: TextInputType.number,
-                                      style: TextStyle(color: isPaidOrPartial ? Colors.white : Colors.white.withOpacity(0.3)),
-                                      decoration: _inputDeco(enabled: isPaidOrPartial),
-                                      validator: (v) => isPaidOrPartial && v!.isEmpty ? 'Required' : null,
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('PAYMENT MODE'),
-                                    const SizedBox(height: 8),
-                                    DropdownButtonFormField<String>(
-                                      value: _paymentMode,
-                                      dropdownColor: const Color(0xFF232635),
-                                      items: ['cash', 'upi', 'bank_transfer', 'cheque', 'online']
-                                          .map((m) => DropdownMenuItem(value: m, child: Text(m.toUpperCase(), style: TextStyle(color: isPaidOrPartial ? Colors.white : Colors.white.withOpacity(0.3)))))
-                                          .toList(),
-                                      onChanged: isPaidOrPartial ? (v) => setState(() => _paymentMode = v!) : null,
-                                      decoration: _inputDeco(enabled: isPaidOrPartial),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          Row(
-                            children: [
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Payment Date'),
-                                    const SizedBox(height: 8),
-                                    InkWell(
-                                      onTap: isPaidOrPartial ? _pickPaymentDate : null,
-                                      child: Container(
-                                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-                                        decoration: BoxDecoration(
-                                          color: isPaidOrPartial ? Colors.white.withOpacity(0.04) : Colors.transparent,
-                                          borderRadius: BorderRadius.circular(12),
-                                          border: Border.all(color: Colors.white.withOpacity(0.08)),
-                                        ),
-                                        child: Text(_dateLabel(_paymentDate), style: TextStyle(color: isPaidOrPartial ? Colors.white : Colors.white.withOpacity(0.3), fontSize: 14)),
-                                      ),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                              const SizedBox(width: 16),
-                              Expanded(
-                                child: Column(
-                                  crossAxisAlignment: CrossAxisAlignment.start,
-                                  children: [
-                                    _buildLabel('Reference / Txn ID'),
-                                    const SizedBox(height: 8),
-                                    TextFormField(
-                                      controller: _referenceCtrl,
-                                      enabled: isPaidOrPartial,
-                                      style: TextStyle(color: isPaidOrPartial ? Colors.white : Colors.white.withOpacity(0.3)),
-                                      decoration: _inputDeco(enabled: isPaidOrPartial).copyWith(hintText: 'UPI ID, cheque no...'),
-                                    ),
-                                  ],
-                                ),
-                              ),
-                            ],
-                          ),
-                          const SizedBox(height: 20),
-
-                          _buildLabel('Notes'),
-                          const SizedBox(height: 8),
-                          TextFormField(
-                            controller: _notesCtrl,
-                            maxLines: 2,
-                            style: const TextStyle(color: Colors.white),
-                            decoration: _inputDeco().copyWith(hintText: 'Any remarks...'),
+                            ),
                           ),
                         ],
                       ),
-                    ),
-                  ),
-                ),
+                      const SizedBox(height: 20),
 
-                // Footer
-                Container(
-                  padding: const EdgeInsets.fromLTRB(24, 16, 24, 24),
-                  decoration: BoxDecoration(
-                    border: Border(top: BorderSide(color: Colors.white.withOpacity(0.05))),
-                  ),
-                  child: Row(
-                    children: [
-                      Expanded(
-                        child: TextButton(
-                          onPressed: () => Navigator.pop(context),
-                          style: TextButton.styleFrom(
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Rent Month', required: true),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: _pickMonth,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.backgroundLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.surfaceBorder,
+                                      ),
+                                    ),
+                                    child: Row(
+                                      mainAxisAlignment:
+                                          MainAxisAlignment.spaceBetween,
+                                      children: [
+                                        Text(
+                                          _monthLabel(_selectedMonth),
+                                          style: const TextStyle(
+                                            color: AppTheme.textPrimary,
+                                            fontSize: 15,
+                                            fontWeight: FontWeight.w600,
+                                          ),
+                                        ),
+                                        Icon(
+                                          Icons.calendar_month_rounded,
+                                          color: AppTheme.textHint,
+                                          size: 18,
+                                        ),
+                                      ],
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
                           ),
-                          child: Text('Cancel', style: GoogleFonts.plusJakartaSans(color: Colors.white70, fontWeight: FontWeight.w600)),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  'Check-in / Joining Date',
+                                  required: true,
+                                ),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: _pickJoiningDate,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: AppTheme.backgroundLight,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.surfaceBorder,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _dateLabel(_joiningDate),
+                                      style: TextStyle(
+                                        color: _joiningDate == null
+                                            ? AppTheme.textHint
+                                            : AppTheme.textPrimary,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Rent Amount (₹)', required: true),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _rentAmountCtrl,
+                                  keyboardType: TextInputType.number,
+                                  style: const TextStyle(
+                                    color: AppTheme.textPrimary,
+                                  ),
+                                  decoration: _inputDeco(),
+                                  validator: (v) =>
+                                      v!.isEmpty ? 'Required' : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('PAYMENT STATUS'),
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<String>(
+                                  value: _paymentStatus,
+                                  dropdownColor: Colors.white,
+                                  items: const [
+                                    DropdownMenuItem(
+                                      value: 'paid',
+                                      child: Text(
+                                        'Paid (Full)',
+                                        style: TextStyle(
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'partial',
+                                      child: Text(
+                                        'Partial',
+                                        style: TextStyle(
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                    DropdownMenuItem(
+                                      value: 'pending',
+                                      child: Text(
+                                        'Pending',
+                                        style: TextStyle(
+                                          color: AppTheme.textPrimary,
+                                        ),
+                                      ),
+                                    ),
+                                  ],
+                                  onChanged: (v) {
+                                    setState(() {
+                                      _paymentStatus = v!;
+                                      if (v == 'paid') {
+                                        _amountPaidCtrl.text =
+                                            _rentAmountCtrl.text;
+                                      }
+                                    });
+                                  },
+                                  decoration: _inputDeco(),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(
+                                  'Amount Paid (₹)',
+                                  required: isPaidOrPartial,
+                                ),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _amountPaidCtrl,
+                                  enabled: isPaidOrPartial,
+                                  keyboardType: TextInputType.number,
+                                  style: TextStyle(
+                                    color: isPaidOrPartial
+                                        ? AppTheme.textPrimary
+                                        : AppTheme.textHint,
+                                  ),
+                                  decoration: _inputDeco(
+                                    enabled: isPaidOrPartial,
+                                  ),
+                                  validator: (v) =>
+                                      isPaidOrPartial && v!.isEmpty
+                                      ? 'Required'
+                                      : null,
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('PAYMENT MODE'),
+                                const SizedBox(height: 8),
+                                DropdownButtonFormField<String>(
+                                  value: _paymentMode,
+                                  dropdownColor: Colors.white,
+                                  isExpanded: true,
+                                  items:
+                                      [
+                                            'cash',
+                                            'upi',
+                                            'bank_transfer',
+                                            'cheque',
+                                            'online',
+                                          ]
+                                          .map(
+                                            (m) => DropdownMenuItem(
+                                              value: m,
+                                              child: Text(
+                                                m.toUpperCase().replaceAll(
+                                                  '_',
+                                                  ' ',
+                                                ),
+                                                overflow: TextOverflow.ellipsis,
+                                                style: TextStyle(
+                                                  fontSize: 13,
+                                                  color: isPaidOrPartial
+                                                      ? AppTheme.textPrimary
+                                                      : AppTheme.textHint,
+                                                ),
+                                              ),
+                                            ),
+                                          )
+                                          .toList(),
+                                  onChanged: isPaidOrPartial
+                                      ? (v) => setState(() => _paymentMode = v!)
+                                      : null,
+                                  decoration: _inputDeco(
+                                    enabled: isPaidOrPartial,
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      Row(
+                        children: [
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Payment Date'),
+                                const SizedBox(height: 8),
+                                InkWell(
+                                  onTap: isPaidOrPartial
+                                      ? _pickPaymentDate
+                                      : null,
+                                  child: Container(
+                                    padding: const EdgeInsets.symmetric(
+                                      horizontal: 16,
+                                      vertical: 14,
+                                    ),
+                                    decoration: BoxDecoration(
+                                      color: isPaidOrPartial
+                                          ? AppTheme.backgroundLight
+                                          : Colors.transparent,
+                                      borderRadius: BorderRadius.circular(12),
+                                      border: Border.all(
+                                        color: AppTheme.surfaceBorder,
+                                      ),
+                                    ),
+                                    child: Text(
+                                      _dateLabel(_paymentDate),
+                                      style: TextStyle(
+                                        color: isPaidOrPartial
+                                            ? AppTheme.textPrimary
+                                            : AppTheme.textHint,
+                                        fontSize: 14,
+                                      ),
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 16),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel('Reference / Txn ID'),
+                                const SizedBox(height: 8),
+                                TextFormField(
+                                  controller: _referenceCtrl,
+                                  enabled: isPaidOrPartial,
+                                  style: TextStyle(
+                                    color: isPaidOrPartial
+                                        ? AppTheme.textPrimary
+                                        : AppTheme.textHint,
+                                  ),
+                                  decoration: _inputDeco(
+                                    enabled: isPaidOrPartial,
+                                  ).copyWith(hintText: 'UPI ID, cheque no...'),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 20),
+
+                      _buildLabel('Notes'),
+                      const SizedBox(height: 8),
+                      TextFormField(
+                        controller: _notesCtrl,
+                        maxLines: 2,
+                        style: const TextStyle(color: Colors.white),
+                        decoration: _inputDeco().copyWith(
+                          hintText: 'Any remarks...',
                         ),
                       ),
-                      const SizedBox(width: 16),
-                      Expanded(
-                        child: ElevatedButton(
-                          onPressed: _isSubmitting ? null : _submit,
-                          style: ElevatedButton.styleFrom(
-                            backgroundColor: const Color(0xFF6B58FF),
-                            foregroundColor: Colors.white,
-                            padding: const EdgeInsets.symmetric(vertical: 16),
-                            elevation: 0,
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                          child: _isSubmitting
-                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                              : Text('Record Payment', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700, fontSize: 15)),
+                      const SizedBox(height: 16),
+                      // Footer
+                      Container(
+                        padding: const EdgeInsets.only(top: 16),
+              decoration: BoxDecoration(
+                border: Border(top: BorderSide(color: AppTheme.surfaceBorder)),
+              ),
+              child: Row(
+                children: [
+                  Expanded(
+                    child: TextButton(
+                      onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
                         ),
+                      ),
+                      child: Text(
+                        'Cancel',
+                        style: GoogleFonts.inter(
+                          color: AppTheme.textHint,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: ElevatedButton(
+                      onPressed: _isSubmitting ? null : _submit,
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.primary,
+                        foregroundColor: Colors.white,
+                        padding: const EdgeInsets.symmetric(vertical: 16),
+                        elevation: 0,
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
+                      child: _isSubmitting
+                          ? const SizedBox(
+                              width: 20,
+                              height: 20,
+                              child: CircularProgressIndicator(
+                                strokeWidth: 2,
+                                color: Colors.white,
+                              ),
+                            )
+                          : Text(
+                              'Record Payment',
+                              style: GoogleFonts.inter(
+                                fontWeight: FontWeight.w700,
+                                fontSize: 15,
+                              ),
+                            ),
+                    ),
+                  ),
+                ],
+              ),
                       ),
                     ],
                   ),
                 ),
-              ],
-            ),
-          ),
-        ),
+              ),
       ),
     );
   }
@@ -707,14 +921,19 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
     return RichText(
       text: TextSpan(
         text: text,
-        style: GoogleFonts.plusJakartaSans(
+        style: GoogleFonts.inter(
           fontSize: 11,
           fontWeight: FontWeight.w800,
-          color: Colors.white.withOpacity(0.5),
+          color: AppTheme.textHint,
           letterSpacing: 0.5,
         ),
         children: required
-            ? [const TextSpan(text: ' *', style: TextStyle(color: AppTheme.error))]
+            ? [
+                const TextSpan(
+                  text: ' *',
+                  style: TextStyle(color: AppTheme.error),
+                ),
+              ]
             : [],
       ),
     );
@@ -723,13 +942,25 @@ class _RecordPaymentDialogState extends ConsumerState<RecordPaymentDialog> {
   InputDecoration _inputDeco({bool enabled = true}) {
     return InputDecoration(
       filled: true,
-      fillColor: enabled ? Colors.white.withOpacity(0.04) : Colors.transparent,
-      border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
-      enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.08))),
-      disabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.04))),
-      focusedBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide(color: Colors.white.withOpacity(0.2))),
+      fillColor: enabled ? AppTheme.backgroundLight : Colors.transparent,
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.surfaceBorder),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.surfaceBorder),
+      ),
+      disabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.surfaceBorder.withOpacity(0.5)),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(12),
+        borderSide: BorderSide(color: AppTheme.primary),
+      ),
       contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-      hintStyle: TextStyle(color: Colors.white.withOpacity(0.3), fontSize: 14),
+      hintStyle: TextStyle(color: AppTheme.textHint, fontSize: 14),
     );
   }
 }

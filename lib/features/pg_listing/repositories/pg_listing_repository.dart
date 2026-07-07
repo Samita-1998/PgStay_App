@@ -11,10 +11,16 @@ class PgListingRepository {
     String? city,
     String? pgType,
     String? occupancyType,
+    double? minPrice,
     double? maxPrice,
+    int page = 1,
+    int limit = 10,
   }) async {
     try {
-      final queryParams = <String, dynamic>{};
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
       if (city != null && city.trim().isNotEmpty) {
         queryParams['city'] = city.trim();
       }
@@ -23,6 +29,9 @@ class PgListingRepository {
       }
       if (occupancyType != null && occupancyType != 'All') {
         queryParams['occupancyType'] = occupancyType.toLowerCase();
+      }
+      if (minPrice != null && minPrice > 0) {
+        queryParams['minPrice'] = minPrice;
       }
       if (maxPrice != null && maxPrice > 0) {
         queryParams['maxPrice'] = maxPrice;
@@ -45,6 +54,84 @@ class PgListingRepository {
       }
     } on DioException catch (e) {
       throw Exception(e.response?.data['message'] ?? 'Network error occurred while fetching stays');
+    }
+  }
+
+  Future<List<PgPost>> searchPosts({
+    String? title,
+    String? city,
+    String? pgType,
+    String? occupancyType,
+    double? minPrice,
+    double? maxPrice,
+    double? minRating,
+    List<String>? facilities,
+    bool onlyWithVacancy = false,
+    int page = 1,
+    int limit = 12,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+        'onlyWithVacancy': onlyWithVacancy,
+      };
+      if (title != null && title.trim().isNotEmpty) {
+        queryParams['title'] = title.trim();
+      }
+      if (city != null && city.trim().isNotEmpty) {
+        queryParams['city'] = city.trim();
+      }
+      if (pgType != null && pgType != 'Any Type') {
+        queryParams['pgType'] = pgType;
+      }
+      if (occupancyType != null && occupancyType != 'Sharing') {
+        queryParams['occupancyType'] = occupancyType.toLowerCase();
+      }
+      if (minPrice != null && minPrice > 0) {
+        queryParams['minPrice'] = minPrice.toInt();
+      }
+      if (maxPrice != null && maxPrice > 0) {
+        queryParams['maxPrice'] = maxPrice.toInt();
+      }
+      if (minRating != null && minRating > 0) {
+        queryParams['minRating'] = minRating;
+      }
+      if (facilities != null && facilities.isNotEmpty) {
+        queryParams['facilities'] = facilities.join(',');
+      }
+
+      final response = await _apiClient.dio.get(
+        '/post/search',
+        queryParameters: queryParams,
+      );
+
+      if (response.data['success'] == true) {
+        final List<dynamic> postsJson = response.data['data']['posts'] ?? [];
+        return postsJson.map((json) => PgPost.fromJson(json)).toList();
+      } else {
+        final List<dynamic> postsJson = response.data['data']?['posts'] ?? [];
+        if (postsJson.isNotEmpty) {
+          return postsJson.map((json) => PgPost.fromJson(json)).toList();
+        }
+        throw Exception(response.data['message'] ?? 'Failed to search posts');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error occurred while searching stays');
+    }
+  }
+
+  Future<PgModel> fetchPgById(String pgId) async {
+    try {
+      final response = await _apiClient.dio.get('/pg/$pgId');
+      if (response.data['success'] == true) {
+        final pgJson = response.data['data']['pg'] as Map<String, dynamic>;
+        return PgModel.fromJson(pgJson);
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to fetch PG details');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error while fetching PG details');
     }
   }
 
@@ -93,9 +180,12 @@ class PgListingRepository {
     }
   }
 
-  Future<List<PgModel>> fetchOwnerPGs() async {
+  Future<List<PgModel>> fetchOwnerPGs({int page = 1, int limit = 10}) async {
     try {
-      final response = await _apiClient.dio.get('/pg');
+      final response = await _apiClient.dio.get('/pg', queryParameters: {
+        'page': page,
+        'limit': limit,
+      });
 
       if (response.data['success'] == true) {
         final List<dynamic> pgsJson = response.data['data']['pgs'] ?? [];
@@ -112,18 +202,57 @@ class PgListingRepository {
     }
   }
 
+  Future<List<PgModel>> fetchDiscoverPGs({
+    String? city,
+    String? pgType,
+    int page = 1,
+    int limit = 10,
+  }) async {
+    try {
+      final queryParams = <String, dynamic>{
+        'page': page,
+        'limit': limit,
+      };
+      if (city != null && city.trim().isNotEmpty) {
+        queryParams['city'] = city.trim();
+      }
+      if (pgType != null && pgType != 'All') {
+        queryParams['pgType'] = pgType;
+      }
+
+      final response = await _apiClient.dio.get(
+        '/pg/discover',
+        queryParameters: queryParams,
+      );
+
+      if (response.data['success'] == true) {
+        final List<dynamic> pgsJson = response.data['data']['pgs'] ?? [];
+        return pgsJson.map((json) => PgModel.fromJson(json)).toList();
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to discover PGs');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error occurred while fetching discovered PGs');
+    }
+  }
+
   Future<void> addPG(Map<String, dynamic> pgData) async {
     try {
       final response = await _apiClient.dio.post(
         '/pg',
         data: pgData,
       );
-
-      if (response.data['success'] != true && response.data['data'] == null) {
+      
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return; // Success
+      }
+      
+      if (response.data is Map && response.data['success'] == false) {
         throw Exception(response.data['message'] ?? 'Failed to add PG');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Network error occurred while adding PG');
+      final message = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(message ?? 'Network error occurred while adding PG');
     }
   }
 
@@ -133,12 +262,17 @@ class PgListingRepository {
         '/pg/$pgId',
         data: pgData,
       );
-
-      if (response.data['success'] != true && response.data['data'] == null) {
+      
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        return; // Success
+      }
+      
+      if (response.data is Map && response.data['success'] == false) {
         throw Exception(response.data['message'] ?? 'Failed to update PG');
       }
     } on DioException catch (e) {
-      throw Exception(e.response?.data['message'] ?? 'Network error occurred while updating PG');
+      final message = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(message ?? 'Network error occurred while updating PG');
     }
   }
 
@@ -237,6 +371,37 @@ class PgListingRepository {
     }
   }
 
+  Future<void> assignBedToTenant(String bedId, String userId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/room/assign/$bedId',
+        data: {'userId': userId},
+      );
+
+      if (response.data['success'] != true) {
+        throw Exception(response.data['message'] ?? 'Failed to assign tenant to bed');
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(message ?? 'Network error occurred while assigning tenant');
+    }
+  }
+
+  Future<void> unassignBedFromTenant(String bedId) async {
+    try {
+      final response = await _apiClient.dio.post(
+        '/room/unassign/$bedId',
+      );
+
+      if (response.data['success'] != true) {
+        throw Exception(response.data['message'] ?? 'Failed to remove tenant from bed');
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(message ?? 'Network error occurred while removing tenant');
+    }
+  }
+
   Future<List<Map<String, String>>> fetchFacilities() async {
     try {
       final response = await _apiClient.dio.get('/pg/facilities');
@@ -245,7 +410,7 @@ class PgListingRepository {
         final List<dynamic> facilities = response.data['data']['facilities'] ?? [];
         return facilities.map<Map<String, String>>((f) {
           return {
-            'id': f['_id']?.toString() ?? '',
+            'id': f['_id']?.toString() ?? f['id']?.toString() ?? '',
             'name': f['name']?.toString() ?? '',
           };
         }).toList();
@@ -290,6 +455,98 @@ class PgListingRepository {
     } on DioException catch (e) {
       final message = e.response?.data is Map ? e.response?.data['message'] : null;
       throw Exception(message ?? 'Network error occurred while deleting post');
+    }
+  }
+
+  Future<Map<String, String>> getUploadUrl(String fileName, String fileType) async {
+    try {
+      final response = await _apiClient.dio.get('/post/upload-url', queryParameters: {
+        'fileName': fileName,
+        'fileType': fileType,
+      });
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return {
+          'uploadUrl': data['uploadUrl'],
+          'key': data['key'],
+        };
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to get upload URL');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error occurred while getting upload URL');
+    }
+  }
+
+  Future<Map<String, String>> getPaymentQrUploadUrl(String fileName, String fileType) async {
+    try {
+      final response = await _apiClient.dio.get('/pg/payment-qr-upload-url', queryParameters: {
+        'fileName': fileName,
+        'fileType': fileType,
+      });
+      if (response.data['success'] == true) {
+        final data = response.data['data'];
+        return {
+          'uploadUrl': data['uploadUrl'],
+          'key': data['key'],
+        };
+      } else {
+        throw Exception(response.data['message'] ?? 'Failed to get payment QR upload URL');
+      }
+    } on DioException catch (e) {
+      throw Exception(e.response?.data['message'] ?? 'Network error occurred while getting payment QR upload URL');
+    }
+  }
+
+  Future<void> uploadFileToS3(String uploadUrl, List<int> bytes, String fileType) async {
+    try {
+      final dio = Dio();
+      final response = await dio.put(
+        uploadUrl,
+        data: Stream.fromIterable([bytes]),
+        options: Options(
+          headers: {
+            'Content-Type': fileType,
+            'Content-Length': bytes.length.toString(),
+          },
+        ),
+      );
+      if (response.statusCode != 200) {
+        throw Exception('Failed to upload file to S3');
+      }
+    } catch (e) {
+      throw Exception('Network error occurred while uploading file');
+    }
+  }
+
+  Future<void> deleteFile(String fileUrl) async {
+    try {
+      final uri = Uri.parse(fileUrl);
+      final key = uri.path.substring(1); // Removes the leading '/' to get 'public/...'
+      
+      String endpoint = '/pg/file';
+      if (key.startsWith('public/posts/')) {
+        endpoint = '/post/file';
+      } else if (key.startsWith('public/users/')) {
+        endpoint = '/user/file'; // just in case
+      }
+      
+      final response = await _apiClient.dio.delete(
+        endpoint,
+        data: {'key': key},
+      );
+      
+      if (response.statusCode != null && response.statusCode! >= 200 && response.statusCode! < 300) {
+        // Success
+        return;
+      }
+      
+      if (response.data is Map && response.data['success'] == false) {
+        throw Exception(response.data['message'] ?? 'Failed to delete file');
+      }
+    } on DioException catch (e) {
+      final message = e.response?.data is Map ? e.response?.data['message'] : null;
+      throw Exception(message ?? 'Network error occurred while deleting file');
     }
   }
 }

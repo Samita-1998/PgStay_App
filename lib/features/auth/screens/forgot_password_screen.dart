@@ -87,7 +87,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     delay: const Duration(milliseconds: 100),
                     child: Text(
                       'Forgot Password',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
                         color: AppTheme.textPrimary,
@@ -101,7 +101,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                     delay: const Duration(milliseconds: 200),
                     child: Text(
                       'Enter your email address below and we will send you a verification code to reset your password.',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         color: AppTheme.textSecondary,
                         height: 1.5,
@@ -127,7 +127,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                         children: [
                           Text(
                             'Email Address',
-                            style: GoogleFonts.plusJakartaSans(
+                            style: GoogleFonts.inter(
                               fontSize: 13,
                               fontWeight: FontWeight.w700,
                               color: AppTheme.textPrimary,
@@ -178,7 +178,7 @@ class _ForgotPasswordScreenState extends ConsumerState<ForgotPasswordScreen> {
                                       children: [
                                         Text(
                                           'Send Reset Code',
-                                          style: GoogleFonts.plusJakartaSans(
+                                          style: GoogleFonts.inter(
                                             color: Colors.white,
                                             fontWeight: FontWeight.w700,
                                             fontSize: 15,

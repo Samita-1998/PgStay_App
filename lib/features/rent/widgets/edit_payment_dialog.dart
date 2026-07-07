@@ -5,18 +5,17 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/rent/models/rent_model.dart';
-import 'package:pgstay/features/rent/repositories/rent_repository.dart';
 import 'package:pgstay/features/rent/providers/rent_provider.dart';
 
-class EditPaymentDialog extends ConsumerStatefulWidget {
+class EditPaymentScreen extends ConsumerStatefulWidget {
   final RentModel rent;
-  const EditPaymentDialog({super.key, required this.rent});
+  const EditPaymentScreen({super.key, required this.rent});
 
   @override
-  ConsumerState<EditPaymentDialog> createState() => _EditPaymentDialogState();
+  ConsumerState<EditPaymentScreen> createState() => _EditPaymentScreenState();
 }
 
-class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
+class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
   late String _status;
   late String? _paymentMode;
   late TextEditingController _amountPaidCtrl;
@@ -102,7 +101,7 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
         Navigator.pop(context);
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Payment record updated!', style: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700)),
+            content: Text('Payment record updated!', style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
             backgroundColor: AppTheme.success,
             behavior: SnackBarBehavior.floating,
           ),
@@ -135,73 +134,46 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
 
   @override
   Widget build(BuildContext context) {
-    return Dialog(
-      backgroundColor: Colors.transparent,
-      insetPadding: const EdgeInsets.all(20),
-      child: ClipRRect(
-        borderRadius: BorderRadius.circular(24),
-        child: BackdropFilter(
-          filter: ImageFilter.blur(sigmaX: 10, sigmaY: 10),
-          child: Container(
-            width: double.infinity,
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: const Color(0xFF1E1E2E), // Darker premium look as per image
-              borderRadius: BorderRadius.circular(24),
-              border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.3),
-                  blurRadius: 30,
-                  offset: const Offset(0, 10),
+    return Scaffold(
+      backgroundColor: AppTheme.backgroundLight,
+      appBar: AppBar(
+        backgroundColor: Colors.white,
+        elevation: 0,
+        centerTitle: true,
+        iconTheme: const IconThemeData(color: AppTheme.textPrimary),
+        title: Text(
+          'Edit Payment',
+          style: GoogleFonts.inter(
+            fontSize: 18,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.textPrimary,
+          ),
+        ),
+      ),
+      body: SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.all(24),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              // User Info Badge
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+                decoration: BoxDecoration(
+                  color: AppTheme.primary.withValues(alpha: 0.05),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: AppTheme.primary.withValues(alpha: 0.1)),
                 ),
-              ],
-            ),
-            child: SingleChildScrollView(
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: [
-                  // Header
-                  Row(
-                    mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                    children: [
-                      Text(
-                        'Edit Payment Record',
-                        style: GoogleFonts.plusJakartaSans(
-                          fontSize: 20,
-                          fontWeight: FontWeight.w800,
-                          color: Colors.white,
-                        ),
-                      ),
-                      IconButton(
-                        onPressed: () => Navigator.pop(context),
-                        icon: const Icon(Icons.close_rounded, color: Colors.white54, size: 20),
-                        padding: EdgeInsets.zero,
-                        constraints: const BoxConstraints(),
-                      ),
-                    ],
+                child: Text(
+                  '${widget.rent.userName ?? 'Tenant'} · Bed ${widget.rent.bedNumber ?? 'N/A'} · ${widget.rent.month}',
+                  style: GoogleFonts.inter(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.primary,
                   ),
-                  const SizedBox(height: 20),
-
-                  // User Info Badge
-                  Container(
-                    width: double.infinity,
-                    padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                    decoration: BoxDecoration(
-                      color: Colors.white.withValues(alpha: 0.05),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(color: Colors.white.withValues(alpha: 0.05)),
-                    ),
-                    child: Text(
-                      '${widget.rent.userName ?? 'Tenant'} · Bed ${widget.rent.bedNumber ?? 'N/A'} · ${widget.rent.month}',
-                      style: GoogleFonts.plusJakartaSans(
-                        fontSize: 13,
-                        fontWeight: FontWeight.w700,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
+                ),
+              ),
                   const SizedBox(height: 24),
 
                   // Form Fields Row 1
@@ -318,38 +290,51 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
 
                   // Actions
                   Row(
-                    mainAxisAlignment: MainAxisAlignment.end,
                     children: [
-                      TextButton(
-                        onPressed: () => Navigator.pop(context),
-                        style: TextButton.styleFrom(
-                          foregroundColor: Colors.white70,
-                          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      Expanded(
+                        child: TextButton(
+                          onPressed: () => Navigator.pop(context),
+                          style: TextButton.styleFrom(
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(12),
+                            ),
+                          ),
+                          child: Text(
+                            'Cancel',
+                            style: GoogleFonts.inter(
+                              color: AppTheme.textHint,
+                              fontWeight: FontWeight.w600,
+                            ),
+                          ),
                         ),
-                        child: const Text('Cancel'),
                       ),
-                      const SizedBox(width: 12),
-                      ElevatedButton(
-                        onPressed: _isSaving ? null : _saveChanges,
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: const Color(0xFF6B4EFF), // Exact purple from image
-                          foregroundColor: Colors.white,
-                          padding: const EdgeInsets.symmetric(horizontal: 32, vertical: 14),
-                          elevation: 0,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          textStyle: GoogleFonts.plusJakartaSans(fontWeight: FontWeight.w700),
+                      const SizedBox(width: 16),
+                      Expanded(
+                        child: ElevatedButton(
+                          onPressed: _isSaving ? null : _saveChanges,
+                          style: ElevatedButton.styleFrom(
+                            backgroundColor: AppTheme.primary,
+                            foregroundColor: Colors.white,
+                            padding: const EdgeInsets.symmetric(vertical: 16),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+                          ),
+                          child: _isSaving
+                              ? const SizedBox(width: 20, height: 20, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
+                              : Text(
+                                  'Save Changes',
+                                  style: GoogleFonts.inter(
+                                    fontWeight: FontWeight.w700,
+                                    fontSize: 15,
+                                  ),
+                                ),
                         ),
-                        child: _isSaving
-                            ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
-                            : const Text('Save Changes'),
                       ),
                     ],
                   ),
                 ],
               ),
-            ),
-          ),
         ),
       ),
     );
@@ -361,10 +346,10 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
       children: [
         Text(
           label,
-          style: GoogleFonts.plusJakartaSans(
-            fontSize: 10,
-            fontWeight: FontWeight.w700,
-            color: Colors.white70,
+          style: GoogleFonts.inter(
+            fontSize: 11,
+            fontWeight: FontWeight.w800,
+            color: AppTheme.textHint,
             letterSpacing: 0.5,
           ),
         ),
@@ -376,26 +361,29 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
 
   Widget _buildDisabledField(String text, {IconData? icon, bool dropdownIcon = false, bool enabled = false}) {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: enabled ? Colors.white.withValues(alpha: 0.05) : Colors.white.withValues(alpha: 0.02),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: enabled ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceBorder),
       ),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.spaceBetween,
         children: [
-          Text(
-            text,
-            style: GoogleFonts.plusJakartaSans(
-              fontSize: 13,
-              fontWeight: FontWeight.w600,
-              color: enabled ? Colors.white : Colors.white54,
+          Expanded(
+            child: Text(
+              text,
+              overflow: TextOverflow.ellipsis,
+              style: GoogleFonts.inter(
+                fontSize: 14,
+                fontWeight: FontWeight.w600,
+                color: enabled ? AppTheme.textPrimary : AppTheme.textHint,
+              ),
             ),
           ),
-          if (icon != null) Icon(icon, color: Colors.white54, size: 16),
-          if (dropdownIcon) const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 20),
+          if (icon != null) Icon(icon, color: AppTheme.textHint, size: 18),
+          if (dropdownIcon) const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textHint, size: 20),
         ],
       ),
     );
@@ -403,27 +391,27 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
 
   Widget _buildTextField(TextEditingController ctrl, {String? hint, int maxLines = 1, TextInputType? keyboardType, bool enabled = true}) {
     return Container(
-      height: maxLines == 1 ? 44 : null,
+      height: maxLines == 1 ? 48 : null,
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: enabled ? Colors.white : Colors.transparent,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceBorder),
       ),
       child: TextField(
         controller: ctrl,
         enabled: enabled,
         maxLines: maxLines,
         keyboardType: keyboardType,
-        style: GoogleFonts.plusJakartaSans(
-          fontSize: 13,
+        style: GoogleFonts.inter(
+          fontSize: 14,
           fontWeight: FontWeight.w600,
-          color: enabled ? Colors.white : Colors.white54,
+          color: enabled ? AppTheme.textPrimary : AppTheme.textHint,
         ),
         decoration: InputDecoration(
           hintText: hint,
-          hintStyle: GoogleFonts.plusJakartaSans(color: Colors.white30, fontSize: 13),
+          hintStyle: GoogleFonts.inter(color: AppTheme.textHint, fontSize: 14),
           border: InputBorder.none,
-          contentPadding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+          contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
         ),
       ),
     );
@@ -431,30 +419,33 @@ class _EditPaymentDialogState extends ConsumerState<EditPaymentDialog> {
 
   Widget _buildDropdown({required String? value, required List<String> items, required ValueChanged<String?> onChanged, String? hint}) {
     return Container(
-      height: 44,
-      padding: const EdgeInsets.symmetric(horizontal: 14),
+      height: 48,
+      padding: const EdgeInsets.symmetric(horizontal: 16),
       decoration: BoxDecoration(
-        color: Colors.white.withValues(alpha: 0.05),
-        borderRadius: BorderRadius.circular(10),
-        border: Border.all(color: Colors.white.withValues(alpha: 0.1)),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: AppTheme.surfaceBorder),
       ),
       child: DropdownButtonHideUnderline(
         child: DropdownButton<String>(
           value: items.contains(value) ? value : null,
-          hint: hint != null ? Text(hint, style: GoogleFonts.plusJakartaSans(color: Colors.white54, fontSize: 13)) : null,
+          hint: hint != null ? Text(hint, style: GoogleFonts.inter(color: AppTheme.textHint, fontSize: 14)) : null,
           isExpanded: true,
-          dropdownColor: const Color(0xFF2A2A3C),
-          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: Colors.white54, size: 20),
-          style: GoogleFonts.plusJakartaSans(
+          dropdownColor: Colors.white,
+          icon: const Icon(Icons.keyboard_arrow_down_rounded, color: AppTheme.textHint, size: 20),
+          style: GoogleFonts.inter(
             fontSize: 13,
             fontWeight: FontWeight.w600,
-            color: Colors.white,
+            color: AppTheme.textPrimary,
           ),
           onChanged: onChanged,
           items: items.map((e) {
             return DropdownMenuItem(
               value: e,
-              child: Text(e.toUpperCase().replaceAll('_', ' ')),
+              child: Text(
+                e.toUpperCase().replaceAll('_', ' '),
+                overflow: TextOverflow.ellipsis,
+              ),
             );
           }).toList(),
         ),

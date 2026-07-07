@@ -47,9 +47,9 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
 
     if (!success && mounted) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Login failed. Please check your credentials.'),
-          backgroundColor: AppTheme.error,
+        SnackBar(
+          content: const Text('Login failed. Please check your credentials.'),
+          backgroundColor: context.errorColor,
         ),
       );
     }
@@ -60,7 +60,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
     final authState = ref.watch(authProvider);
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: context.backgroundLight,
       body: SafeArea(
         child: Center(
           child: SingleChildScrollView(
@@ -84,19 +84,19 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           padding: const EdgeInsets.all(20),
                           decoration: BoxDecoration(
                             shape: BoxShape.circle,
-                            color: AppTheme.primary.withOpacity(0.06),
+                            color: context.primaryColor.withOpacity(0.06),
                             boxShadow: [
                               BoxShadow(
-                                color: AppTheme.primary.withOpacity(glow),
+                                color: context.primaryColor.withOpacity(glow),
                                 blurRadius: 30,
                                 spreadRadius: 4,
                               ),
                             ],
                           ),
-                          child: const Icon(
+                          child: Icon(
                             Icons.home_work_rounded,
                             size: 48,
-                            color: AppTheme.primary,
+                            color: context.primaryColor,
                           ),
                         );
                       },
@@ -109,10 +109,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     delay: const Duration(milliseconds: 200),
                     child: Text(
                       'Welcome Back',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 28,
                         fontWeight: FontWeight.w800,
-                        color: AppTheme.textPrimary,
+                        color: context.textPrimary,
                         letterSpacing: -0.5,
                       ),
                     ),
@@ -122,10 +122,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     delay: const Duration(milliseconds: 300),
                     child: Text(
                       'Log in to PGStay to continue',
-                      style: GoogleFonts.plusJakartaSans(
+                      style: GoogleFonts.inter(
                         fontSize: 14,
                         fontWeight: FontWeight.w500,
-                        color: AppTheme.textSecondary,
+                        color: context.textSecondary,
                       ),
                     ),
                   ),
@@ -137,10 +137,10 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                     child: Container(
                       padding: const EdgeInsets.all(28.0),
                       decoration: BoxDecoration(
-                        color: Colors.white,
+                        color: context.surfaceWhite,
                         borderRadius: BorderRadius.circular(24),
-                        border: Border.all(color: AppTheme.surfaceBorder),
-                        boxShadow: AppTheme.surfaceShadow,
+                        border: Border.all(color: context.surfaceBorder),
+                        boxShadow: AppTheme.cardShadow,
                       ),
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -174,7 +174,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                                 onTap: () => context.push('/forgot-password'),
                                 child: Text(
                                   'Forgot?',
-                                  style: GoogleFonts.plusJakartaSans(
+                                  style: GoogleFonts.inter(
                                     fontSize: 12,
                                     fontWeight: FontWeight.w700,
                                     color: AppTheme.primary,
@@ -254,7 +254,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       child: RichText(
                         text: TextSpan(
                           text: "Don't have an account? ",
-                          style: GoogleFonts.plusJakartaSans(
+                          style: GoogleFonts.inter(
                             color: AppTheme.textSecondary,
                             fontSize: 13,
                             fontWeight: FontWeight.w500,
@@ -262,7 +262,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                           children: [
                             TextSpan(
                               text: 'Sign up',
-                              style: GoogleFonts.plusJakartaSans(
+                              style: GoogleFonts.inter(
                                 color: AppTheme.primary,
                                 fontWeight: FontWeight.w700,
                                 fontSize: 13,
@@ -285,7 +285,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   Widget _buildLabel(String text) {
     return Text(
       text,
-      style: GoogleFonts.plusJakartaSans(
+      style: GoogleFonts.inter(
         fontSize: 13,
         fontWeight: FontWeight.w700,
         color: AppTheme.textPrimary,
@@ -325,7 +325,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                 children: [
                   Text(
                     label,
-                    style: GoogleFonts.plusJakartaSans(
+                    style: GoogleFonts.inter(
                       color: Colors.white,
                       fontWeight: FontWeight.w700,
                       fontSize: 15,

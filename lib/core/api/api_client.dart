@@ -4,6 +4,7 @@ import 'package:pgstay/core/constants/api_constants.dart';
 
 class ApiClient {
   late final Dio dio;
+  void Function()? onUnauthorized;
 
   ApiClient() {
     dio = Dio(
@@ -18,7 +19,9 @@ class ApiClient {
       ),
     );
 
-    dio.interceptors.add(TokenInterceptor());
+    dio.interceptors.add(TokenInterceptor(
+      onUnauthorized: () => onUnauthorized?.call(),
+    ));
 
     // Logging interceptor for debugging
     dio.interceptors.add(LogInterceptor(requestBody: true, responseBody: true));
@@ -26,6 +29,10 @@ class ApiClient {
 }
 
 class TokenInterceptor extends Interceptor {
+  final void Function()? onUnauthorized;
+
+  TokenInterceptor({this.onUnauthorized});
+
   @override
   Future<void> onRequest(
     RequestOptions options,
@@ -45,10 +52,10 @@ class TokenInterceptor extends Interceptor {
   void onError(DioException err, ErrorInterceptorHandler handler) {
     if (err.response?.statusCode == 401) {
       // Handle unauthorized (e.g., clear token, logout user)
-      // This is typically handled by watching the provider or a global event bus
       SharedPreferences.getInstance().then((prefs) {
         prefs.remove('auth_token');
       });
+      onUnauthorized?.call();
     }
     super.onError(err, handler);
   }
