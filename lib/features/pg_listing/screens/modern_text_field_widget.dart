@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:google_fonts/google_fonts.dart';
+import 'package:pgstay/core/theme/app_theme.dart';
 
 class ModernTextFieldWidget extends StatefulWidget {
   final String label;
@@ -55,8 +56,8 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
 
   @override
   Widget build(BuildContext context) {
-    final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF03045E);
+
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -66,7 +67,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             Text(
               widget.label,
               style: GoogleFonts.plusJakartaSans(
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
+                color: context.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
@@ -86,29 +87,29 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             ],
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 6),
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                isDark ? const Color(0xFF2A2A3E) : Colors.white,
-                isDark ? const Color(0xFF1E1E32) : const Color(0xFFFAFAFE),
+                context.colorScheme.surface,
+                context.theme.scaffoldBackgroundColor,
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
-                color: isDark
+                color: Theme.of(context).brightness == Brightness.dark
                     ? Colors.black.withOpacity(0.2)
-                    : primaryColor.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                    : context.primaryColor.withOpacity(0.06),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
               BoxShadow(
                 color: primaryColor.withOpacity(0.04),
-                blurRadius: 8,
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -120,8 +121,8 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             onTap: widget.onTap,
             maxLines: widget.maxLines,
             keyboardType: widget.keyboardType,
-            autovalidateMode: _hasInteracted 
-                ? AutovalidateMode.always 
+            autovalidateMode: _hasInteracted
+                ? AutovalidateMode.always
                 : AutovalidateMode.disabled,
             inputFormatters: [
               if (widget.keyboardType == TextInputType.number ||
@@ -199,7 +200,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
                                         Text(
                                           'Negative numbers are not allowed.',
                                           style: GoogleFonts.plusJakartaSans(
-                                            color: const Color(0xFF9CA3AF),
+                                            color: context.textHint,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -237,8 +238,8 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
                 }),
             ],
             style: GoogleFonts.plusJakartaSans(
-              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              fontSize: 15,
+              color: context.textPrimary,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
             validator: (value) {
@@ -257,62 +258,62 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: GoogleFonts.plusJakartaSans(
-                color: const Color(0xFF9CA3AF),
+                color: context.textHint,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
               prefixIcon: widget.icon != null
-                  ? Container(
-                      margin: const EdgeInsets.all(12),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              primaryColor.withOpacity(0.12),
+                              primaryColor.withOpacity(0.06),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(widget.icon, color: primaryColor, size: 18),
                       ),
-                      child: Icon(widget.icon, color: primaryColor, size: 20),
                     )
                   : null,
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 48,
-                minHeight: 48,
-              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               filled: true,
               fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
+                horizontal: 14,
                 vertical: 14,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF3A3A4E)
-                      : const Color(0xFFE5E7EB),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF3A3A4E)
-                      : const Color(0xFFE5E7EB),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(color: primaryColor, width: 2),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 2,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 2,

@@ -422,7 +422,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
       if (widget.pgToEdit != null) {
         List<String> changedFields = [];
         final pg = widget.pgToEdit!;
-        
+
         bool safeCompare(dynamic a, dynamic b) {
           if (a == b) return true;
           if ((a == null || a == '') && (b == null || b == '')) return true;
@@ -430,46 +430,66 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         }
 
         if (!safeCompare(pgData['name'], pg.name)) changedFields.add('name');
-        if (!safeCompare(pgData['pgType'], pg.pgType)) changedFields.add('pgType');
-        if (!safeCompare(pgData['managerId'], pg.managerId)) changedFields.add('managerId');
-        if (!safeCompare(pgData['description'], pg.description)) changedFields.add('description');
-        if (!safeCompare(pgData['checkInTime'], pg.checkInTime)) changedFields.add('checkInTime');
-        if (!safeCompare(pgData['checkOutTime'], pg.checkOutTime)) changedFields.add('checkOutTime');
-        if (!safeCompare(pgData['dueDayOfMonth'], pg.dueDayOfMonth)) changedFields.add('dueDayOfMonth');
-        if (!safeCompare(pgData['lateFee'], pg.lateFee)) changedFields.add('lateFee');
-        if (!safeCompare(pgData['landline'], pg.landline)) changedFields.add('landline');
-        if (!safeCompare(pgData['locationLink'], pg.locationLink)) changedFields.add('locationLink');
+        if (!safeCompare(pgData['pgType'], pg.pgType))
+          changedFields.add('pgType');
+        if (!safeCompare(pgData['managerId'], pg.managerId))
+          changedFields.add('managerId');
+        if (!safeCompare(pgData['description'], pg.description))
+          changedFields.add('description');
+        if (!safeCompare(pgData['checkInTime'], pg.checkInTime))
+          changedFields.add('checkInTime');
+        if (!safeCompare(pgData['checkOutTime'], pg.checkOutTime))
+          changedFields.add('checkOutTime');
+        if (!safeCompare(pgData['dueDayOfMonth'], pg.dueDayOfMonth))
+          changedFields.add('dueDayOfMonth');
+        if (!safeCompare(pgData['lateFee'], pg.lateFee))
+          changedFields.add('lateFee');
+        if (!safeCompare(pgData['landline'], pg.landline))
+          changedFields.add('landline');
+        if (!safeCompare(pgData['locationLink'], pg.locationLink))
+          changedFields.add('locationLink');
         if (!safeCompare(pgData['upiId'], pg.upiId)) changedFields.add('upiId');
-        if (!safeCompare(pgData['paymentQrImage'], pg.paymentQrImage)) changedFields.add('paymentQrImage');
-        
+        if (!safeCompare(pgData['paymentQrImage'], pg.paymentQrImage))
+          changedFields.add('paymentQrImage');
+
         if (pgData['pgStartedDate'] != pg.pgStartedDate) {
-           // check if they represent the same time if parseable
-           try {
-             final d1 = DateTime.parse(pgData['pgStartedDate'] as String);
-             final d2 = DateTime.parse(pg.pgStartedDate!);
-             if (!d1.isAtSameMomentAs(d2)) changedFields.add('pgStartedDate');
-           } catch (e) {
-             changedFields.add('pgStartedDate');
-           }
+          try {
+            final d1 = DateTime.parse(pgData['pgStartedDate'] as String);
+            final d2 = DateTime.parse(pg.pgStartedDate!);
+            if (!d1.isAtSameMomentAs(d2)) changedFields.add('pgStartedDate');
+          } catch (e) {
+            changedFields.add('pgStartedDate');
+          }
         }
-        
+
         if (_capturedLocation != null) changedFields.add('location');
-        
+
         final addr = pgData['address'] as Map;
-        if (!safeCompare(addr['pincode'], pg.address.pincode)) changedFields.add('address.pincode');
-        if (!safeCompare(addr['landmark'], pg.address.landmark)) changedFields.add('address.landmark');
-        if (!safeCompare(addr['city'], pg.address.city)) changedFields.add('address.city');
-        if (!safeCompare(addr['state'], pg.address.state)) changedFields.add('address.state');
-        if (!safeCompare(addr['country'], pg.address.country)) changedFields.add('address.country');
-        if (!safeCompare(addr['locationDescription'], pg.address.locationDescription)) changedFields.add('address.locationDescription');
-        
-        bool facilitiesChanged = _selectedFacilityIds.length != _initialFacilityIds.length || 
+        if (!safeCompare(addr['pincode'], pg.address.pincode))
+          changedFields.add('address.pincode');
+        if (!safeCompare(addr['landmark'], pg.address.landmark))
+          changedFields.add('address.landmark');
+        if (!safeCompare(addr['city'], pg.address.city))
+          changedFields.add('address.city');
+        if (!safeCompare(addr['state'], pg.address.state))
+          changedFields.add('address.state');
+        if (!safeCompare(addr['country'], pg.address.country))
+          changedFields.add('address.country');
+        if (!safeCompare(
+          addr['locationDescription'],
+          pg.address.locationDescription,
+        ))
+          changedFields.add('address.locationDescription');
+
+        bool facilitiesChanged =
+            _selectedFacilityIds.length != _initialFacilityIds.length ||
             _selectedFacilityIds.any((id) => !_initialFacilityIds.contains(id));
         if (facilitiesChanged) changedFields.add('facilities');
-        
+
         if (_selectedImages.isNotEmpty) changedFields.add('selectedImages');
-        if (_existingImages.length != pg.images.length) changedFields.add('existingImages');
-        
+        if (_existingImages.length != pg.images.length)
+          changedFields.add('existingImages');
+
         if (changedFields.isEmpty) {
           _showSnackBar('No changes made to update.', const Color(0xFF3B82F6));
           if (mounted) {
@@ -478,8 +498,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           }
           return;
         } else {
-          print('Changed fields: $changedFields'); // for terminal
-          // _showSnackBar('Changed: ${changedFields.join(", ")}', Colors.orange); // Temporarily show in UI so user can see it!
+          print('Changed fields: $changedFields');
         }
 
         await repository.updatePG(widget.pgToEdit!.id, pgData);
@@ -498,7 +517,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
       ref.invalidate(ownerPgsProvider);
       ref.invalidate(pgListProvider);
       ref.invalidate(discoverPgProvider);
-      
+
       if (widget.pgToEdit != null) {
         ref.invalidate(pgDetailsProvider(widget.pgToEdit!.id));
       }
@@ -515,10 +534,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
         content: Container(
-          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
           decoration: BoxDecoration(
             color: color,
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: color.withOpacity(0.3),
@@ -534,16 +553,16 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     ? Icons.check_circle_rounded
                     : Icons.error_rounded,
                 color: Colors.white,
-                size: 24,
+                size: 22,
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Expanded(
                 child: Text(
                   message,
                   style: GoogleFonts.plusJakartaSans(
                     color: Colors.white,
                     fontWeight: FontWeight.w600,
-                    fontSize: 14,
+                    fontSize: 13,
                   ),
                 ),
               ),
@@ -553,7 +572,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         backgroundColor: Colors.transparent,
         elevation: 0,
         behavior: SnackBarBehavior.floating,
-        margin: const EdgeInsets.all(20),
+        margin: const EdgeInsets.all(16),
         duration: const Duration(seconds: 3),
       ),
     );
@@ -574,51 +593,52 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           centerTitle: true,
           onLeadingPressed: _isSubmitting ? () {} : null,
         ),
-      body: FadeTransition(
-        opacity: _fadeAnimation,
-        child: SlideTransition(
-          position: _slideAnimation,
-          child: MediaQuery.removePadding(
-            context: context,
-            removeTop: true,
-            child: Padding(
-              padding: EdgeInsets.only(
-                top: 90 + MediaQuery.of(context).padding.top + 10,
-              ),
-              child: Form(
-                key: _formKey,
-                child: Column(
-                  children: [
-                    _buildModernStepper(),
-                    Expanded(
-                      child: PageView(
-                        controller: _pageController,
-                        physics: const NeverScrollableScrollPhysics(),
-                        onPageChanged: (index) {
-                          setState(() => _currentStep = index);
-                        },
-                        children: [
-                          _buildStep1General(),
-                          _buildStep2Location(),
-                          _buildStep3Features(),
-                        ],
+        body: FadeTransition(
+          opacity: _fadeAnimation,
+          child: SlideTransition(
+            position: _slideAnimation,
+            child: MediaQuery.removePadding(
+              context: context,
+              removeTop: true,
+              child: Padding(
+                padding: EdgeInsets.only(
+                  top: 80 + MediaQuery.of(context).padding.top + 8,
+                ),
+                child: Form(
+                  key: _formKey,
+                  child: Column(
+                    children: [
+                      _buildModernStepper(),
+                      Expanded(
+                        child: PageView(
+                          controller: _pageController,
+                          physics: const NeverScrollableScrollPhysics(),
+                          onPageChanged: (index) {
+                            setState(() => _currentStep = index);
+                          },
+                          children: [
+                            _buildStep1General(),
+                            _buildStep2Location(),
+                            _buildStep3Features(),
+                          ],
+                        ),
                       ),
-                    ),
-                    _buildModernBottomNav(),
-                  ],
+                      _buildModernBottomNav(),
+                    ],
+                  ),
                 ),
               ),
             ),
           ),
         ),
       ),
-    ));
+    );
   }
 
   // ==================== MODERN STEPPER ====================
   Widget _buildModernStepper() {
     return Container(
-      padding: const EdgeInsets.symmetric(vertical: 20, horizontal: 24),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 16),
       child: Row(
         mainAxisAlignment: MainAxisAlignment.center,
         children: List.generate(_totalSteps, (index) {
@@ -667,7 +687,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             children: [
               Expanded(
                 child: Container(
-                  height: 3,
+                  height: 2.5,
                   decoration: BoxDecoration(
                     color: isCompleted
                         ? const Color(0xFF03045E)
@@ -681,11 +701,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               if (index < _totalSteps - 1) ...[const SizedBox(width: 0)],
             ],
           ),
-          const SizedBox(height: 8),
+          const SizedBox(height: 6),
           AnimatedContainer(
             duration: const Duration(milliseconds: 300),
-            width: isActive ? 48 : 40,
-            height: isActive ? 48 : 40,
+            width: isActive ? 42 : 36,
+            height: isActive ? 42 : 36,
             decoration: BoxDecoration(
               shape: BoxShape.circle,
               color: isActive || isCompleted
@@ -700,9 +720,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               boxShadow: isActive
                   ? [
                       BoxShadow(
-                        color: const Color(0xFF03045E).withOpacity(0.3),
-                        blurRadius: 16,
-                        offset: const Offset(0, 4),
+                        color: const Color(0xFF03045E).withOpacity(0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
                       ),
                     ]
                   : null,
@@ -712,25 +732,25 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   ? const Icon(
                       Icons.check_rounded,
                       color: Colors.white,
-                      size: 20,
+                      size: 18,
                     )
                   : Icon(
                       icons[index],
                       color: isActive ? Colors.white : const Color(0xFF9CA3AF),
-                      size: isActive ? 22 : 18,
+                      size: isActive ? 20 : 16,
                     ),
             ),
           ),
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           AnimatedDefaultTextStyle(
             duration: const Duration(milliseconds: 300),
             style: GoogleFonts.plusJakartaSans(
               color: isActive
                   ? const Color(0xFF03045E)
                   : const Color(0xFF6B7280),
-              fontSize: isActive ? 12 : 10,
+              fontSize: isActive ? 11 : 9,
               fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
-              letterSpacing: 0.5,
+              letterSpacing: 0.4,
             ),
             child: Text(labels[index]),
           ),
@@ -742,7 +762,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   // ==================== STEP 1: GENERAL ====================
   Widget _buildStep1General() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -753,7 +773,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 'Property Details',
                 'Tell us about your space',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               _buildModernTextField(
                 label: 'Property Name',
                 controller: _nameController,
@@ -761,7 +781,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.home_outlined,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernDropdown(
                 label: 'PG Type',
                 value: _selectedPgType,
@@ -770,7 +790,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.people_outline,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernSearchableDropdown(
                 label: 'Manager',
                 value: _selectedManagerId,
@@ -790,7 +810,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.person_outline,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'Contact',
                 controller: _landlineController,
@@ -798,7 +818,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'Description',
                 controller: _descriptionController,
@@ -806,11 +826,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.description_outlined,
                 maxLines: 4,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernDatePicker(),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -819,7 +839,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   // ==================== STEP 2: LOCATION ====================
   Widget _buildStep2Location() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -830,7 +850,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 'Location',
                 'Help guests find you',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               _buildModernTextField(
                 label: 'Landmark',
                 controller: _landmarkController,
@@ -838,7 +858,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.place_outlined,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'City',
                 controller: _cityController,
@@ -846,7 +866,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.location_city_outlined,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'State',
                 controller: _stateController,
@@ -854,14 +874,14 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 icon: Icons.map_outlined,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'Country',
                 controller: _countryController,
                 hint: 'India',
                 icon: Icons.public_outlined,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'Pincode',
                 controller: _pincodeController,
@@ -870,18 +890,18 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 keyboardType: TextInputType.number,
                 required: true,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildModernTextField(
                 label: 'Location Description',
                 controller: _locationDescriptionController,
                 hint: 'Opposite Central Park',
                 icon: Icons.info_outline,
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               _buildLocationCard(),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -890,7 +910,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   // ==================== STEP 3: FEATURES ====================
   Widget _buildStep3Features() {
     return SingleChildScrollView(
-      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 16),
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
@@ -901,7 +921,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 'Timings',
                 'Set property guidelines',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -916,7 +936,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       required: true,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildModernTextField(
                       label: 'Check-Out Time',
@@ -930,7 +950,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   ),
                 ],
               ),
-              const SizedBox(height: 20),
+              const SizedBox(height: 10),
               Row(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
@@ -944,7 +964,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       required: true,
                     ),
                   ),
-                  const SizedBox(width: 16),
+                  const SizedBox(width: 12),
                   Expanded(
                     child: _buildModernTextField(
                       label: 'Late Fee (₹)',
@@ -958,7 +978,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildGlassCard(
             children: [
               _buildSectionHeader(
@@ -966,10 +986,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 'Facilities',
                 'Select amenities',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _isLoadingDropdowns
                   ? const Padding(
-                      padding: EdgeInsets.symmetric(vertical: 30),
+                      padding: EdgeInsets.symmetric(vertical: 24),
                       child: Center(
                         child: CircularProgressIndicator(
                           color: Color(0xFF03045E),
@@ -980,7 +1000,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   : _buildFacilitiesGrid(),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildGlassCard(
             children: [
               _buildSectionHeader(
@@ -988,23 +1008,23 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 'Images',
                 'Upload property photos',
               ),
-              const SizedBox(height: 16),
+              const SizedBox(height: 12),
               _buildImageUploadSection(),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           _buildGlassCard(
             children: [
               _buildSectionHeader(
                 Icons.payments_outlined,
                 'Payment Settings',
-                'Provide scanner and UPI ID so tenants can pay rent online directly from the app.',
+                'Provide scanner and UPI ID',
               ),
-              const SizedBox(height: 24),
+              const SizedBox(height: 12),
               _buildPaymentSettings(),
             ],
           ),
-          const SizedBox(height: 24),
+          const SizedBox(height: 20),
         ],
       ),
     );
@@ -1013,22 +1033,24 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   // ==================== REUSABLE COMPONENTS ====================
 
   Widget _buildGlassCard({required List<Widget> children}) {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
     return Container(
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.all(18),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
         boxShadow: [
           BoxShadow(
             color: primaryColor.withOpacity(0.04),
-            blurRadius: 30,
-            offset: const Offset(0, 8),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
           ),
           BoxShadow(
             color: primaryColor.withOpacity(0.02),
-            blurRadius: 10,
+            blurRadius: 8,
             offset: const Offset(0, 2),
           ),
         ],
@@ -1041,11 +1063,13 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   }
 
   Widget _buildSectionHeader(IconData icon, String title, String subtitle) {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
     return Row(
       children: [
         Container(
-          padding: const EdgeInsets.all(10),
+          padding: const EdgeInsets.all(8),
           decoration: BoxDecoration(
             gradient: LinearGradient(
               colors: [
@@ -1053,11 +1077,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 primaryColor.withOpacity(0.05),
               ],
             ),
-            borderRadius: BorderRadius.circular(14),
+            borderRadius: BorderRadius.circular(12),
           ),
-          child: Icon(icon, color: primaryColor, size: 24),
+          child: Icon(icon, color: primaryColor, size: 20),
         ),
-        const SizedBox(width: 14),
+        const SizedBox(width: 12),
         Expanded(
           child: Column(
             crossAxisAlignment: CrossAxisAlignment.start,
@@ -1066,7 +1090,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 title,
                 style: GoogleFonts.plusJakartaSans(
                   color: const Color(0xFF1A1A2E),
-                  fontSize: 18,
+                  fontSize: 16,
                   fontWeight: FontWeight.w700,
                   letterSpacing: -0.3,
                 ),
@@ -1075,7 +1099,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 subtitle,
                 style: GoogleFonts.plusJakartaSans(
                   color: const Color(0xFF6B7280),
-                  fontSize: 11,
+                  fontSize: 10,
                   fontWeight: FontWeight.w400,
                 ),
               ),
@@ -1120,8 +1144,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     IconData? icon,
     bool required = false,
   }) {
+
+    // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF03045E);
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1131,18 +1157,18 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                fontSize: 14,
+                color: context.textPrimary,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
             ),
             if (required) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: 6,
-                height: 6,
+                width: 5,
+                height: 5,
                 decoration: const BoxDecoration(
                   color: Color(0xFFEF4444),
                   shape: BoxShape.circle,
@@ -1151,7 +1177,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             ],
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         Container(
           decoration: BoxDecoration(
             gradient: LinearGradient(
@@ -1162,18 +1188,18 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 isDark ? const Color(0xFF1E1E32) : const Color(0xFFFAFAFE),
               ],
             ),
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             boxShadow: [
               BoxShadow(
                 color: isDark
                     ? Colors.black.withOpacity(0.2)
                     : primaryColor.withOpacity(0.06),
-                blurRadius: 12,
-                offset: const Offset(0, 4),
+                blurRadius: 10,
+                offset: const Offset(0, 3),
               ),
               BoxShadow(
                 color: primaryColor.withOpacity(0.04),
-                blurRadius: 8,
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -1187,77 +1213,77 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               }
               return null;
             },
-            dropdownColor: isDark ? const Color(0xFF2A2A3E) : Colors.white,
+            dropdownColor: context.colorScheme.surface,
             style: GoogleFonts.plusJakartaSans(
-              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              fontSize: 15,
+              color: context.textPrimary,
+              fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
             icon: Container(
-              padding: const EdgeInsets.all(4),
+              padding: const EdgeInsets.all(3),
               decoration: BoxDecoration(
                 color: primaryColor.withOpacity(0.08),
-                borderRadius: BorderRadius.circular(8),
+                borderRadius: BorderRadius.circular(6),
               ),
               child: Icon(
                 Icons.keyboard_arrow_down_rounded,
                 color: primaryColor,
-                size: 22,
+                size: 20,
               ),
             ),
             decoration: InputDecoration(
               prefixIcon: icon != null
-                  ? Container(
-                      margin: const EdgeInsets.all(12),
-                      padding: const EdgeInsets.all(8),
-                      decoration: BoxDecoration(
-                        color: primaryColor.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+                  ? Padding(
+                      padding: const EdgeInsets.only(left: 16, right: 10),
+                      child: Container(
+                        padding: const EdgeInsets.all(6),
+                        decoration: BoxDecoration(
+                          gradient: LinearGradient(
+                            colors: [
+                              primaryColor.withOpacity(0.12),
+                              primaryColor.withOpacity(0.06),
+                            ],
+                          ),
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Icon(icon, color: primaryColor, size: 18),
                       ),
-                      child: Icon(icon, color: primaryColor, size: 20),
                     )
                   : null,
-              prefixIconConstraints: const BoxConstraints(
-                minWidth: 48,
-                minHeight: 48,
-              ),
+              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
               filled: true,
               fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+                horizontal: 14,
+                vertical: 10,
               ),
               border: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF3A3A4E)
-                      : const Color(0xFFE5E7EB),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: isDark
-                      ? const Color(0xFF3A3A4E)
-                      : const Color(0xFFE5E7EB),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
               ),
               focusedBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(color: primaryColor, width: 2),
               ),
               errorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 2,
                 ),
               ),
               focusedErrorBorder: OutlineInputBorder(
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 borderSide: const BorderSide(
                   color: Color(0xFFEF4444),
                   width: 2,
@@ -1265,7 +1291,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               ),
               errorStyle: GoogleFonts.plusJakartaSans(
                 color: const Color(0xFFEF4444),
-                fontSize: 12,
+                fontSize: 11,
               ),
             ),
             items: items
@@ -1275,8 +1301,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     child: Text(
                       e,
                       style: GoogleFonts.plusJakartaSans(
-                        color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                        fontSize: 15,
+                        color: context.textPrimary,
+                        fontSize: 14,
                       ),
                     ),
                   ),
@@ -1299,8 +1325,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     String Function(String)? itemLabel,
     bool required = false,
   }) {
+
+    // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF03045E);
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1310,18 +1338,18 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             Text(
               label,
               style: GoogleFonts.plusJakartaSans(
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                fontSize: 14,
+                color: context.textPrimary,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
             ),
             if (required) ...[
-              const SizedBox(width: 6),
+              const SizedBox(width: 4),
               AnimatedContainer(
                 duration: const Duration(milliseconds: 300),
-                width: 6,
-                height: 6,
+                width: 5,
+                height: 5,
                 decoration: const BoxDecoration(
                   color: Color(0xFFEF4444),
                   shape: BoxShape.circle,
@@ -1330,7 +1358,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             ],
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         MouseRegion(
           cursor: items.isEmpty
               ? SystemMouseCursors.basic
@@ -1350,34 +1378,37 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             },
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 14,
+                top: 8,
+                bottom: 8,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    isDark ? const Color(0xFF2A2A3E) : Colors.white,
-                    isDark ? const Color(0xFF1E1E32) : const Color(0xFFFAFAFE),
+                    context.colorScheme.surface,
+                    context.theme.scaffoldBackgroundColor,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: isDark
-                      ? const Color(0xFF3A3A4E)
-                      : const Color(0xFFE5E7EB),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: isDark
+                    color: Theme.of(context).brightness == Brightness.dark
                         ? Colors.black.withOpacity(0.2)
-                        : primaryColor.withOpacity(0.06),
-                    blurRadius: 12,
-                    offset: const Offset(0, 4),
+                        : context.primaryColor.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                   BoxShadow(
                     color: primaryColor.withOpacity(0.04),
-                    blurRadius: 8,
+                    blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -1386,7 +1417,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 children: [
                   if (icon != null) ...[
                     Container(
-                      padding: const EdgeInsets.all(8),
+                      padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
                           colors: [
@@ -1394,11 +1425,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             primaryColor.withOpacity(0.06),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(10),
+                        borderRadius: BorderRadius.circular(8),
                       ),
-                      child: Icon(icon, color: primaryColor, size: 20),
+                      child: Icon(icon, color: primaryColor, size: 18),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 10),
                   ],
                   Expanded(
                     child: Text(
@@ -1411,9 +1442,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             : (isDark
                                   ? const Color(0xFF6B6B80)
                                   : const Color(0xFF9CA3AF)),
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: (value != null && value.isNotEmpty)
-                            ? FontWeight.w600
+                            ? FontWeight.w500
                             : FontWeight.w400,
                       ),
                       maxLines: 1,
@@ -1424,15 +1455,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     duration: const Duration(milliseconds: 300),
                     turns: 0.0,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: primaryColor.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: primaryColor,
-                        size: 22,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -1442,27 +1473,27 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           ),
         ),
         if (items.isEmpty) ...[
-          const SizedBox(height: 6),
+          const SizedBox(height: 4),
           Container(
-            padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
             decoration: BoxDecoration(
               color: const Color(0xFFF3F4F6),
-              borderRadius: BorderRadius.circular(8),
+              borderRadius: BorderRadius.circular(6),
             ),
             child: Row(
               mainAxisSize: MainAxisSize.min,
               children: [
                 Icon(
                   Icons.info_outline_rounded,
-                  size: 14,
+                  size: 12,
                   color: const Color(0xFF9CA3AF),
                 ),
-                const SizedBox(width: 6),
+                const SizedBox(width: 4),
                 Text(
                   'No options available',
                   style: GoogleFonts.plusJakartaSans(
                     color: const Color(0xFF9CA3AF),
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w400,
                   ),
                 ),
@@ -1493,7 +1524,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
       backgroundColor: Colors.transparent,
       enableDrag: true,
       shape: const RoundedRectangleBorder(
-        borderRadius: BorderRadius.vertical(top: Radius.circular(28)),
+        borderRadius: BorderRadius.vertical(top: Radius.circular(24)),
       ),
       builder: (context) {
         return StatefulBuilder(
@@ -1514,7 +1545,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       : [Colors.white, const Color(0xFFF8F9FF)],
                 ),
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(28),
+                  top: Radius.circular(24),
                 ),
                 boxShadow: [
                   BoxShadow(
@@ -1526,10 +1557,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               ),
               child: Column(
                 children: [
-                  const SizedBox(height: 12),
+                  const SizedBox(height: 10),
                   Container(
-                    width: 48,
-                    height: 4,
+                    width: 40,
+                    height: 3.5,
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -1541,9 +1572,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       borderRadius: BorderRadius.circular(2),
                     ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 24),
+                    padding: const EdgeInsets.symmetric(horizontal: 20),
                     child: Row(
                       mainAxisAlignment: MainAxisAlignment.spaceBetween,
                       children: [
@@ -1553,15 +1584,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             color: isDark
                                 ? Colors.white
                                 : const Color(0xFF1A1A2E),
-                            fontSize: 20,
+                            fontSize: 18,
                             fontWeight: FontWeight.w700,
                             letterSpacing: -0.5,
                           ),
                         ),
                         Container(
                           padding: const EdgeInsets.symmetric(
-                            horizontal: 14,
-                            vertical: 6,
+                            horizontal: 12,
+                            vertical: 4,
                           ),
                           decoration: BoxDecoration(
                             gradient: LinearGradient(
@@ -1570,13 +1601,13 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                 primaryColor.withOpacity(0.05),
                               ],
                             ),
-                            borderRadius: BorderRadius.circular(20),
+                            borderRadius: BorderRadius.circular(16),
                           ),
                           child: Text(
                             '${filteredItems.length}',
                             style: GoogleFonts.plusJakartaSans(
                               color: primaryColor,
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
@@ -1584,15 +1615,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       ],
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Padding(
-                    padding: const EdgeInsets.symmetric(horizontal: 20),
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
                     child: Container(
                       decoration: BoxDecoration(
                         color: isDark
                             ? const Color(0xFF2A2A3E)
                             : const Color(0xFFF1F4F9),
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         border: Border.all(
                           color: isDark
                               ? const Color(0xFF3A3A4E)
@@ -1602,13 +1633,13 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       ),
                       child: Row(
                         children: [
-                          const SizedBox(width: 16),
+                          const SizedBox(width: 14),
                           Icon(
                             Icons.search_rounded,
                             color: primaryColor,
-                            size: 22,
+                            size: 20,
                           ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                           Expanded(
                             child: TextField(
                               controller: searchController,
@@ -1618,18 +1649,18 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                 color: isDark
                                     ? Colors.white
                                     : const Color(0xFF1A1A2E),
-                                fontSize: 15,
+                                fontSize: 14,
                               ),
                               decoration: InputDecoration(
                                 hintText: 'Search options...',
                                 hintStyle: GoogleFonts.plusJakartaSans(
                                   color: const Color(0xFF9CA3AF),
-                                  fontSize: 15,
+                                  fontSize: 14,
                                   fontWeight: FontWeight.w400,
                                 ),
                                 border: InputBorder.none,
                                 contentPadding: const EdgeInsets.symmetric(
-                                  vertical: 14,
+                                  vertical: 12,
                                 ),
                               ),
                             ),
@@ -1643,17 +1674,17 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                               icon: Icon(
                                 Icons.close_rounded,
                                 color: const Color(0xFF9CA3AF),
-                                size: 20,
+                                size: 18,
                               ),
                               padding: EdgeInsets.zero,
                               constraints: const BoxConstraints(),
                             ),
-                          const SizedBox(width: 12),
+                          const SizedBox(width: 10),
                         ],
                       ),
                     ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Expanded(
                     child: filteredItems.isEmpty
                         ? Center(
@@ -1663,23 +1694,23 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                 Icon(
                                   Icons.search_off_rounded,
                                   color: const Color(0xFF9CA3AF),
-                                  size: 48,
+                                  size: 40,
                                 ),
-                                const SizedBox(height: 12),
+                                const SizedBox(height: 10),
                                 Text(
                                   'No results found',
                                   style: GoogleFonts.plusJakartaSans(
                                     color: const Color(0xFF9CA3AF),
-                                    fontSize: 16,
+                                    fontSize: 15,
                                     fontWeight: FontWeight.w500,
                                   ),
                                 ),
-                                const SizedBox(height: 4),
+                                const SizedBox(height: 2),
                                 Text(
                                   'Try adjusting your search',
                                   style: GoogleFonts.plusJakartaSans(
                                     color: const Color(0xFFB0B0B0),
-                                    fontSize: 13,
+                                    fontSize: 12,
                                   ),
                                 ),
                               ],
@@ -1687,12 +1718,12 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           )
                         : ListView.separated(
                             padding: const EdgeInsets.symmetric(
-                              horizontal: 20,
-                              vertical: 8,
+                              horizontal: 16,
+                              vertical: 6,
                             ),
                             itemCount: filteredItems.length,
                             separatorBuilder: (context, index) => Container(
-                              margin: const EdgeInsets.symmetric(horizontal: 8),
+                              margin: const EdgeInsets.symmetric(horizontal: 6),
                               height: 1,
                               color: isDark
                                   ? const Color(0xFF2A2A3E)
@@ -1709,8 +1740,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                 },
                                 child: Container(
                                   padding: const EdgeInsets.symmetric(
-                                    horizontal: 16,
-                                    vertical: 14,
+                                    horizontal: 14,
+                                    vertical: 12,
                                   ),
                                   decoration: BoxDecoration(
                                     color: isSelected
@@ -1718,7 +1749,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                               ? primaryColor.withOpacity(0.15)
                                               : primaryColor.withOpacity(0.08))
                                         : Colors.transparent,
-                                    borderRadius: BorderRadius.circular(14),
+                                    borderRadius: BorderRadius.circular(12),
                                     border: isSelected
                                         ? Border.all(
                                             color: primaryColor.withOpacity(
@@ -1731,8 +1762,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                   child: Row(
                                     children: [
                                       Container(
-                                        width: 26,
-                                        height: 26,
+                                        width: 22,
+                                        height: 22,
                                         decoration: BoxDecoration(
                                           shape: BoxShape.circle,
                                           gradient: isSelected
@@ -1765,11 +1796,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                             ? const Icon(
                                                 Icons.check_rounded,
                                                 color: Colors.white,
-                                                size: 16,
+                                                size: 14,
                                               )
                                             : null,
                                       ),
-                                      const SizedBox(width: 14),
+                                      const SizedBox(width: 12),
                                       Expanded(
                                         child: Text(
                                           itemLabel != null
@@ -1783,7 +1814,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                                       : const Color(
                                                           0xFF1A1A2E,
                                                         )),
-                                            fontSize: 15,
+                                            fontSize: 14,
                                             fontWeight: isSelected
                                                 ? FontWeight.w700
                                                 : FontWeight.w500,
@@ -1793,8 +1824,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                       if (isSelected)
                                         Container(
                                           padding: const EdgeInsets.symmetric(
-                                            horizontal: 12,
-                                            vertical: 4,
+                                            horizontal: 10,
+                                            vertical: 3,
                                           ),
                                           decoration: BoxDecoration(
                                             gradient: LinearGradient(
@@ -1804,14 +1835,14 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                               ],
                                             ),
                                             borderRadius: BorderRadius.circular(
-                                              20,
+                                              16,
                                             ),
                                           ),
                                           child: Text(
                                             'SELECTED',
                                             style: GoogleFonts.plusJakartaSans(
                                               color: primaryColor,
-                                              fontSize: 10,
+                                              fontSize: 9,
                                               fontWeight: FontWeight.w700,
                                               letterSpacing: 0.5,
                                             ),
@@ -1824,7 +1855,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             },
                           ),
                   ),
-                  const SizedBox(height: 20),
+                  const SizedBox(height: 10),
                 ],
               ),
             );
@@ -1836,8 +1867,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== UPDATED MODERN DATE PICKER ====================
   Widget _buildModernDatePicker() {
+
+    // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF03045E);
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -1847,53 +1880,52 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             Text(
               'Started Date',
               style: GoogleFonts.plusJakartaSans(
-                color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-                fontSize: 14,
+                color: context.textPrimary,
+                fontSize: 13,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
               ),
             ),
           ],
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         MouseRegion(
           cursor: SystemMouseCursors.click,
           child: GestureDetector(
             onTap: _pickDate,
             child: AnimatedContainer(
               duration: const Duration(milliseconds: 200),
-              padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+              padding: const EdgeInsets.only(
+                left: 16,
+                right: 14,
+                top: 8,
+                bottom: 8,
+              ),
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   begin: Alignment.topLeft,
                   end: Alignment.bottomRight,
                   colors: [
-                    isDark ? const Color(0xFF2A2A3E) : Colors.white,
-                    isDark ? const Color(0xFF1E1E32) : const Color(0xFFFAFAFE),
+                    context.colorScheme.surface,
+                    context.theme.scaffoldBackgroundColor,
                   ],
                 ),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(14),
                 border: Border.all(
-                  color: _selectedStartedDate != null
-                      ? primaryColor.withOpacity(0.3)
-                      : (isDark
-                            ? const Color(0xFF3A3A4E)
-                            : const Color(0xFFE5E7EB)),
+                  color: context.surfaceBorder,
                   width: 1.5,
                 ),
                 boxShadow: [
                   BoxShadow(
-                    color: _selectedStartedDate != null
-                        ? primaryColor.withOpacity(0.15)
-                        : (isDark
-                              ? Colors.black.withOpacity(0.2)
-                              : primaryColor.withOpacity(0.06)),
-                    blurRadius: _selectedStartedDate != null ? 20 : 12,
-                    offset: const Offset(0, 4),
+                    color: Theme.of(context).brightness == Brightness.dark
+                        ? Colors.black.withOpacity(0.2)
+                        : context.primaryColor.withOpacity(0.06),
+                    blurRadius: 10,
+                    offset: const Offset(0, 3),
                   ),
                   BoxShadow(
                     color: primaryColor.withOpacity(0.04),
-                    blurRadius: 8,
+                    blurRadius: 6,
                     offset: const Offset(0, 2),
                   ),
                 ],
@@ -1901,7 +1933,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(8),
+                    padding: const EdgeInsets.all(6),
                     decoration: BoxDecoration(
                       gradient: LinearGradient(
                         colors: [
@@ -1909,15 +1941,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           primaryColor.withOpacity(0.06),
                         ],
                       ),
-                      borderRadius: BorderRadius.circular(10),
+                      borderRadius: BorderRadius.circular(8),
                     ),
                     child: Icon(
                       Icons.calendar_today_outlined,
                       color: primaryColor,
-                      size: 20,
+                      size: 18,
                     ),
                   ),
-                  const SizedBox(width: 14),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
                       _startedDateController.text.isNotEmpty
@@ -1929,9 +1961,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             : (isDark
                                   ? const Color(0xFF6B6B80)
                                   : const Color(0xFF9CA3AF)),
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: _startedDateController.text.isNotEmpty
-                            ? FontWeight.w600
+                            ? FontWeight.w500
                             : FontWeight.w400,
                       ),
                     ),
@@ -1940,15 +1972,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     duration: const Duration(milliseconds: 300),
                     turns: 0.0,
                     child: Container(
-                      padding: const EdgeInsets.all(4),
+                      padding: const EdgeInsets.all(3),
                       decoration: BoxDecoration(
                         color: primaryColor.withOpacity(0.08),
-                        borderRadius: BorderRadius.circular(8),
+                        borderRadius: BorderRadius.circular(6),
                       ),
                       child: Icon(
                         Icons.keyboard_arrow_down_rounded,
                         color: primaryColor,
-                        size: 22,
+                        size: 20,
                       ),
                     ),
                   ),
@@ -1963,9 +1995,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== LOCATION CARD ====================
   Widget _buildLocationCard() {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         gradient: LinearGradient(
           begin: Alignment.topLeft,
@@ -1975,7 +2009,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             primaryColor.withOpacity(0.02),
           ],
         ),
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         border: Border.all(color: primaryColor.withOpacity(0.1), width: 1),
       ),
       child: Column(
@@ -2004,8 +2038,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           }),
               icon: _isCapturingLocation
                   ? SizedBox(
-                      width: 22,
-                      height: 22,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
                         color: Colors.white,
@@ -2015,7 +2049,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       _capturedLocation != null
                           ? Icons.map_rounded
                           : Icons.my_location_rounded,
-                      size: 22,
+                      size: 20,
                     ),
               label: Text(
                 _isCapturingLocation
@@ -2025,7 +2059,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           : 'Get Current Location'),
                 style: GoogleFonts.plusJakartaSans(
                   fontWeight: FontWeight.w600,
-                  fontSize: 15,
+                  fontSize: 14,
                 ),
               ),
               style: ElevatedButton.styleFrom(
@@ -2033,9 +2067,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     ? const Color(0xFF10B981)
                     : primaryColor,
                 foregroundColor: Colors.white,
-                padding: const EdgeInsets.symmetric(vertical: 16),
+                padding: const EdgeInsets.symmetric(vertical: 14),
                 shape: RoundedRectangleBorder(
-                  borderRadius: BorderRadius.circular(14),
+                  borderRadius: BorderRadius.circular(12),
                 ),
                 elevation: 0,
                 shadowColor: _capturedLocation != null
@@ -2045,12 +2079,12 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             ),
           ),
           if (_capturedLocation != null) ...[
-            const SizedBox(height: 16),
+            const SizedBox(height: 12),
             Container(
-              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
               decoration: BoxDecoration(
                 color: Colors.white,
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(10),
                 border: Border.all(
                   color: const Color(0xFF10B981).withOpacity(0.3),
                   width: 1.5,
@@ -2059,24 +2093,24 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               child: Row(
                 children: [
                   Container(
-                    padding: const EdgeInsets.all(6),
+                    padding: const EdgeInsets.all(5),
                     decoration: BoxDecoration(
                       color: const Color(0xFF10B981).withOpacity(0.1),
-                      borderRadius: BorderRadius.circular(8),
+                      borderRadius: BorderRadius.circular(6),
                     ),
                     child: const Icon(
                       Icons.check_circle_rounded,
                       color: Color(0xFF10B981),
-                      size: 18,
+                      size: 16,
                     ),
                   ),
-                  const SizedBox(width: 12),
+                  const SizedBox(width: 10),
                   Expanded(
                     child: Text(
-                      'Location successfully locked at ${_capturedLocation!.coordinates[1].toStringAsFixed(4)}° N, ${_capturedLocation!.coordinates[0].toStringAsFixed(4)}° E',
+                      'Location locked at ${_capturedLocation!.coordinates[1].toStringAsFixed(4)}° N, ${_capturedLocation!.coordinates[0].toStringAsFixed(4)}° E',
                       style: GoogleFonts.plusJakartaSans(
                         color: const Color(0xFF1A1A2E),
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w500,
                       ),
                     ),
@@ -2092,8 +2126,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== PAYMENT SETTINGS ====================
   Widget _buildPaymentSettings() {
+
+    // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
-    final primaryColor = const Color(0xFF03045E);
+    final primaryColor = context.primaryColor;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -2103,17 +2139,17 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           controller: _upiIdController,
           hint: 'e.g. owner@upi',
         ),
-        const SizedBox(height: 20),
+        const SizedBox(height: 10),
         Text(
           'Payment QR Code Image',
           style: GoogleFonts.plusJakartaSans(
-            color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-            fontSize: 14,
+            color: context.textPrimary,
+            fontSize: 13,
             fontWeight: FontWeight.w600,
             letterSpacing: 0.3,
           ),
         ),
-        const SizedBox(height: 10),
+        const SizedBox(height: 8),
         GestureDetector(
           onTap: () async {
             try {
@@ -2131,13 +2167,13 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             }
           },
           child: Container(
-            height: 160,
+            height: 140,
             width: double.infinity,
             decoration: BoxDecoration(
               color: isDark
                   ? primaryColor.withOpacity(0.1)
                   : Colors.transparent,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark
                     ? const Color(0xFF3A3A4E)
@@ -2150,7 +2186,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     fit: StackFit.expand,
                     children: [
                       ClipRRect(
-                        borderRadius: BorderRadius.circular(14),
+                        borderRadius: BorderRadius.circular(12),
                         child: _qrImageFile != null
                             ? FutureBuilder<Uint8List>(
                                 future: _qrImageFile!.readAsBytes(),
@@ -2172,17 +2208,25 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                               ),
                       ),
                       Positioned(
-                        top: 8,
-                        right: 8,
+                        top: 6,
+                        right: 6,
                         child: GestureDetector(
                           onTap: () async {
                             if (_existingQrImage != null) {
                               try {
-                                await ref.read(pgListingRepositoryProvider).deleteFile(_existingQrImage!);
-                                _showSnackBar('QR code image deleted successfully', const Color(0xFF10B981));
+                                await ref
+                                    .read(pgListingRepositoryProvider)
+                                    .deleteFile(_existingQrImage!);
+                                _showSnackBar(
+                                  'QR code image deleted successfully',
+                                  const Color(0xFF10B981),
+                                );
                               } catch (e) {
-                                _showSnackBar('Failed to delete QR image: $e', const Color(0xFFEF4444));
-                                return; // Stop if deletion fails
+                                _showSnackBar(
+                                  'Failed to delete QR image: $e',
+                                  const Color(0xFFEF4444),
+                                );
+                                return;
                               }
                             }
                             setState(() {
@@ -2191,7 +2235,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             });
                           },
                           child: Container(
-                            padding: const EdgeInsets.all(6),
+                            padding: const EdgeInsets.all(5),
                             decoration: const BoxDecoration(
                               color: Colors.white,
                               shape: BoxShape.circle,
@@ -2199,7 +2243,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             child: const Icon(
                               Icons.close,
                               color: Color(0xFFEF4444),
-                              size: 16,
+                              size: 14,
                             ),
                           ),
                         ),
@@ -2210,7 +2254,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(12),
+                        padding: const EdgeInsets.all(10),
                         decoration: BoxDecoration(
                           color: primaryColor.withOpacity(0.1),
                           shape: BoxShape.circle,
@@ -2220,17 +2264,17 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           color: isDark
                               ? const Color(0xFFA5B4FC)
                               : primaryColor,
-                          size: 24,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(height: 10),
+                      const SizedBox(height: 8),
                       Text(
                         'ADD IMAGE',
                         style: GoogleFonts.plusJakartaSans(
                           color: isDark
                               ? const Color(0xFFA5B4FC)
                               : primaryColor,
-                          fontSize: 13,
+                          fontSize: 12,
                           fontWeight: FontWeight.w700,
                         ),
                       ),
@@ -2238,12 +2282,12 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   ),
           ),
         ),
-        const SizedBox(height: 16),
+        const SizedBox(height: 12),
         Text(
           '* Upload a high-quality payment QR scanner image. JPEG, PNG, WEBP files under 5MB are supported.',
           style: GoogleFonts.plusJakartaSans(
             color: const Color(0xFF6B7280),
-            fontSize: 12,
+            fontSize: 11,
           ),
         ),
       ],
@@ -2252,8 +2296,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== FACILITIES GRID ====================
   Widget _buildFacilitiesGrid() {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
+
     final searchQuery = _facilitySearchController.text.toLowerCase();
     final filteredFacilities = _facilities.where((fac) {
       return fac['name']!.toLowerCase().contains(searchQuery);
@@ -2264,8 +2310,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
       children: [
         if (_selectedFacilityIds.isNotEmpty) ...[
           Wrap(
-            spacing: 8,
-            runSpacing: 8,
+            spacing: 6,
+            runSpacing: 6,
             children: _selectedFacilityIds.map((id) {
               final fac = _facilities.firstWhere(
                 (f) => f['id'] == id,
@@ -2273,14 +2319,14 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               );
               return Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 8,
+                  horizontal: 10,
+                  vertical: 6,
                 ),
                 decoration: BoxDecoration(
                   color: isDark
                       ? primaryColor.withOpacity(0.4)
                       : primaryColor.withOpacity(0.1),
-                  borderRadius: BorderRadius.circular(20),
+                  borderRadius: BorderRadius.circular(16),
                   border: Border.all(color: primaryColor.withOpacity(0.3)),
                 ),
                 child: Row(
@@ -2290,11 +2336,11 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       fac['name']!,
                       style: GoogleFonts.plusJakartaSans(
                         color: isDark ? const Color(0xFFA5B4FC) : primaryColor,
-                        fontSize: 13,
+                        fontSize: 12,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4),
                     GestureDetector(
                       onTap: () {
                         setState(() {
@@ -2303,7 +2349,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       },
                       child: Icon(
                         Icons.close_rounded,
-                        size: 14,
+                        size: 12,
                         color: isDark ? const Color(0xFFA5B4FC) : primaryColor,
                       ),
                     ),
@@ -2312,15 +2358,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               );
             }).toList(),
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
         ],
 
         Container(
           decoration: BoxDecoration(
-            color: isDark ? const Color(0xFF2A2A3E) : Colors.white,
-            borderRadius: BorderRadius.circular(16),
+            color: context.colorScheme.surface,
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(
-              color: isDark ? const Color(0xFF3A3A4E) : const Color(0xFFE5E7EB),
+              color: context.surfaceBorder,
               width: 1.5,
             ),
           ),
@@ -2333,8 +2379,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             },
             onChanged: (value) => setState(() {}),
             style: GoogleFonts.plusJakartaSans(
-              color: isDark ? Colors.white : const Color(0xFF1A1A2E),
-              fontSize: 15,
+              color: context.textPrimary,
+              fontSize: 14,
             ),
             decoration: InputDecoration(
               suffixIcon: IconButton(
@@ -2345,6 +2391,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   color: isDark
                       ? const Color(0xFF9CA3AF)
                       : const Color(0xFF6B7280),
+                  size: 20,
                 ),
                 onPressed: () {
                   setState(() {
@@ -2355,32 +2402,32 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               hintText: 'Click or type to search facilities...',
               hintStyle: GoogleFonts.plusJakartaSans(
                 color: const Color(0xFF9CA3AF),
-                fontSize: 14,
+                fontSize: 13,
               ),
               border: InputBorder.none,
               contentPadding: const EdgeInsets.symmetric(
-                horizontal: 16,
-                vertical: 14,
+                horizontal: 14,
+                vertical: 12,
               ),
             ),
           ),
         ),
 
-        const SizedBox(height: 12),
+        const SizedBox(height: 8),
         Text(
           '${_selectedFacilityIds.length} facilities selected',
           style: GoogleFonts.plusJakartaSans(
             color: const Color(0xFF6B7280),
-            fontSize: 13,
+            fontSize: 12,
           ),
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
 
         if (_isFacilityListExpanded)
           Container(
             decoration: BoxDecoration(
               color: isDark ? const Color(0xFF1A1A2E) : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isDark
                     ? const Color(0xFF2A2A3E)
@@ -2388,7 +2435,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               ),
             ),
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 250),
+              constraints: const BoxConstraints(maxHeight: 200),
               child: ListView.builder(
                 shrinkWrap: true,
                 itemCount: filteredFacilities.length,
@@ -2415,7 +2462,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                           color: isDark
                               ? Colors.white
                               : const Color(0xFF1A1A2E),
-                          fontSize: 14,
+                          fontSize: 13,
                           fontWeight: isSelected
                               ? FontWeight.w600
                               : FontWeight.w500,
@@ -2432,8 +2479,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       controlAffinity: ListTileControlAffinity.leading,
                       dense: true,
                       contentPadding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 4,
+                        horizontal: 10,
+                        vertical: 2,
                       ),
                       onChanged: (val) {
                         setState(() {
@@ -2456,7 +2503,9 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== IMAGE UPLOAD SECTION ====================
   Widget _buildImageUploadSection() {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
@@ -2465,11 +2514,14 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           physics: const NeverScrollableScrollPhysics(),
           gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
             crossAxisCount: 3,
-            crossAxisSpacing: 12,
-            mainAxisSpacing: 12,
+            crossAxisSpacing: 10,
+            mainAxisSpacing: 10,
             childAspectRatio: 1.0,
           ),
-          itemCount: _existingImages.length + _selectedImages.length + (_existingImages.length + _selectedImages.length < 10 ? 1 : 0),
+          itemCount:
+              _existingImages.length +
+              _selectedImages.length +
+              (_existingImages.length + _selectedImages.length < 10 ? 1 : 0),
           itemBuilder: (context, index) {
             if (index < _existingImages.length) {
               String img = _existingImages[index];
@@ -2488,8 +2540,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             color: const Color(0xFFF9FAFB),
                             child: Center(
                               child: SizedBox(
-                                width: 24,
-                                height: 24,
+                                width: 20,
+                                height: 20,
                                 child: CircularProgressIndicator(
                                   strokeWidth: 2,
                                   color: primaryColor,
@@ -2523,7 +2575,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   });
                 },
               );
-            } else if (index < _existingImages.length + _selectedImages.length) {
+            } else if (index <
+                _existingImages.length + _selectedImages.length) {
               int selectedIdx = index - _existingImages.length;
               XFile file = _selectedImages[selectedIdx];
               return _buildModernImageTile(
@@ -2537,8 +2590,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       color: const Color(0xFFF9FAFB),
                       child: const Center(
                         child: SizedBox(
-                          width: 24,
-                          height: 24,
+                          width: 20,
+                          height: 20,
                           child: CircularProgressIndicator(
                             strokeWidth: 2,
                             color: Color(0xFF03045E),
@@ -2578,7 +2631,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 child: Container(
                   decoration: BoxDecoration(
                     color: const Color(0xFFF9FAFB),
-                    borderRadius: BorderRadius.circular(16),
+                    borderRadius: BorderRadius.circular(14),
                     border: Border.all(
                       color: const Color(0xFFE5E7EB),
                       width: 2,
@@ -2589,7 +2642,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                     mainAxisAlignment: MainAxisAlignment.center,
                     children: [
                       Container(
-                        padding: const EdgeInsets.all(8),
+                        padding: const EdgeInsets.all(6),
                         decoration: BoxDecoration(
                           gradient: LinearGradient(
                             colors: [
@@ -2597,27 +2650,27 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                               primaryColor.withOpacity(0.7),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(10),
+                          borderRadius: BorderRadius.circular(8),
                           boxShadow: [
                             BoxShadow(
                               color: primaryColor.withOpacity(0.3),
-                              blurRadius: 12,
-                              offset: const Offset(0, 4),
+                              blurRadius: 10,
+                              offset: const Offset(0, 3),
                             ),
                           ],
                         ),
                         child: const Icon(
                           Icons.add_rounded,
                           color: Colors.white,
-                          size: 24,
+                          size: 20,
                         ),
                       ),
-                      const SizedBox(height: 6),
+                      const SizedBox(height: 4),
                       Text(
                         'Add Photo',
                         style: GoogleFonts.plusJakartaSans(
                           color: const Color(0xFF6B7280),
-                          fontSize: 11,
+                          fontSize: 10,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
@@ -2628,27 +2681,27 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             }
           },
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
             color: const Color(0xFFF9FAFB),
-            borderRadius: BorderRadius.circular(12),
+            borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
             children: [
               Icon(
                 Icons.info_outline_rounded,
                 color: const Color(0xFF6B7280),
-                size: 16,
+                size: 14,
               ),
-              const SizedBox(width: 10),
+              const SizedBox(width: 8),
               Expanded(
                 child: Text(
                   'JPEG, PNG, WEBP • Max 10 images • Recommended: 600x600',
                   style: GoogleFonts.plusJakartaSans(
                     color: const Color(0xFF6B7280),
-                    fontSize: 12,
+                    fontSize: 11,
                   ),
                 ),
               ),
@@ -2669,12 +2722,12 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
       children: [
         Container(
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(16),
+            borderRadius: BorderRadius.circular(14),
             border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
             boxShadow: [
               BoxShadow(
                 color: Colors.black.withOpacity(0.04),
-                blurRadius: 8,
+                blurRadius: 6,
                 offset: const Offset(0, 2),
               ),
             ],
@@ -2689,8 +2742,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   color: Colors.white.withOpacity(0.7),
                   child: const Center(
                     child: SizedBox(
-                      width: 24,
-                      height: 24,
+                      width: 20,
+                      height: 20,
                       child: CircularProgressIndicator(
                         strokeWidth: 2.5,
                         color: Color(0xFF03045E),
@@ -2702,8 +2755,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           ),
         ),
         Positioned(
-          top: 8,
-          right: 8,
+          top: 6,
+          right: 6,
           child: Container(
             decoration: BoxDecoration(
               color: Colors.white,
@@ -2711,7 +2764,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               boxShadow: [
                 BoxShadow(
                   color: Colors.black.withOpacity(0.1),
-                  blurRadius: 8,
+                  blurRadius: 6,
                   offset: const Offset(0, 2),
                 ),
               ],
@@ -2720,7 +2773,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               onTap: onDelete,
               customBorder: const CircleBorder(),
               child: Container(
-                padding: const EdgeInsets.all(4),
+                padding: const EdgeInsets.all(3),
                 decoration: const BoxDecoration(
                   color: Color(0xFFEF4444),
                   shape: BoxShape.circle,
@@ -2728,7 +2781,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 child: const Icon(
                   Icons.close_rounded,
                   color: Colors.white,
-                  size: 14,
+                  size: 12,
                 ),
               ),
             ),
@@ -2740,46 +2793,48 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== BOTTOM NAVIGATION ====================
   Widget _buildModernBottomNav() {
-    final primaryColor = const Color(0xFF03045E);
+    // ignore: unused_local_variable
+    final isDark = Theme.of(context).brightness == Brightness.dark;
+    final primaryColor = context.primaryColor;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
         boxShadow: [
           BoxShadow(
             color: primaryColor.withOpacity(0.04),
-            blurRadius: 20,
+            blurRadius: 16,
             offset: const Offset(0, -4),
           ),
           BoxShadow(
             color: primaryColor.withOpacity(0.02),
-            blurRadius: 8,
+            blurRadius: 6,
             offset: const Offset(0, -2),
           ),
         ],
         borderRadius: const BorderRadius.only(
-          topLeft: Radius.circular(24),
-          topRight: Radius.circular(24),
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
         ),
       ),
       child: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.only(bottom: 4),
         child: Row(
           children: [
             Expanded(
               child: TextButton(
-                onPressed: _isSubmitting 
-                    ? null 
+                onPressed: _isSubmitting
+                    ? null
                     : (_currentStep == 0
-                        ? () => Navigator.pop(context)
-                        : _prevStep),
+                          ? () => Navigator.pop(context)
+                          : _prevStep),
                 style: TextButton.styleFrom(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 20,
-                    vertical: 16,
+                    horizontal: 16,
+                    vertical: 14,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                     side: const BorderSide(
                       color: Color(0xFFE5E7EB),
                       width: 1.5,
@@ -2793,16 +2848,16 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       const Icon(
                         Icons.arrow_circle_left_outlined,
                         color: Color(0xFF03045E),
-                        size: 16,
+                        size: 14,
                       ),
-                    if (_currentStep > 0) const SizedBox(width: 6),
+                    if (_currentStep > 0) const SizedBox(width: 4),
                     Text(
                       _currentStep == 0 ? 'Cancel' : 'Back',
                       style: GoogleFonts.plusJakartaSans(
                         color: _currentStep == 0
                             ? const Color(0xFF6B7280)
                             : primaryColor,
-                        fontSize: 15,
+                        fontSize: 14,
                         fontWeight: FontWeight.w600,
                       ),
                     ),
@@ -2810,26 +2865,26 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                 ),
               ),
             ),
-            const SizedBox(width: 16),
+            const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
                 onPressed: _isSubmitting ? null : _nextStep,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 28,
-                    vertical: 16,
+                    horizontal: 24,
+                    vertical: 14,
                   ),
                   shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(14),
+                    borderRadius: BorderRadius.circular(12),
                   ),
                   elevation: 0,
                   shadowColor: primaryColor.withOpacity(0.3),
                 ),
                 child: _isSubmitting
                     ? const SizedBox(
-                        width: 24,
-                        height: 24,
+                        width: 20,
+                        height: 20,
                         child: CircularProgressIndicator(
                           color: Colors.white,
                           strokeWidth: 2.5,
@@ -2846,16 +2901,16 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                                       : 'Create'),
                             style: GoogleFonts.plusJakartaSans(
                               color: Colors.white,
-                              fontSize: 15,
+                              fontSize: 14,
                               fontWeight: FontWeight.w600,
                             ),
                           ),
                           if (_currentStep < _totalSteps - 1) ...[
-                            const SizedBox(width: 8),
+                            const SizedBox(width: 6),
                             const Icon(
                               Icons.arrow_circle_right_outlined,
                               color: Colors.white,
-                              size: 18,
+                              size: 16,
                             ),
                           ],
                         ],

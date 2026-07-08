@@ -12,6 +12,7 @@ import 'package:pgstay/features/enquiries/providers/enquiries_provider.dart';
 import 'package:pgstay/features/enquiries/models/enquiry_model.dart';
 import 'package:pgstay/features/pg_listing/screens/add_pg_screen.dart';
 import 'package:animated_flip_counter/animated_flip_counter.dart';
+import 'package:pgstay/core/providers/theme_provider.dart';
 
 class OwnerDashboardScreen extends ConsumerStatefulWidget {
   const OwnerDashboardScreen({super.key});
@@ -25,7 +26,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   final ScrollController _scrollController = ScrollController();
   final GlobalKey<ScaffoldState> _scaffoldKey = GlobalKey<ScaffoldState>();
 
-  // Quick action items
   final List<QuickAction> _quickActions = [
     QuickAction(
       icon: Icons.add_business_rounded,
@@ -69,19 +69,19 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
 
     return Scaffold(
       key: _scaffoldKey,
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: context.theme.scaffoldBackgroundColor,
       extendBodyBehindAppBar: true,
       appBar: CustomAppBar(
         title: user?.name.split(' ')[0] ?? 'Owner',
         subtitle: 'Welcome back 👋',
         showBackButton: false,
         pinnedSCurve: true,
-        backgroundColor: const Color(0xFFF8FAFC),
+        backgroundColor: context.theme.scaffoldBackgroundColor,
         onLeadingPressed: () => _scaffoldKey.currentState?.openDrawer(),
         actionWidget: Container(
-          padding: const EdgeInsets.all(12),
+          padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: Colors.white.withOpacity(0.15),
+            color: Colors.white.withOpacity(0.2),
             shape: BoxShape.circle,
           ),
           child: Stack(
@@ -90,16 +90,16 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               const Icon(
                 Icons.notifications_outlined,
                 color: Colors.white,
-                size: 22,
+                size: 20,
               ),
               Positioned(
-                right: 2,
-                top: 2,
+                right: 1,
+                top: 1,
                 child: Container(
-                  width: 8,
-                  height: 8,
-                  decoration: const BoxDecoration(
-                    color: Color(0xFFEF4444),
+                  width: 7,
+                  height: 7,
+                  decoration: BoxDecoration(
+                    color: context.errorColor,
                     shape: BoxShape.circle,
                   ),
                 ),
@@ -128,19 +128,19 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             removeTop: true,
             child: CustomScrollView(
               controller: _scrollController,
-              physics: const ClampingScrollPhysics(),
+              physics: const BouncingScrollPhysics(),
               slivers: [
                 SliverToBoxAdapter(
                   child: Padding(
                     padding: EdgeInsets.fromLTRB(
-                      20,
+                      16,
                       0.9 * MediaQuery.of(context).padding.top,
-                      20,
+                      16,
                       0,
                     ),
                     child: Column(
                       children: [
-                        // Property Overview Card
+                        // Property Overview Card - Compact
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 100),
                           child: _buildPremiumOverviewCard(
@@ -151,129 +151,45 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           ),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
-                        // Quick Actions
+                        // Quick Actions - Compact Grid
                         StaggeredFadeIn(
                           delay: const Duration(milliseconds: 150),
-                          child: Container(
-                            padding: const EdgeInsets.symmetric(
-                              horizontal: 8,
-                              vertical: 12,
-                            ),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                                colors: [Colors.white, const Color(0xFFF8FAFC)],
-                              ),
-                              borderRadius: BorderRadius.circular(24),
-                              boxShadow: [
-                                BoxShadow(
-                                  color: Colors.grey.withOpacity(0.08),
-                                  blurRadius: 30,
-                                  offset: const Offset(0, 8),
-                                ),
-                              ],
-                            ),
-                            child: Column(
-                              children: [
-                                Padding(
-                                  padding: const EdgeInsets.fromLTRB(
-                                    18,
-                                    12,
-                                    0,
-                                    18,
-                                  ),
-                                  child: Row(
-                                    children: [
-                                      Container(
-                                        width: 4,
-                                        height: 24,
-                                        decoration: BoxDecoration(
-                                          gradient: const LinearGradient(
-                                            colors: [
-                                              Color.fromRGBO(3, 4, 94, 1.0),
-                                              Color(0xFF303B87),
-                                            ],
-                                          ),
-                                          borderRadius: BorderRadius.circular(
-                                            2,
-                                          ),
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Text(
-                                        'Quick Actions',
-                                        style: GoogleFonts.inter(
-                                          fontSize: 17,
-                                          fontWeight: FontWeight.w700,
-                                          color: const Color(0xFF0F172A),
-                                          letterSpacing: -0.3,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                                Row(
-                                  mainAxisAlignment:
-                                      MainAxisAlignment.spaceAround,
-                                  children: _quickActions.map((action) {
-                                    return _buildModernQuickAction(action);
-                                  }).toList(),
-                                ),
-                              ],
-                            ),
-                          ),
+                          child: _buildCompactQuickActions(),
                         ),
 
-                        const SizedBox(height: 20),
-
-                        // Divider
-                        Container(
-                          height: 1,
-                          decoration: BoxDecoration(
-                            gradient: LinearGradient(
-                              colors: [
-                                Colors.transparent,
-                                Colors.grey.withOpacity(0.15),
-                                Colors.transparent,
-                              ],
-                            ),
-                          ),
-                        ),
-
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // Recent Enquiries
                         StaggeredFadeIn(
-                          delay: const Duration(milliseconds: 250),
+                          delay: const Duration(milliseconds: 200),
                           child: _buildModernEnquiriesSection(
                             recentEnquiries,
                             newEnquiriesCount,
                           ),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // Property Portfolio
                         StaggeredFadeIn(
-                          delay: const Duration(milliseconds: 300),
+                          delay: const Duration(milliseconds: 250),
                           child: _buildModernPropertyPortfolio(pgs),
                         ),
 
-                        const SizedBox(height: 20),
+                        const SizedBox(height: 16),
 
                         // Vacancy Listings
                         StaggeredFadeIn(
-                          delay: const Duration(milliseconds: 350),
+                          delay: const Duration(milliseconds: 300),
                           child: _buildModernVacancySection(
                             vacancyPosts,
                             totalPostsCount,
                           ),
                         ),
 
-                        const SizedBox(height: 100),
+                        const SizedBox(height: 80),
                       ],
                     ),
                   ),
@@ -286,7 +202,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
     );
   }
 
-  // Property Overview Card with Stats in Single Row
+  // Compact Overview Card
   Widget _buildPremiumOverviewCard({
     required int totalPgsCount,
     required int activePostsCount,
@@ -305,7 +221,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           end: Alignment.bottomRight,
           colors: [Colors.white, const Color(0xFFF8FAFF)],
         ),
-        borderRadius: BorderRadius.circular(28),
+        borderRadius: BorderRadius.circular(18),
         boxShadow: [
           BoxShadow(
             color: Color.fromRGBO(3, 4, 94, 1.0).withOpacity(0.08),
@@ -315,7 +231,10 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         ],
         border: Border.all(color: Colors.white.withOpacity(0.5), width: 1),
       ),
-      padding: const EdgeInsets.all(24),
+      padding: const EdgeInsets.symmetric(
+        vertical: 16,
+        horizontal: 8,
+      ), // Reduced from 20,12 to 16,8
       child: Column(
         children: [
           // Header with gradient bar
@@ -331,7 +250,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10), // Reduced from 12 to 10
               Text(
                 'Property Overview',
                 style: GoogleFonts.inter(
@@ -344,8 +263,8 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               const Spacer(),
               Container(
                 padding: const EdgeInsets.symmetric(
-                  horizontal: 12,
-                  vertical: 6,
+                  horizontal: 10, // Reduced from 12 to 10
+                  vertical: 5, // Reduced from 6 to 5
                 ),
                 decoration: BoxDecoration(
                   gradient: LinearGradient(
@@ -366,7 +285,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                         shape: BoxShape.circle,
                       ),
                     ),
-                    const SizedBox(width: 6),
+                    const SizedBox(width: 4), // Reduced from 6 to 4
                     Text(
                       'Active',
                       style: GoogleFonts.inter(
@@ -381,11 +300,10 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             ],
           ),
 
-          const SizedBox(height: 24),
-
+          const SizedBox(height: 18), // Reduced from 24 to 18
           // Occupancy Rate - Premium Design
           Container(
-            padding: const EdgeInsets.all(20),
+            padding: const EdgeInsets.all(14), // Reduced from 20 to 14
             decoration: BoxDecoration(
               color: Colors.white,
               borderRadius: BorderRadius.circular(20),
@@ -409,14 +327,14 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   alignment: Alignment.center,
                   children: [
                     SizedBox(
-                      width: 72,
-                      height: 72,
+                      width: 64, // Reduced from 72 to 64
+                      height: 64, // Reduced from 72 to 64
                       child: CircularProgressIndicator(
                         value: (occupiedBedsCount + emptyBedsCount) > 0
                             ? occupiedBedsCount /
                                   (occupiedBedsCount + emptyBedsCount)
                             : 0,
-                        strokeWidth: 7,
+                        strokeWidth: 6, // Reduced from 7 to 6
                         backgroundColor: const Color(0xFFE8E5F0),
                         valueColor: const AlwaysStoppedAnimation<Color>(
                           Color.fromRGBO(3, 4, 94, 1.0),
@@ -432,7 +350,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           duration: const Duration(milliseconds: 500),
                           suffix: '%',
                           textStyle: GoogleFonts.inter(
-                            fontSize: 16,
+                            fontSize: 14, // Reduced from 16 to 14
                             fontWeight: FontWeight.w800,
                             color: const Color(0xFF0F172A),
                             height: 1.1,
@@ -441,7 +359,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                         Text(
                           'Occupied',
                           style: GoogleFonts.inter(
-                            fontSize: 9,
+                            fontSize: 8, // Reduced from 9 to 8
                             fontWeight: FontWeight.w700,
                             color: const Color(0xFF64748B),
                           ),
@@ -450,7 +368,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     ),
                   ],
                 ),
-                const SizedBox(width: 20),
+                const SizedBox(width: 14), // Reduced from 20 to 14
                 Expanded(
                   child: Column(
                     crossAxisAlignment: CrossAxisAlignment.start,
@@ -463,16 +381,16 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           color: const Color(0xFF0F172A),
                         ),
                       ),
-                      const SizedBox(height: 4),
+                      const SizedBox(height: 3), // Reduced from 4 to 3
                       Text(
                         '${totalPgsCount} properties • ${totalBeds} beds',
                         style: GoogleFonts.inter(
-                          fontSize: 12,
+                          fontSize: 11, // Reduced from 12 to 11
                           fontWeight: FontWeight.w500,
                           color: Color.fromRGBO(64, 64, 96, 1),
                         ),
                       ),
-                      const SizedBox(height: 8),
+                      const SizedBox(height: 6), // Reduced from 8 to 6
                       LinearProgressIndicator(
                         value: occupancyRate / 100,
                         backgroundColor: Color.fromRGBO(
@@ -485,7 +403,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           Color.fromRGBO(3, 4, 94, 1.0),
                         ),
                         borderRadius: BorderRadius.circular(10),
-                        minHeight: 4,
+                        minHeight: 3, // Reduced from 4 to 3
                       ),
                     ],
                   ),
@@ -494,32 +412,34 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             ),
           ),
 
-          const SizedBox(height: 20),
-
+          const SizedBox(height: 14), // Reduced from 20 to 14
           // Stats Grid - Premium 3 Cards
-          Row(
-            children: [
-              _buildPremiumStatCard(
-                label: 'Active',
-                value: activePostsCount,
-                icon: Icons.check_circle_rounded,
-                color: const Color(0xFF059669),
-              ),
-              const SizedBox(width: 10),
-              _buildPremiumStatCard(
-                label: 'Occupied',
-                value: occupiedBedsCount,
-                icon: Icons.bed_rounded,
-                color: const Color(0xFFF59E0B),
-              ),
-              const SizedBox(width: 10),
-              _buildPremiumStatCard(
-                label: 'Available',
-                value: emptyBedsCount,
-                icon: Icons.hotel_rounded,
-                color: const Color(0xFFEF4444),
-              ),
-            ],
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 8),
+            child: Row(
+              children: [
+                _buildPremiumStatCard(
+                  label: 'Active',
+                  value: activePostsCount,
+                  icon: Icons.check_circle_rounded,
+                  color: const Color(0xFF059669),
+                ),
+                const SizedBox(width: 10), // Reduced from 10 to 8
+                _buildPremiumStatCard(
+                  label: 'Occupied',
+                  value: occupiedBedsCount,
+                  icon: Icons.bed_rounded,
+                  color: const Color(0xFFF59E0B),
+                ),
+                const SizedBox(width: 10), // Reduced from 10 to 8
+                _buildPremiumStatCard(
+                  label: 'Available',
+                  value: emptyBedsCount,
+                  icon: Icons.hotel_rounded,
+                  color: const Color(0xFFEF4444),
+                ),
+              ],
+            ),
           ),
         ],
       ),
@@ -534,7 +454,10 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   }) {
     return Expanded(
       child: Container(
-        padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 8),
+        padding: const EdgeInsets.symmetric(
+          vertical: 10,
+          horizontal: 6,
+        ), // Reduced from 14,8 to 10,6
         decoration: BoxDecoration(
           color: Colors.white,
           borderRadius: BorderRadius.circular(16),
@@ -551,19 +474,25 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(8),
+              padding: const EdgeInsets.all(6), // Reduced from 8 to 6
               decoration: BoxDecoration(
                 color: color.withOpacity(0.1),
-                borderRadius: BorderRadius.circular(12),
+                borderRadius: BorderRadius.circular(
+                  10,
+                ), // Reduced from 12 to 10
               ),
-              child: Icon(icon, color: color, size: 18),
+              child: Icon(
+                icon,
+                color: color,
+                size: 16,
+              ), // Reduced from 18 to 16
             ),
-            const SizedBox(height: 6),
+            const SizedBox(height: 4), // Reduced from 6 to 4
             AnimatedFlipCounter(
               value: value,
               duration: const Duration(milliseconds: 500),
               textStyle: GoogleFonts.inter(
-                fontSize: 18,
+                fontSize: 16, // Reduced from 18 to 16
                 fontWeight: FontWeight.w800,
                 color: color,
                 letterSpacing: -0.5,
@@ -572,7 +501,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
             Text(
               label,
               style: GoogleFonts.inter(
-                fontSize: 10,
+                fontSize: 9, // Reduced from 10 to 9
                 fontWeight: FontWeight.w600,
                 color: const Color(0xFF64748B),
               ),
@@ -583,128 +512,55 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
     );
   }
 
-  // Modern Quick Action Button
-  Widget _buildModernQuickAction(QuickAction action) {
-    return GestureDetector(
-      onTap: () => context.push(action.route),
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Container(
-            padding: const EdgeInsets.all(14),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: action.color.withOpacity(0.2),
-                width: 1,
-              ),
-              boxShadow: [BoxShadow(color: action.color.withOpacity(0.15))],
-            ),
-            child: Icon(action.icon, color: action.color, size: 24),
-          ),
-          const SizedBox(height: 6),
-          Text(
-            action.label,
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w600,
-              color: const Color(0xFF475569),
-            ),
-          ),
-        ],
-      ),
-    );
-  }
-
-  // Modern Enquiry Banner
-  Widget _buildModernEnquiryBanner(int count) {
+  // Compact Quick Actions
+  Widget _buildCompactQuickActions() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.symmetric(vertical: 12, horizontal: 8),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-          colors: [
-            const Color(0xFF6366F1),
-            const Color(0xFF8B5CF6),
-            const Color(0xFFA78BFA),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(24),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: const Color(0xFF6366F1).withOpacity(0.3),
-            blurRadius: 30,
-            offset: const Offset(0, 8),
+            color: const Color(0xFF1E293B).withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 4),
           ),
         ],
       ),
       child: Row(
-        children: [
-          Container(
-            padding: const EdgeInsets.all(12),
-            decoration: BoxDecoration(
-              color: Colors.white.withOpacity(0.2),
-              borderRadius: BorderRadius.circular(16),
-              border: Border.all(
-                color: Colors.white.withOpacity(0.3),
-                width: 1,
-              ),
-            ),
-            child: const Icon(
-              Icons.mail_outline_rounded,
-              color: Colors.white,
-              size: 24,
-            ),
-          ),
-          const SizedBox(width: 16),
-          Expanded(
+        mainAxisAlignment: MainAxisAlignment.spaceAround,
+        children: _quickActions.map((action) {
+          return GestureDetector(
+            onTap: () => context.push(action.route),
             child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Text(
-                  'Pending Enquiries',
-                  style: GoogleFonts.inter(
-                    fontSize: 12,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withOpacity(0.8),
+                Container(
+                  padding: const EdgeInsets.all(10),
+                  decoration: BoxDecoration(
+                    gradient: LinearGradient(
+                      colors: [
+                        action.color.withOpacity(0.15),
+                        action.color.withOpacity(0.05),
+                      ],
+                    ),
+                    borderRadius: BorderRadius.circular(12),
                   ),
+                  child: Icon(action.icon, color: action.color, size: 20),
                 ),
+                const SizedBox(height: 4),
                 Text(
-                  '$count enquiries waiting',
+                  action.label,
                   style: GoogleFonts.inter(
-                    fontSize: 18,
-                    fontWeight: FontWeight.w700,
-                    color: Colors.white,
+                    fontSize: 10,
+                    fontWeight: FontWeight.w600,
+                    color: const Color(0xFF475569),
                   ),
                 ),
               ],
             ),
-          ),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.1),
-                  blurRadius: 10,
-                  offset: const Offset(0, 2),
-                ),
-              ],
-            ),
-            child: Text(
-              count > 0 ? 'View All' : 'No new',
-              style: GoogleFonts.inter(
-                fontSize: 12,
-                fontWeight: FontWeight.w700,
-                color: const Color(0xFF6366F1),
-              ),
-            ),
-          ),
-        ],
+          );
+        }).toList(),
       ),
     );
   }
@@ -712,18 +568,17 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   // Modern Enquiries Section
   Widget _buildModernEnquiriesSection(List<EnquiryModel> enquiries, int count) {
     return Container(
-      padding: const EdgeInsets.all(8),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.04),
-            blurRadius: 30,
+            color: const Color(0xFF1E293B).withOpacity(0.04),
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.withOpacity(0.06), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -731,61 +586,78 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           Row(
             children: [
               Container(
-                width: 4,
-                height: 24,
+                width: 3,
+                height: 18,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color.fromRGBO(3, 4, 94, 1.0), Color(0xFF303B87)],
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
                 'Recent Enquiries',
                 style: GoogleFonts.inter(
-                  fontSize: 17,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0F172A),
-                  letterSpacing: -0.3,
                 ),
               ),
+              if (count > 0)
+                Container(
+                  margin: const EdgeInsets.only(left: 8),
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Text(
+                    '$count',
+                    style: GoogleFonts.inter(
+                      fontSize: 10,
+                      fontWeight: FontWeight.w700,
+                      color: Colors.white,
+                    ),
+                  ),
+                ),
               const Spacer(),
               TextButton(
                 onPressed: () => context.push('/owner-enquiries'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   'View All',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (enquiries.isEmpty)
             _buildModernEmptyState(
               icon: Icons.inbox_rounded,
               message: 'No enquiries yet',
             )
           else
-            ...enquiries.map((enquiry) => _buildModernEnquiryItem(enquiry)),
+            ...enquiries.map((enquiry) => _buildCompactEnquiryItem(enquiry)),
         ],
       ),
     );
   }
 
-  // Modern Enquiry Item (Infographic Step Design)
-  Widget _buildModernEnquiryItem(EnquiryModel enquiry) {
+  // Compact Enquiry Item
+  Widget _buildCompactEnquiryItem(EnquiryModel enquiry) {
     final statusColors = {
       'interested': const Color(0xFFF59E0B),
       'visited': const Color(0xFFEF4444),
@@ -812,170 +684,97 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
       days = DateTime.now().difference(dt).inDays;
     } catch (_) {}
 
-    final pgName = enquiry.pg?.name ?? 'Unknown PG';
     final userName = enquiry.user?.name ?? 'Guest';
-    final userPic = enquiry.user?.picture ?? '';
+    final pgName = enquiry.pg?.name ?? 'Unknown PG';
 
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
-      decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 20,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 8),
       child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
-          // border: Border(right: BorderSide(color: statusColor, width: 4)),
-          boxShadow: [
-            BoxShadow(
-              color: statusColor.withOpacity(0.2),
-              blurRadius: 2,
-              offset: Offset(0, 2),
-              spreadRadius: 0.5,
-            ),
-          ],
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(color: statusColor.withOpacity(0.1), width: 1),
         ),
-        child: Stack(
+        child: Row(
           children: [
-            Padding(
-              padding: const EdgeInsets.fromLTRB(20, 16, 16, 16),
-              child: Row(
-                children: [
-                  // Avatar
-                  Container(
-                    width: 48,
-                    height: 48,
-                    decoration: BoxDecoration(
-                      shape: BoxShape.circle,
-                      color: statusColor.withOpacity(0.1),
-                    ),
-                    child: userPic.isNotEmpty
-                        ? ClipOval(
-                            child: Image.network(
-                              userPic,
-                              fit: BoxFit.cover,
-                              errorBuilder: (_, __, ___) =>
-                                  _buildInitials(userName, statusColor),
-                            ),
-                          )
-                        : _buildInitials(userName, statusColor),
+            Container(
+              width: 36,
+              height: 36,
+              decoration: BoxDecoration(
+                shape: BoxShape.circle,
+                color: statusColor.withOpacity(0.1),
+              ),
+              child: Center(
+                child: Text(
+                  userName.isNotEmpty ? userName[0].toUpperCase() : 'U',
+                  style: TextStyle(
+                    fontSize: 14,
+                    fontWeight: FontWeight.w600,
+                    color: statusColor,
                   ),
-
-                  const SizedBox(width: 14),
-
-                  // Content
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        Row(
-                          children: [
-                            Expanded(
-                              child: Text(
-                                userName,
-                                style: const TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Color(0xFF1A1A1A),
-                                  letterSpacing: -0.2,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                            const SizedBox(width: 8),
-                            _buildStatusBadge(statusLabel, statusColor),
-                          ],
-                        ),
-                        const SizedBox(height: 4),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.home_outlined,
-                              size: 14,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Expanded(
-                              child: Text(
-                                pgName,
-                                style: TextStyle(
-                                  fontSize: 12,
-                                  color: Colors.grey.shade600,
-                                  fontWeight: FontWeight.w400,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                            ),
-                          ],
-                        ),
-                        const SizedBox(height: 6),
-                        Row(
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: 13,
-                              color: Colors.grey.shade400,
-                            ),
-                            const SizedBox(width: 4),
-                            Text(
-                              days == 0
-                                  ? 'Today'
-                                  : '$days ${days == 1 ? 'day' : 'days'} ago',
-                              style: TextStyle(
-                                fontSize: 11,
-                                color: Colors.grey.shade400,
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
+                ),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(
+                    userName,
+                    style: GoogleFonts.inter(
+                      fontSize: 13,
+                      fontWeight: FontWeight.w600,
+                      color: const Color(0xFF0F172A),
                     ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                  ),
+                  Text(
+                    pgName,
+                    style: GoogleFonts.inter(
+                      fontSize: 11,
+                      color: const Color(0xFF64748B),
+                    ),
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
                   ),
                 ],
               ),
             ),
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.end,
+              children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 6,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: statusColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
+                  ),
+                  child: Text(
+                    statusLabel,
+                    style: TextStyle(
+                      fontSize: 8,
+                      fontWeight: FontWeight.w700,
+                      color: statusColor,
+                    ),
+                  ),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  days == 0 ? 'Today' : '$days${days == 1 ? 'd' : 'd'}',
+                  style: GoogleFonts.inter(
+                    fontSize: 9,
+                    color: const Color(0xFF94A3B8),
+                  ),
+                ),
+              ],
+            ),
           ],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildInitials(String name, Color color) {
-    return Center(
-      child: Text(
-        name.isNotEmpty ? name[0].toUpperCase() : 'U',
-        style: TextStyle(
-          fontSize: 20,
-          fontWeight: FontWeight.w600,
-          color: color,
-        ),
-      ),
-    );
-  }
-
-  Widget _buildStatusBadge(String label, Color color) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.08),
-        borderRadius: BorderRadius.circular(10),
-      ),
-      child: Text(
-        label,
-        style: TextStyle(
-          fontSize: 10,
-          fontWeight: FontWeight.w600,
-          color: color,
-          letterSpacing: 0.3,
         ),
       ),
     );
@@ -984,18 +783,17 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   // Modern Property Portfolio
   Widget _buildModernPropertyPortfolio(List<PgModel> pgs) {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.04),
-            blurRadius: 30,
+            color: const Color(0xFF1E293B).withOpacity(0.04),
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.withOpacity(0.06), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1003,23 +801,22 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           Row(
             children: [
               Container(
-                width: 4,
-                height: 24,
+                width: 3,
+                height: 18,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color.fromRGBO(3, 4, 94, 1.0), Color(0xFF303B87)],
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
                 'Your Properties',
                 style: GoogleFonts.inter(
-                  fontSize: 17,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0F172A),
-                  letterSpacing: -0.3,
                 ),
               ),
               const Spacer(),
@@ -1027,37 +824,35 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                 onPressed: () => context.push('/my-pgs'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   'Manage',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (pgs.isEmpty)
             _buildModernEmptyState(
               icon: Icons.business_rounded,
               message: 'No properties found',
             )
           else
-            ...pgs.take(3).map((pg) => _buildModernPropertyCard(pg)).toList(),
+            ...pgs.take(3).map((pg) => _buildCompactPropertyCard(pg)).toList(),
         ],
       ),
     );
   }
 
-  // Modern Property Card
-  Widget _buildModernPropertyCard(PgModel pg) {
+  // Compact Property Card
+  Widget _buildCompactPropertyCard(PgModel pg) {
     Color typeColor = const Color(0xFF6366F1);
     String lowerType = pg.pgType.toLowerCase();
     if (lowerType.contains('female') || lowerType.contains('girls')) {
@@ -1074,42 +869,31 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
     return GestureDetector(
       onTap: () => context.push('/owner/pg-details', extra: pg),
       child: Container(
-        margin: const EdgeInsets.only(bottom: 12),
-        padding: const EdgeInsets.all(14),
+        margin: const EdgeInsets.only(bottom: 8),
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topLeft,
-            end: Alignment.bottomRight,
-            colors: [const Color(0xFFF8FAFC), Colors.white],
-          ),
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFFF8FAFC),
+          borderRadius: BorderRadius.circular(12),
           border: Border.all(color: typeColor.withOpacity(0.08), width: 1),
         ),
         child: Row(
           children: [
             Container(
-              width: 44,
-              height: 44,
+              width: 36,
+              height: 36,
               decoration: BoxDecoration(
                 gradient: LinearGradient(
                   colors: [typeColor, typeColor.withOpacity(0.7)],
                 ),
-                borderRadius: BorderRadius.circular(14),
-                boxShadow: [
-                  BoxShadow(
-                    color: typeColor.withOpacity(0.2),
-                    blurRadius: 10,
-                    offset: const Offset(0, 2),
-                  ),
-                ],
+                borderRadius: BorderRadius.circular(10),
               ),
               child: Icon(
                 Icons.apartment_rounded,
                 color: Colors.white,
-                size: 22,
+                size: 18,
               ),
             ),
-            const SizedBox(width: 14),
+            const SizedBox(width: 10),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -1117,7 +901,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   Text(
                     pg.name,
                     style: GoogleFonts.inter(
-                      fontSize: 14,
+                      fontSize: 13,
                       fontWeight: FontWeight.w600,
                       color: const Color(0xFF0F172A),
                     ),
@@ -1128,19 +912,18 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     children: [
                       Icon(
                         Icons.location_on_rounded,
-                        size: 12,
+                        size: 10,
                         color: const Color(0xFF94A3B8),
                       ),
-                      const SizedBox(width: 4),
+                      const SizedBox(width: 2),
                       Text(
                         [
                           pg.address.city,
                           pg.address.state,
                         ].where((e) => e.isNotEmpty).join(', '),
                         style: GoogleFonts.inter(
-                          fontSize: 11,
-                          fontWeight: FontWeight.w500,
-                          color: const Color(0xFF64748B),
+                          fontSize: 9,
+                          color: const Color(0xFF94A3B8),
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -1155,49 +938,29 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
               children: [
                 Container(
                   padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
+                    horizontal: 6,
+                    vertical: 2,
                   ),
                   decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        typeColor.withOpacity(0.1),
-                        typeColor.withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
+                    color: typeColor.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(6),
                   ),
                   child: Text(
                     pg.pgType.isNotEmpty ? pg.pgType : 'N/A',
                     style: GoogleFonts.inter(
-                      fontSize: 10,
+                      fontSize: 8,
                       fontWeight: FontWeight.w700,
                       color: typeColor,
                     ),
                   ),
                 ),
-                const SizedBox(height: 4),
-                Container(
-                  padding: const EdgeInsets.symmetric(
-                    horizontal: 10,
-                    vertical: 4,
-                  ),
-                  decoration: BoxDecoration(
-                    gradient: LinearGradient(
-                      colors: [
-                        const Color(0xFF10B981).withOpacity(0.1),
-                        const Color(0xFF10B981).withOpacity(0.05),
-                      ],
-                    ),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Text(
-                    '${pg.emptyBeds} beds',
-                    style: GoogleFonts.inter(
-                      fontSize: 10,
-                      fontWeight: FontWeight.w700,
-                      color: const Color(0xFF10B981),
-                    ),
+                const SizedBox(height: 2),
+                Text(
+                  '${pg.emptyBeds} beds',
+                  style: GoogleFonts.inter(
+                    fontSize: 10,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF10B981),
                   ),
                 ),
               ],
@@ -1218,18 +981,17 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
     }
 
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
         color: Colors.white,
-        borderRadius: BorderRadius.circular(24),
+        borderRadius: BorderRadius.circular(20),
         boxShadow: [
           BoxShadow(
-            color: Colors.grey.withOpacity(0.04),
-            blurRadius: 30,
+            color: const Color(0xFF1E293B).withOpacity(0.04),
+            blurRadius: 20,
             offset: const Offset(0, 4),
           ),
         ],
-        border: Border.all(color: Colors.grey.withOpacity(0.06), width: 1),
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1237,56 +999,60 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           Row(
             children: [
               Container(
-                width: 4,
-                height: 24,
+                width: 3,
+                height: 18,
                 decoration: BoxDecoration(
                   gradient: const LinearGradient(
-                    colors: [Color.fromRGBO(3, 4, 94, 1.0), Color(0xFF303B87)],
+                    colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                   ),
                   borderRadius: BorderRadius.circular(2),
                 ),
               ),
-              const SizedBox(width: 12),
+              const SizedBox(width: 10),
               Text(
                 'Active Listings',
                 style: GoogleFonts.inter(
-                  fontSize: 17,
+                  fontSize: 15,
                   fontWeight: FontWeight.w700,
                   color: const Color(0xFF0F172A),
-                  letterSpacing: -0.3,
                 ),
               ),
               const Spacer(),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
+                decoration: BoxDecoration(
+                  color: const Color(0xFF6366F1).withOpacity(0.1),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: Text(
+                  '$totalCount',
+                  style: GoogleFonts.inter(
+                    fontSize: 11,
+                    fontWeight: FontWeight.w700,
+                    color: const Color(0xFF6366F1),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 8),
               TextButton(
                 onPressed: () => context.push('/vacancies'),
                 style: TextButton.styleFrom(
                   foregroundColor: const Color(0xFF6366F1),
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  padding: EdgeInsets.zero,
                   minimumSize: const Size(0, 0),
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(12),
-                  ),
+                  tapTargetSize: MaterialTapTargetSize.shrinkWrap,
                 ),
                 child: Text(
                   'View All',
                   style: GoogleFonts.inter(
-                    fontSize: 12,
+                    fontSize: 11,
                     fontWeight: FontWeight.w600,
                   ),
                 ),
               ),
             ],
           ),
-          const SizedBox(height: 4),
-          Text(
-            '$totalCount total posts',
-            style: GoogleFonts.inter(
-              fontSize: 11,
-              fontWeight: FontWeight.w500,
-              color: const Color(0xFF94A3B8),
-            ),
-          ),
-          const SizedBox(height: 16),
+          const SizedBox(height: 12),
           if (posts.isEmpty)
             _buildModernEmptyState(
               icon: Icons.post_add_rounded,
@@ -1300,45 +1066,37 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   : formatPrice(post.minPrice ?? 0);
 
               return Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(14),
+                margin: const EdgeInsets.only(bottom: 8),
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 10,
+                ),
                 decoration: BoxDecoration(
-                  gradient: LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [const Color(0xFFF8FAFC), Colors.white],
-                  ),
-                  borderRadius: BorderRadius.circular(16),
+                  color: const Color(0xFFF8FAFC),
+                  borderRadius: BorderRadius.circular(12),
                   border: Border.all(
-                    color: Colors.grey.withOpacity(0.06),
+                    color: const Color(0xFF6366F1).withOpacity(0.06),
                     width: 1,
                   ),
                 ),
                 child: Row(
                   children: [
                     Container(
-                      width: 44,
-                      height: 44,
+                      width: 36,
+                      height: 36,
                       decoration: BoxDecoration(
                         gradient: const LinearGradient(
                           colors: [Color(0xFF6366F1), Color(0xFF8B5CF6)],
                         ),
-                        borderRadius: BorderRadius.circular(14),
-                        boxShadow: [
-                          BoxShadow(
-                            color: const Color(0xFF6366F1).withOpacity(0.2),
-                            blurRadius: 10,
-                            offset: const Offset(0, 2),
-                          ),
-                        ],
+                        borderRadius: BorderRadius.circular(10),
                       ),
                       child: const Icon(
                         Icons.post_add_rounded,
                         color: Colors.white,
-                        size: 22,
+                        size: 18,
                       ),
                     ),
-                    const SizedBox(width: 14),
+                    const SizedBox(width: 10),
                     Expanded(
                       child: Column(
                         crossAxisAlignment: CrossAxisAlignment.start,
@@ -1346,7 +1104,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           Text(
                             post.title.isNotEmpty ? post.title : 'New Listing',
                             style: GoogleFonts.inter(
-                              fontSize: 14,
+                              fontSize: 13,
                               fontWeight: FontWeight.w600,
                               color: const Color(0xFF0F172A),
                             ),
@@ -1356,9 +1114,8 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                           Text(
                             '${post.pg.name} • ${post.vacancyCount} beds',
                             style: GoogleFonts.inter(
-                              fontSize: 11,
-                              fontWeight: FontWeight.w500,
-                              color: const Color(0xFF64748B),
+                              fontSize: 10,
+                              color: const Color(0xFF94A3B8),
                             ),
                             maxLines: 1,
                             overflow: TextOverflow.ellipsis,
@@ -1368,8 +1125,8 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     ),
                     Container(
                       padding: const EdgeInsets.symmetric(
-                        horizontal: 12,
-                        vertical: 6,
+                        horizontal: 8,
+                        vertical: 4,
                       ),
                       decoration: BoxDecoration(
                         gradient: LinearGradient(
@@ -1378,12 +1135,12 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                             const Color(0xFF10B981).withOpacity(0.05),
                           ],
                         ),
-                        borderRadius: BorderRadius.circular(12),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Text(
                         priceRange,
                         style: GoogleFonts.inter(
-                          fontSize: 13,
+                          fontSize: 11,
                           fontWeight: FontWeight.w800,
                           color: const Color(0xFF10B981),
                         ),
@@ -1405,22 +1162,22 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   }) {
     return Center(
       child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 40),
+        padding: const EdgeInsets.symmetric(vertical: 24),
         child: Column(
           children: [
             Container(
-              padding: const EdgeInsets.all(16),
+              padding: const EdgeInsets.all(12),
               decoration: BoxDecoration(
                 color: const Color(0xFFF1F5F9),
-                borderRadius: BorderRadius.circular(16),
+                borderRadius: BorderRadius.circular(12),
               ),
-              child: Icon(icon, size: 32, color: const Color(0xFF94A3B8)),
+              child: Icon(icon, size: 24, color: const Color(0xFF94A3B8)),
             ),
-            const SizedBox(height: 12),
+            const SizedBox(height: 8),
             Text(
               message,
               style: GoogleFonts.inter(
-                fontSize: 13,
+                fontSize: 12,
                 fontWeight: FontWeight.w500,
                 color: const Color(0xFF94A3B8),
               ),
@@ -1434,21 +1191,17 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   // Drawer with Premium Styling
   Widget _buildOwnerDrawer(BuildContext context, dynamic user) {
     return Drawer(
-      backgroundColor: Colors.white,
+      backgroundColor: context.surfaceWhite,
       child: Column(
         children: [
           Container(
             width: double.infinity,
-            padding: const EdgeInsets.fromLTRB(24, 60, 24, 24),
+            padding: const EdgeInsets.fromLTRB(20, 50, 20, 20),
             decoration: BoxDecoration(
               gradient: LinearGradient(
                 begin: Alignment.topLeft,
                 end: Alignment.bottomRight,
-                colors: [
-                  const Color(0xFF6366F1),
-                  const Color(0xFF8B5CF6),
-                  const Color(0xFFA78BFA),
-                ],
+                colors: [const Color(0xFF6366F1), const Color(0xFF8B5CF6)],
               ),
             ),
             child: Column(
@@ -1461,29 +1214,28 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                     border: Border.all(color: Colors.white, width: 2),
                   ),
                   child: CircleAvatar(
-                    radius: 30,
+                    radius: 28,
                     backgroundColor: Colors.white.withOpacity(0.2),
                     child: Icon(
                       Icons.apartment_rounded,
                       color: Colors.white,
-                      size: 30,
+                      size: 28,
                     ),
                   ),
                 ),
-                const SizedBox(height: 16),
+                const SizedBox(height: 14),
                 Text(
                   user?.name ?? 'Owner',
                   style: GoogleFonts.inter(
-                    fontSize: 20,
+                    fontSize: 18,
                     fontWeight: FontWeight.w700,
                     color: Colors.white,
-                    letterSpacing: -0.5,
                   ),
                 ),
                 Text(
                   user?.email ?? 'owner@example.com',
                   style: GoogleFonts.inter(
-                    fontSize: 13,
+                    fontSize: 12,
                     fontWeight: FontWeight.w500,
                     color: Colors.white.withOpacity(0.8),
                   ),
@@ -1493,7 +1245,7 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
           ),
           Expanded(
             child: ListView(
-              padding: const EdgeInsets.symmetric(vertical: 8),
+              padding: const EdgeInsets.symmetric(vertical: 6),
               children: [
                 _buildModernDrawerTile(
                   icon: Icons.dashboard_rounded,
@@ -1513,7 +1265,6 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                 _buildModernDrawerTile(
                   icon: Icons.receipt_long_rounded,
                   title: 'Rent Management',
-                  subtitle: 'Track & collect rent',
                   onTap: () {
                     Navigator.pop(context);
                     context.push('/owner-rent');
@@ -1549,6 +1300,35 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                   title: 'Settings',
                   onTap: () => Navigator.pop(context),
                 ),
+                _buildModernDrawerTile(
+                  icon: ref.watch(themeProvider) == ThemeMode.dark
+                      ? Icons.dark_mode_rounded
+                      : Icons.light_mode_rounded,
+                  title: 'Dark Mode',
+                  trailingWidget: Switch(
+                    value:
+                        ref.watch(themeProvider) == ThemeMode.dark ||
+                        (ref.watch(themeProvider) == ThemeMode.system &&
+                            MediaQuery.of(context).platformBrightness ==
+                                Brightness.dark),
+                    onChanged: (value) {
+                      ref.read(themeProvider.notifier).state = value
+                          ? ThemeMode.dark
+                          : ThemeMode.light;
+                    },
+                    activeColor: const Color(0xFF6366F1),
+                  ),
+                  onTap: () {
+                    final isCurrentlyDark =
+                        ref.read(themeProvider) == ThemeMode.dark ||
+                        (ref.read(themeProvider) == ThemeMode.system &&
+                            MediaQuery.of(context).platformBrightness ==
+                                Brightness.dark);
+                    ref.read(themeProvider.notifier).state = !isCurrentlyDark
+                        ? ThemeMode.dark
+                        : ThemeMode.light;
+                  },
+                ),
               ],
             ),
           ),
@@ -1561,65 +1341,61 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
   Widget _buildModernDrawerTile({
     required IconData icon,
     required String title,
-    String? subtitle,
     bool isActive = false,
     String? badge,
+    Widget? trailingWidget,
     required VoidCallback onTap,
   }) {
     return ListTile(
       leading: Container(
-        padding: const EdgeInsets.all(8),
+        padding: const EdgeInsets.all(6),
         decoration: BoxDecoration(
           color: isActive
               ? const Color(0xFF6366F1).withOpacity(0.1)
               : Colors.transparent,
-          borderRadius: BorderRadius.circular(10),
+          borderRadius: BorderRadius.circular(8),
         ),
         child: Icon(
           icon,
           color: isActive ? const Color(0xFF6366F1) : const Color(0xFF64748B),
-          size: 22,
+          size: 20,
         ),
       ),
       title: Text(
         title,
         style: GoogleFonts.inter(
-          fontSize: 14,
+          fontSize: 13,
           fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
           color: isActive ? const Color(0xFF6366F1) : const Color(0xFF1E293B),
         ),
       ),
-      subtitle: subtitle != null
-          ? Text(
-              subtitle,
-              style: GoogleFonts.inter(
-                fontSize: 11,
-                color: const Color(0xFF94A3B8),
-              ),
-            )
-          : null,
-      trailing: badge != null
-          ? Container(
-              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-              decoration: BoxDecoration(
-                gradient: LinearGradient(
-                  colors: [const Color(0xFFEF4444), const Color(0xFFF87171)],
-                ),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Text(
-                badge,
-                style: GoogleFonts.inter(
-                  color: Colors.white,
-                  fontSize: 10,
-                  fontWeight: FontWeight.w700,
-                ),
-              ),
-            )
-          : null,
+      trailing:
+          trailingWidget ??
+          (badge != null
+              ? Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 2,
+                  ),
+                  decoration: BoxDecoration(
+                    color: const Color(0xFFEF4444),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(
+                    badge,
+                    style: GoogleFonts.inter(
+                      color: Colors.white,
+                      fontSize: 9,
+                      fontWeight: FontWeight.w700,
+                    ),
+                  ),
+                )
+              : null),
       onTap: onTap,
-      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
       tileColor: isActive ? const Color(0xFF6366F1).withOpacity(0.05) : null,
+      dense: true,
+      contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 2),
     );
   }
 }
