@@ -42,7 +42,15 @@ class _EnquiriesScreenState extends ConsumerState<EnquiriesScreen> {
 
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: CustomAppBar(title: 'My Enquiries', showBackButton: true),
+      appBar: CustomAppBar(
+        title: "My Enquiries",
+        showBackButton: false,
+        showLeading: true,
+        pinnedSCurve: true,
+        isCompact: true,
+        backgroundColor: AppTheme.backgroundColor,
+      ),
+
       body: enquiriesAsync.when(
         data: (enquiries) {
           if (enquiries.isEmpty) {
@@ -231,6 +239,8 @@ class _EnquiriesScreenState extends ConsumerState<EnquiriesScreen> {
                                         fontSize: 13,
                                         fontWeight: FontWeight.w500,
                                       ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
                                     ),
                                     const SizedBox(height: 16),
                                     Divider(

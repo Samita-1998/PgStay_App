@@ -1,5 +1,6 @@
 import 'dart:io';
 import 'dart:convert';
+import 'dart:ui';
 import 'package:image_picker/image_picker.dart';
 import 'package:flutter/material.dart';
 import 'package:pgstay/features/pg_listing/widgets/pg_image_widget.dart';
@@ -9,6 +10,7 @@ import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:pgstay/core/widgets/custom_app_bar.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
 
 class CreateVacancyPostScreen extends ConsumerStatefulWidget {
   final PgPost? existingPost;
@@ -49,8 +51,13 @@ class _CreateVacancyPostScreenState
 
   late AnimationController _animationController;
   late Animation<double> _fadeAnimation;
+  late Animation<Offset> _slideAnimation;
 
-  // Occupancy data computed from rooms
+  final PageController _pageController = PageController();
+  int _currentStep = 0;
+  int _maxStepReached = 0;
+  final int _totalSteps = 3;
+
   final Map<String, int> _occupancyRoomCount = {
     'single': 0,
     'double': 0,
@@ -82,6 +89,48 @@ class _CreateVacancyPostScreenState
 
   bool get _isEditMode => widget.existingPost != null;
 
+  bool get _hasChanges => _tracker.hasChanges || _untrackedHasChanges;
+  late final ChangeTracker _tracker;
+
+  bool get _untrackedHasChanges {
+    if (widget.existingPost == null) return true;
+    final post = widget.existingPost!;
+
+    if (_isActive != post.isActive) return true;
+
+    if (_selectedImages.isNotEmpty) return true;
+    if (_existingImages.length != post.images.length) return true;
+
+    if (post.availableFrom != null && _availableFrom != null) {
+      try {
+        final d = DateTime.parse(post.availableFrom!);
+        if (d.year != _availableFrom!.year ||
+            d.month != _availableFrom!.month ||
+            d.day != _availableFrom!.day) {
+          return true;
+        }
+      } catch (_) {
+        return true;
+      }
+    } else if (post.availableFrom != null || _availableFrom != null) {
+      return true;
+    }
+
+    final originalTypes = post.occupancyTypes
+        .map((e) => e.toLowerCase())
+        .toList();
+    final currentTypes = _occupancySelected.entries
+        .where((e) => e.value)
+        .map((e) => e.key)
+        .toList();
+    if (originalTypes.length != currentTypes.length) return true;
+    for (final t in currentTypes) {
+      if (!originalTypes.contains(t)) return true;
+    }
+
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -93,11 +142,48 @@ class _CreateVacancyPostScreenState
       parent: _animationController,
       curve: Curves.easeOut,
     );
+    _slideAnimation =
+        Tween<Offset>(begin: const Offset(0.05, 0), end: Offset.zero).animate(
+          CurvedAnimation(
+            parent: _animationController,
+            curve: Curves.easeOutCubic,
+          ),
+        );
     _animationController.forward();
 
     if (_isEditMode) {
       _initEditMode();
+      _maxStepReached = _totalSteps - 1;
     }
+
+    _tracker = ChangeTracker(
+      onStateChanged: () {
+        if (mounted && _isEditMode && _currentStep == _totalSteps - 1) {
+          setState(() {});
+        }
+      },
+    );
+
+    final listener = () {
+      if (mounted && _isEditMode && _currentStep == _totalSteps - 1) {
+        setState(() {});
+      }
+    };
+
+    void addTrackerListener(TextEditingController ctrl, String key) {
+      ctrl.addListener(() {
+        _tracker.updateValue(key, ctrl.text.trim());
+        listener();
+      });
+    }
+
+    addTrackerListener(_titleController, 'title');
+    addTrackerListener(_descController, 'desc');
+    addTrackerListener(_vacancyController, 'vacancy');
+    addTrackerListener(_maleVacancyController, 'male');
+    addTrackerListener(_femaleVacancyController, 'female');
+    addTrackerListener(_minPriceController, 'min');
+    addTrackerListener(_maxPriceController, 'max');
   }
 
   void _initEditMode() {
@@ -132,6 +218,14 @@ class _CreateVacancyPostScreenState
     }
     _isActive = post.isActive;
     _existingImages = List.from(post.images);
+
+    _tracker.setOriginal('title', post.title);
+    _tracker.setOriginal('desc', post.description);
+    _tracker.setOriginal('vacancy', post.vacancyCount.toString());
+    _tracker.setOriginal('male', post.maleVacancyCount?.toString() ?? '');
+    _tracker.setOriginal('female', post.femaleVacancyCount?.toString() ?? '');
+    _tracker.setOriginal('min', post.minPrice?.toString() ?? '');
+    _tracker.setOriginal('max', post.maxPrice?.toString() ?? '');
   }
 
   int get _totalVacancy {
@@ -144,6 +238,7 @@ class _CreateVacancyPostScreenState
 
   @override
   void dispose() {
+    _pageController.dispose();
     _animationController.dispose();
     _titleController.dispose();
     _descController.dispose();
@@ -155,7 +250,6 @@ class _CreateVacancyPostScreenState
     super.dispose();
   }
 
-  // ─── Fetch rooms and auto-populate fields ────────────────────────────────
   Future<void> _onPgSelected(
     PgModel pg, {
     bool isInitialization = false,
@@ -163,7 +257,6 @@ class _CreateVacancyPostScreenState
     setState(() {
       _selectedPg = pg;
       _isLoadingRooms = true;
-      // Reset
       for (final k in _occupancyRoomCount.keys) {
         _occupancyRoomCount[k] = 0;
         _occupancyBedCount[k] = 0;
@@ -220,7 +313,6 @@ class _CreateVacancyPostScreenState
           }
         }
 
-        // fallback if price isn't in beds
         if (minP == double.infinity || maxP == 0) {
           final roomPrice =
               (room['pricePerBed'] ?? room['pricePerMonth'] ?? 0.0 as num)
@@ -260,18 +352,17 @@ class _CreateVacancyPostScreenState
         }
         _pgTotalVacancy = totalEmpty;
         _vacancyController.text = totalEmpty.toString();
+
+        if (!isInitialization && pg.pgType.toLowerCase() == 'unisex') {
+          int maleBeds = totalEmpty ~/ 2;
+          int femaleBeds = totalEmpty - maleBeds;
+          _maleVacancyController.text = maleBeds.toString();
+          _femaleVacancyController.text = femaleBeds.toString();
+        }
       });
     } catch (e) {
       setState(() => _isLoadingRooms = false);
     }
-  }
-
-  String _normalizeType(String type) {
-    if (type.contains('single')) return 'single';
-    if (type.contains('double')) return 'double';
-    if (type.contains('triple')) return 'triple';
-    if (type.contains('four') || type.contains('quad')) return 'four';
-    return 'other';
   }
 
   String _capitalize(String text) {
@@ -279,19 +370,21 @@ class _CreateVacancyPostScreenState
     return text[0].toUpperCase() + text.substring(1);
   }
 
-  // ─── Date picker helper ──────────────────────────────────────────────────
   Future<void> _pickDate() async {
+    final primaryColor = const Color(0xFF03045E);
     final picked = await showDatePicker(
       context: context,
       initialDate: DateTime.now(),
       firstDate: DateTime.now().subtract(const Duration(days: 1)),
       lastDate: DateTime.now().add(const Duration(days: 365)),
       builder: (context, child) => Theme(
-        data: ThemeData.dark().copyWith(
-          colorScheme: const ColorScheme.dark(
-            primary: AppTheme.accentColor,
-            surface: AppTheme.surfaceWhite,
+        data: ThemeData.light().copyWith(
+          colorScheme: ColorScheme.light(
+            primary: primaryColor,
+            surface: Colors.white,
+            onSurface: const Color(0xFF1A1A2E),
           ),
+          dialogBackgroundColor: Colors.white,
         ),
         child: child!,
       ),
@@ -319,7 +412,58 @@ class _CreateVacancyPostScreenState
     return '${dt.day} ${months[dt.month - 1]} ${dt.year}';
   }
 
-  // ─── Submit ──────────────────────────────────────────────────────────────
+  void _nextStep() {
+    if (!_formKey.currentState!.validate()) return;
+
+    if (_currentStep == 0) {
+      if (_selectedPg == null) {
+        _showSnack('Please select a property.');
+        return;
+      }
+    } else if (_currentStep == 1) {
+      final selectedTypes = _occupancySelected.entries
+          .where((e) => e.value)
+          .toList();
+      if (selectedTypes.isEmpty) {
+        _showSnack('Please select at least one occupancy type.');
+        return;
+      }
+      if (_availableFrom == null) {
+        _showSnack('Please select availability date.');
+        return;
+      }
+    }
+
+    if (_currentStep < _totalSteps - 1) {
+      setState(() {
+        _currentStep++;
+        if (_currentStep > _maxStepReached) {
+          _maxStepReached = _currentStep;
+        }
+        _pageController.animateToPage(
+          _currentStep,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+      });
+    } else {
+      _submit();
+    }
+  }
+
+  void _prevStep() {
+    if (_currentStep > 0) {
+      setState(() {
+        _currentStep--;
+        _pageController.animateToPage(
+          _currentStep,
+          duration: const Duration(milliseconds: 500),
+          curve: Curves.easeInOutCubic,
+        );
+      });
+    }
+  }
+
   Future<void> _submit() async {
     if (!_formKey.currentState!.validate()) {
       _showSnack('Please fill all required fields correctly.');
@@ -349,12 +493,12 @@ class _CreateVacancyPostScreenState
       List<String> finalImages = List.from(_existingImages);
       for (var file in _selectedImages) {
         final bytes = await file.readAsBytes();
-        
+
         final uploadData = await repo.getUploadUrl(file.name, 'image/jpeg');
         final uploadUrl = uploadData['uploadUrl']!;
-        
+
         await repo.uploadFileToS3(uploadUrl, bytes, 'image/jpeg');
-        
+
         final publicUrl = uploadUrl.split('?').first;
         finalImages.add(publicUrl);
       }
@@ -391,19 +535,11 @@ class _CreateVacancyPostScreenState
 
       if (mounted) {
         ref.invalidate(pgListProvider);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text(
-              _isEditMode
-                  ? 'Vacancy post updated successfully!'
-                  : 'Vacancy post created successfully!',
-            ),
-            backgroundColor: AppTheme.success,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(AppTheme.radiusLG),
-            ),
-          ),
+        _showSnack(
+          _isEditMode
+              ? 'Vacancy post updated successfully!'
+              : 'Vacancy post created successfully!',
+          isSuccess: true,
         );
         Navigator.pop(context);
       }
@@ -433,15 +569,49 @@ class _CreateVacancyPostScreenState
     }
   }
 
-  void _showSnack(String msg) {
+  void _showSnack(String msg, {bool isSuccess = false}) {
+    final color = isSuccess ? const Color(0xFF10B981) : const Color(0xFFEF4444);
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(msg),
-        backgroundColor: AppTheme.error,
-        behavior: SnackBarBehavior.floating,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(AppTheme.radiusLG),
+        content: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: color,
+            borderRadius: BorderRadius.circular(14),
+            boxShadow: [
+              BoxShadow(
+                color: color.withOpacity(0.3),
+                blurRadius: 20,
+                offset: const Offset(0, 8),
+              ),
+            ],
+          ),
+          child: Row(
+            children: [
+              Icon(
+                isSuccess ? Icons.check_circle_rounded : Icons.error_rounded,
+                color: Colors.white,
+                size: 22,
+              ),
+              const SizedBox(width: 10),
+              Expanded(
+                child: Text(
+                  msg,
+                  style: GoogleFonts.plusJakartaSans(
+                    color: Colors.white,
+                    fontWeight: FontWeight.w600,
+                    fontSize: 13,
+                  ),
+                ),
+              ),
+            ],
+          ),
         ),
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        behavior: SnackBarBehavior.floating,
+        margin: const EdgeInsets.all(16),
+        duration: const Duration(seconds: 3),
       ),
     );
   }
@@ -450,20 +620,41 @@ class _CreateVacancyPostScreenState
   @override
   Widget build(BuildContext context) {
     final pgsAsync = ref.watch(ownerPgsProvider);
+    final postsAsync = ref.watch(pgListProvider);
     final screenWidth = MediaQuery.of(context).size.width;
     final isSmallScreen = screenWidth < 600;
 
     return Scaffold(
-      backgroundColor: AppTheme.backgroundLight,
+      backgroundColor: const Color(0xFFF8F9FF),
+      extendBodyBehindAppBar: true,
       appBar: CustomAppBar(
         title: _isEditMode ? 'Edit Vacancy Post' : 'Create New Post',
         showBackButton: true,
+        pinnedSCurve: true,
+        isCompact: true,
+        centerTitle: true,
+      ),
+      bottomNavigationBar: pgsAsync.when(
+        data: (_) => _buildModernBottomNav(),
+        loading: () => const SizedBox.shrink(),
+        error: (_, __) => const SizedBox.shrink(),
       ),
       body: pgsAsync.when(
-        data: (pgs) => FadeTransition(
-          opacity: _fadeAnimation,
-          child: _buildForm(pgs, isSmallScreen),
-        ),
+        data: (pgs) {
+          final existingPgIds =
+              postsAsync.valueOrNull?.map((p) => p.pg.id).toSet() ?? {};
+          if (_isEditMode && widget.existingPost != null) {
+            existingPgIds.remove(widget.existingPost!.pg.id);
+          }
+          final filteredPgs = pgs
+              .where((pg) => !existingPgIds.contains(pg.id))
+              .toList();
+
+          return FadeTransition(
+            opacity: _fadeAnimation,
+            child: _buildForm(filteredPgs, isSmallScreen),
+          );
+        },
         loading: () => Center(
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
@@ -496,7 +687,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(height: 16),
               Text(
                 'Loading PGs...',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: AppTheme.textSecondary,
                   fontSize: 14,
                 ),
@@ -508,15 +699,23 @@ class _CreateVacancyPostScreenState
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
-              Icon(
-                Icons.error_outline_rounded,
-                size: 64,
-                color: AppTheme.error.withOpacity(0.7),
+              Container(
+                width: 80,
+                height: 80,
+                decoration: BoxDecoration(
+                  color: AppTheme.error.withOpacity(0.08),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(
+                  Icons.error_outline_rounded,
+                  size: 40,
+                  color: AppTheme.error.withOpacity(0.5),
+                ),
               ),
               const SizedBox(height: 16),
               Text(
                 'Failed to load PGs',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: AppTheme.error,
                   fontSize: 16,
                   fontWeight: FontWeight.w600,
@@ -525,7 +724,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(height: 8),
               Text(
                 'Please check your connection',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: AppTheme.textSecondary,
                   fontSize: 13,
                 ),
@@ -547,72 +746,89 @@ class _CreateVacancyPostScreenState
       } catch (_) {}
     }
 
-    return Form(
-      key: _formKey,
-      child: ListView(
-        padding: EdgeInsets.fromLTRB(
-          isSmallScreen ? 16 : 24,
-          8,
-          isSmallScreen ? 16 : 24,
-          120,
+    return SlideTransition(
+      position: _slideAnimation,
+      child: MediaQuery.removePadding(
+        context: context,
+        removeTop: true,
+        child: Padding(
+          padding: EdgeInsets.only(
+            top: 80 + MediaQuery.of(context).padding.top + 8,
+          ),
+          child: Form(
+            key: _formKey,
+            child: Column(
+              children: [
+                _buildModernStepper(),
+                Expanded(
+                  child: PageView(
+                    controller: _pageController,
+                    physics: const NeverScrollableScrollPhysics(),
+                    onPageChanged: (index) {
+                      setState(() => _currentStep = index);
+                    },
+                    children: [
+                      _buildStep1Property(pgs, isSmallScreen),
+                      _buildStep2Details(isSmallScreen),
+                      _buildStep3Publish(isSmallScreen),
+                    ],
+                  ),
+                ),
+              ],
+            ),
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildStep1Property(List<PgModel> pgs, bool isSmallScreen) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isSmallScreen ? 16 : 24,
+        8,
+        isSmallScreen ? 16 : 24,
+        12,
+      ),
+      child: Column(
         children: [
-          // Hero Header
-          if (!_isEditMode) ...[
-            _buildHeroHeader(isSmallScreen),
-            const SizedBox(height: 24),
-          ],
-
-          // Progress Steps
-          _buildProgressSteps(isSmallScreen),
-          const SizedBox(height: 32),
-
-          // ── Select PG ──────────────────────────────
-          _buildSectionCard(
+          _buildElegantCard(
             title: 'Select Property',
             icon: Icons.apartment_rounded,
             required: true,
             isSmallScreen: isSmallScreen,
             child: _buildDropdown(pgs, isSmallScreen),
           ),
-          const SizedBox(height: 20),
-
-          // ── Post Title ─────────────────────────────
-          _buildSectionCard(
+          const SizedBox(height: 16),
+          _buildElegantCard(
             title: 'Post Title',
             icon: Icons.title_rounded,
             required: true,
             isSmallScreen: isSmallScreen,
-            child: _buildTextField(
+            child: _buildElegantTextField(
               controller: _titleController,
               hint: 'e.g., Premium AC Room with Meals',
               validator: (v) =>
                   v == null || v.trim().isEmpty ? 'Title is required' : null,
-              isSmallScreen: isSmallScreen,
             ),
           ),
-          const SizedBox(height: 20),
-
-          // ── Description ────────────────────────────
-          _buildSectionCard(
+          const SizedBox(height: 16),
+          _buildElegantCard(
             title: 'Description',
             icon: Icons.description_rounded,
             required: true,
             isSmallScreen: isSmallScreen,
-            child: _buildTextField(
+            child: _buildElegantTextField(
               controller: _descController,
               hint: 'Describe the vacancy details, amenities, and benefits...',
               maxLines: 4,
               validator: (v) => v == null || v.trim().isEmpty
                   ? 'Description is required'
                   : null,
-              isSmallScreen: isSmallScreen,
             ),
           ),
-          const SizedBox(height: 20),
-
-          // ── Vacancy Count ──────────────────────────
-          _buildSectionCard(
+          const SizedBox(height: 16),
+          _buildElegantCard(
             title: _isUnisex ? 'Gender-wise Vacancies' : 'Vacancy Count',
             icon: _isUnisex
                 ? Icons.people_alt_rounded
@@ -648,14 +864,20 @@ class _CreateVacancyPostScreenState
                   const SizedBox(height: 12),
                   _buildTotalVacancyChip(isSmallScreen),
                 ] else ...[
-                  _buildTextField(
+                  _buildElegantTextField(
                     controller: _vacancyController,
                     hint: 'Number of vacancies',
                     keyboardType: TextInputType.number,
                     onChanged: (_) => setState(() {}),
-                    validator: (v) =>
-                        v == null || v.trim().isEmpty ? 'Required' : null,
-                    isSmallScreen: isSmallScreen,
+                    validator: (v) {
+                      if (v == null || v.trim().isEmpty) return 'Required';
+                      final val = int.tryParse(v);
+                      if (val == null) return 'Invalid';
+                      if (_pgTotalVacancy != null && val > _pgTotalVacancy!) {
+                        return 'Cannot exceed actual available beds ($_pgTotalVacancy)';
+                      }
+                      return null;
+                    },
                   ),
                   if (_pgTotalVacancy != null) ...[
                     const SizedBox(height: 8),
@@ -665,10 +887,23 @@ class _CreateVacancyPostScreenState
               ],
             ),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
 
-          // ── Price ──────────────────────────────────
-          _buildSectionCard(
+  Widget _buildStep2Details(bool isSmallScreen) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isSmallScreen ? 16 : 24,
+        8,
+        isSmallScreen ? 16 : 24,
+        12,
+      ),
+      child: Column(
+        children: [
+          _buildElegantCard(
             title: 'Price Range',
             icon: Icons.currency_rupee_rounded,
             required: true,
@@ -678,18 +913,16 @@ class _CreateVacancyPostScreenState
                 Row(
                   children: [
                     Expanded(
-                      child: _buildPriceField(
+                      child: _buildElegantPriceField(
                         controller: _minPriceController,
                         hint: 'Min Price',
-                        isSmallScreen: isSmallScreen,
                       ),
                     ),
                     const SizedBox(width: 12),
                     Expanded(
-                      child: _buildPriceField(
+                      child: _buildElegantPriceField(
                         controller: _maxPriceController,
                         hint: 'Max Price',
-                        isSmallScreen: isSmallScreen,
                       ),
                     ),
                   ],
@@ -701,77 +934,61 @@ class _CreateVacancyPostScreenState
               ],
             ),
           ),
-          const SizedBox(height: 20),
-
-          // ── PG Type & Available From ───────────────
-          Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: [
-              Expanded(
-                child: _buildSectionCard(
-                  title: 'PG Type',
-                  icon: Icons.category_rounded,
-                  isSmallScreen: isSmallScreen,
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 16,
-                      vertical: 14,
-                    ),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.accentColor.withOpacity(0.1),
-                          AppTheme.accentColor.withOpacity(0.05),
-                        ],
+          const SizedBox(height: 16),
+          _buildElegantCard(
+            title: 'PG Type',
+            icon: Icons.category_rounded,
+            isSmallScreen: isSmallScreen,
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.accentColor.withOpacity(0.1),
+                    AppTheme.accentColor.withOpacity(0.05),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: AppTheme.accentColor.withOpacity(0.2),
+                ),
+              ),
+              child: Row(
+                children: [
+                  Icon(
+                    Icons.home_work_rounded,
+                    size: 20,
+                    color: AppTheme.accentColor,
+                  ),
+                  const SizedBox(width: 8),
+                  Expanded(
+                    child: Text(
+                      _selectedPg != null
+                          ? _capitalize(_selectedPg!.pgType)
+                          : 'Not selected',
+                      style: GoogleFonts.plusJakartaSans(
+                        fontSize: 13,
+                        fontWeight: FontWeight.w500,
+                        color: _selectedPg != null
+                            ? AppTheme.textPrimary
+                            : AppTheme.textHint,
                       ),
-                      borderRadius: BorderRadius.circular(12),
-                      border: Border.all(
-                        color: AppTheme.accentColor.withOpacity(0.2),
-                      ),
-                    ),
-                    child: Row(
-                      children: [
-                        Icon(
-                          Icons.home_work_rounded,
-                          size: 20,
-                          color: AppTheme.accentColor,
-                        ),
-                        const SizedBox(width: 8),
-                        Expanded(
-                          child: Text(
-                            _selectedPg != null
-                                ? _capitalize(_selectedPg!.pgType)
-                                : 'Not selected',
-                            style: GoogleFonts.inter(
-                              fontSize: isSmallScreen ? 13 : 14,
-                              fontWeight: FontWeight.w500,
-                              color: _selectedPg != null
-                                  ? AppTheme.textPrimary
-                                  : AppTheme.textHint,
-                            ),
-                          ),
-                        ),
-                      ],
                     ),
                   ),
-                ),
+                ],
               ),
-              const SizedBox(width: 12),
-              Expanded(
-                child: _buildSectionCard(
-                  title: 'Available From',
-                  icon: Icons.calendar_today_rounded,
-                  required: true,
-                  isSmallScreen: isSmallScreen,
-                  child: _buildDatePicker(isSmallScreen),
-                ),
-              ),
-            ],
+            ),
           ),
-          const SizedBox(height: 20),
-
-          // ── Occupancy Types ────────────────────────
-          _buildSectionCard(
+          const SizedBox(height: 16),
+          _buildElegantCard(
+            title: 'Available From',
+            icon: Icons.calendar_today_rounded,
+            required: true,
+            isSmallScreen: isSmallScreen,
+            child: _buildElegantDatePicker(),
+          ),
+          const SizedBox(height: 16),
+          _buildElegantCard(
             title: 'Room Types',
             icon: Icons.meeting_room_rounded,
             required: true,
@@ -780,21 +997,32 @@ class _CreateVacancyPostScreenState
                 ? _buildLoadingOccupancy()
                 : _buildOccupancyGrid(isSmallScreen),
           ),
-          const SizedBox(height: 20),
+          const SizedBox(height: 32),
+        ],
+      ),
+    );
+  }
 
-          // ── Media ──────────────────────────────────
-          _buildSectionCard(
+  Widget _buildStep3Publish(bool isSmallScreen) {
+    return SingleChildScrollView(
+      padding: EdgeInsets.fromLTRB(
+        isSmallScreen ? 16 : 24,
+        8,
+        isSmallScreen ? 16 : 24,
+        12,
+      ),
+      child: Column(
+        children: [
+          _buildElegantCard(
             title: 'Media',
             icon: Icons.image_rounded,
             subtitle: 'Add up to 5 showcase images',
             isSmallScreen: isSmallScreen,
             child: _buildImageGrid(isSmallScreen),
           ),
-          const SizedBox(height: 20),
-
-          // ── Post Status ────────────────────────────
+          const SizedBox(height: 16),
           if (_isEditMode) ...[
-            _buildSectionCard(
+            _buildElegantCard(
               title: 'Post Status',
               icon: Icons.toggle_on_rounded,
               isSmallScreen: isSmallScreen,
@@ -809,7 +1037,9 @@ class _CreateVacancyPostScreenState
                           _isActive
                               ? Icons.visibility_rounded
                               : Icons.visibility_off_rounded,
-                          color: _isActive ? AppTheme.success : AppTheme.textHint,
+                          color: _isActive
+                              ? AppTheme.success
+                              : AppTheme.textHint,
                           size: 20,
                         ),
                         const SizedBox(width: 8),
@@ -817,8 +1047,8 @@ class _CreateVacancyPostScreenState
                           _isActive
                               ? 'Active (Visible to tenants)'
                               : 'Inactive (Hidden)',
-                          style: GoogleFonts.inter(
-                            fontSize: isSmallScreen ? 13 : 14,
+                          style: GoogleFonts.plusJakartaSans(
+                            fontSize: 13,
                             fontWeight: FontWeight.w500,
                             color: _isActive
                                 ? AppTheme.success
@@ -841,156 +1071,130 @@ class _CreateVacancyPostScreenState
             ),
             const SizedBox(height: 32),
           ],
-
-          // ── Actions ───────────────────────────────
-          _buildActionButtons(isSmallScreen),
-          const SizedBox(height: 32),
         ],
       ),
     );
   }
 
-  Widget _buildHeroHeader(bool isSmallScreen) {
+  // ─── ELEGANT COMPONENTS ────────────────────────────────────────────────
+
+  Widget _buildModernStepper() {
     return Container(
-      padding: EdgeInsets.all(isSmallScreen ? 20 : 24),
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.accentColor.withOpacity(0.15),
-            AppTheme.accentColor.withOpacity(0.05),
-          ],
-          begin: Alignment.topLeft,
-          end: Alignment.bottomRight,
-        ),
-        borderRadius: BorderRadius.circular(24),
-        border: Border.all(color: AppTheme.accentColor.withOpacity(0.2)),
-      ),
+      padding: const EdgeInsets.symmetric(vertical: 14, horizontal: 0),
       child: Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: List.generate(3, (index) {
+          return Expanded(child: _buildModernStep(index));
+        }),
+      ),
+    );
+  }
+
+  Widget _buildModernStep(int index) {
+    final isActive = _currentStep == index;
+    final isCompleted =
+        _currentStep > index || (_isEditMode && index <= _maxStepReached);
+    final labels = ['Property', 'Details', 'Publish'];
+    final icons = [
+      Icons.apartment_rounded,
+      Icons.list_alt_rounded,
+      Icons.check_circle_outline,
+    ];
+
+    return GestureDetector(
+      onTap: () {
+        if (index < _currentStep ||
+            (index <= _maxStepReached &&
+                _formKey.currentState?.validate() == true)) {
+          setState(() {
+            _currentStep = index;
+            _pageController.animateToPage(
+              index,
+              duration: const Duration(milliseconds: 500),
+              curve: Curves.easeInOutCubic,
+            );
+          });
+        }
+      },
+      child: Column(
         children: [
-          Container(
-            padding: const EdgeInsets.all(12),
+          Row(
+            children: [
+              Expanded(
+                child: Container(
+                  height: 2.5,
+                  decoration: BoxDecoration(
+                    color: isCompleted
+                        ? const Color(0xFF03045E)
+                        : isActive
+                        ? const Color(0xFF03045E).withOpacity(0.3)
+                        : const Color(0xFFE5E7EB),
+                    borderRadius: BorderRadius.circular(4),
+                  ),
+                ),
+              ),
+              if (index < 2) ...[const SizedBox(width: 0)],
+            ],
+          ),
+          const SizedBox(height: 6),
+          AnimatedContainer(
+            duration: const Duration(milliseconds: 300),
+            width: isActive ? 42 : 36,
+            height: isActive ? 42 : 36,
             decoration: BoxDecoration(
-              gradient: LinearGradient(
-                colors: [
-                  AppTheme.accentColor,
-                  AppTheme.accentColor.withOpacity(0.7),
-                ],
+              shape: BoxShape.circle,
+              color: isActive || isCompleted
+                  ? const Color(0xFF03045E)
+                  : Colors.white,
+              border: Border.all(
+                color: isActive || isCompleted
+                    ? Colors.transparent
+                    : const Color(0xFFE5E7EB),
+                width: 2,
               ),
-              borderRadius: BorderRadius.circular(16),
+              boxShadow: isActive
+                  ? [
+                      BoxShadow(
+                        color: const Color(0xFF03045E).withOpacity(0.25),
+                        blurRadius: 12,
+                        offset: const Offset(0, 3),
+                      ),
+                    ]
+                  : null,
             ),
-            child: Icon(
-              Icons.post_add_rounded,
-              color: Colors.white,
-              size: isSmallScreen ? 24 : 28,
+            child: Center(
+              child: isCompleted
+                  ? const Icon(
+                      Icons.check_rounded,
+                      color: Colors.white,
+                      size: 18,
+                    )
+                  : Icon(
+                      icons[index],
+                      color: isActive ? Colors.white : const Color(0xFF9CA3AF),
+                      size: isActive ? 20 : 16,
+                    ),
             ),
           ),
-          const SizedBox(width: 16),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text(
-                  'Share Your Vacancy',
-                  style: GoogleFonts.inter(
-                    fontSize: isSmallScreen ? 16 : 18,
-                    fontWeight: FontWeight.w700,
-                    color: AppTheme.textPrimary,
-                  ),
-                ),
-                const SizedBox(height: 4),
-                Text(
-                  'Fill in the details below to attract potential tenants',
-                  style: GoogleFonts.inter(
-                    fontSize: isSmallScreen ? 11 : 12,
-                    color: AppTheme.textSecondary,
-                  ),
-                ),
-              ],
+          const SizedBox(height: 4),
+          AnimatedDefaultTextStyle(
+            duration: const Duration(milliseconds: 300),
+            style: GoogleFonts.plusJakartaSans(
+              color: isActive
+                  ? const Color(0xFF03045E)
+                  : const Color(0xFF6B7280),
+              fontSize: isActive ? 11 : 9,
+              fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              letterSpacing: 0.4,
             ),
+            child: Text(labels[index]),
           ),
         ],
       ),
     );
   }
 
-  Widget _buildProgressSteps(bool isSmallScreen) {
-    return Container(
-      padding: const EdgeInsets.symmetric(vertical: 8),
-      child: Row(
-        children: [
-          _buildProgressStep(1, 'Basic', 0, isSmallScreen),
-          Expanded(child: _buildProgressLine(0.25, isSmallScreen)),
-          _buildProgressStep(2, 'Details', 1, isSmallScreen),
-          Expanded(child: _buildProgressLine(0.5, isSmallScreen)),
-          _buildProgressStep(3, 'Media', 2, isSmallScreen),
-          Expanded(child: _buildProgressLine(0.75, isSmallScreen)),
-          _buildProgressStep(4, 'Finish', 3, isSmallScreen),
-        ],
-      ),
-    );
-  }
-
-  Widget _buildProgressStep(
-    int step,
-    String label,
-    int currentStep,
-    bool isSmallScreen,
-  ) {
-    final isActive = step <= (_isEditMode ? 4 : currentStep + 1);
-    return Column(
-      children: [
-        Container(
-          width: isSmallScreen ? 28 : 32,
-          height: isSmallScreen ? 28 : 32,
-          decoration: BoxDecoration(
-            gradient: isActive
-                ? LinearGradient(
-                    colors: [
-                      AppTheme.accentColor,
-                      AppTheme.accentColor.withOpacity(0.7),
-                    ],
-                  )
-                : null,
-            color: isActive ? null : AppTheme.surfaceBorder,
-            shape: BoxShape.circle,
-          ),
-          child: Center(
-            child: Text(
-              step.toString(),
-              style: GoogleFonts.inter(
-                color: Colors.white,
-                fontWeight: FontWeight.w600,
-                fontSize: isSmallScreen ? 12 : 14,
-              ),
-            ),
-          ),
-        ),
-        const SizedBox(height: 4),
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: isSmallScreen ? 9 : 10,
-            fontWeight: isActive ? FontWeight.w600 : FontWeight.w400,
-            color: isActive ? AppTheme.accentColor : AppTheme.textHint,
-          ),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildProgressLine(double progress, bool isSmallScreen) {
-    return Container(
-      height: 2,
-      decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [AppTheme.accentColor, AppTheme.accentColor.withOpacity(0.3)],
-          stops: [progress, progress],
-        ),
-      ),
-    );
-  }
-
-  Widget _buildSectionCard({
+  Widget _buildElegantCard({
     required String title,
     required IconData icon,
     String? subtitle,
@@ -999,86 +1203,237 @@ class _CreateVacancyPostScreenState
     required Widget child,
   }) {
     return Container(
+      padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
       decoration: BoxDecoration(
-        color: Colors.white,
+        gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Colors.white, const Color(0xFFF8F9FF)],
+        ),
         borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.04),
-            blurRadius: 12,
-            offset: const Offset(0, 2),
+            color: AppTheme.primary.withOpacity(0.04),
+            blurRadius: 24,
+            offset: const Offset(0, 6),
           ),
         ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: [
-          Container(
-            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-            decoration: BoxDecoration(
-              border: Border(
-                bottom: BorderSide(
-                  color: AppTheme.surfaceBorder.withOpacity(0.5),
+          Row(
+            children: [
+              Expanded(child: _buildSectionHeader(icon, title, subtitle ?? '')),
+              if (required)
+                Container(
+                  padding: const EdgeInsets.symmetric(
+                    horizontal: 8,
+                    vertical: 3,
+                  ),
+                  decoration: BoxDecoration(
+                    color: AppTheme.error.withOpacity(0.1),
+                    borderRadius: BorderRadius.circular(12),
+                  ),
+                  child: Text(
+                    'Required',
+                    style: GoogleFonts.plusJakartaSans(
+                      fontSize: 9,
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.error,
+                    ),
+                  ),
+                ),
+            ],
+          ),
+          SizedBox(height: isSmallScreen ? 14 : 18),
+          child,
+        ],
+      ),
+    );
+  }
+
+  Widget _buildSectionHeader(IconData icon, String title, String subtitle) {
+    return Row(
+      children: [
+        Container(
+          padding: const EdgeInsets.all(8),
+          decoration: BoxDecoration(
+            gradient: LinearGradient(
+              colors: [
+                AppTheme.accentColor.withOpacity(0.1),
+                AppTheme.accentColor.withOpacity(0.05),
+              ],
+            ),
+            borderRadius: BorderRadius.circular(10),
+          ),
+          child: Icon(icon, color: AppTheme.accentColor, size: 18),
+        ),
+        const SizedBox(width: 10),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 14,
+                fontWeight: FontWeight.w700,
+                color: AppTheme.textPrimary,
+              ),
+            ),
+            if (subtitle.isNotEmpty) ...[
+              Text(
+                subtitle,
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 11,
+                  color: AppTheme.textHint,
+                ),
+              ),
+            ],
+          ],
+        ),
+      ],
+    );
+  }
+
+  Widget _buildElegantTextField({
+    required TextEditingController controller,
+    required String hint,
+    int maxLines = 1,
+    TextInputType keyboardType = TextInputType.text,
+    String? Function(String?)? validator,
+    void Function(String)? onChanged,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: keyboardType,
+        maxLines: maxLines,
+        validator: validator,
+        onChanged: onChanged,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AppTheme.textPrimary,
+        ),
+        decoration: InputDecoration(
+          hintText: hint,
+          hintStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: AppTheme.textHint,
+          ),
+          border: InputBorder.none,
+          contentPadding: EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: maxLines > 1 ? 12 : 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildElegantPriceField({
+    required TextEditingController controller,
+    required String hint,
+  }) {
+    return Container(
+      decoration: BoxDecoration(
+        color: const Color(0xFFF8F9FF),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
+      ),
+      child: TextFormField(
+        controller: controller,
+        keyboardType: TextInputType.number,
+        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
+        style: GoogleFonts.plusJakartaSans(
+          fontSize: 14,
+          fontWeight: FontWeight.w500,
+          color: AppTheme.textPrimary,
+        ),
+        decoration: InputDecoration(
+          prefixText: '₹ ',
+          prefixStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 14,
+            fontWeight: FontWeight.w600,
+            color: AppTheme.accentColor,
+          ),
+          hintText: hint,
+          hintStyle: GoogleFonts.plusJakartaSans(
+            fontSize: 13,
+            color: AppTheme.textHint,
+          ),
+          border: InputBorder.none,
+          contentPadding: const EdgeInsets.symmetric(
+            horizontal: 14,
+            vertical: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _buildElegantDatePicker() {
+    return GestureDetector(
+      onTap: _pickDate,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+        decoration: BoxDecoration(
+          gradient: LinearGradient(
+            colors: [
+              _availableFrom != null
+                  ? AppTheme.accentColor.withOpacity(0.05)
+                  : Colors.transparent,
+              Colors.transparent,
+            ],
+          ),
+          borderRadius: BorderRadius.circular(12),
+          border: Border.all(
+            color: _availableFrom != null
+                ? AppTheme.accentColor.withOpacity(0.3)
+                : const Color(0xFFE5E7EB),
+            width: 1.5,
+          ),
+        ),
+        child: Row(
+          children: [
+            Icon(
+              Icons.calendar_today_rounded,
+              size: 18,
+              color: _availableFrom != null
+                  ? AppTheme.accentColor
+                  : AppTheme.textHint,
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Text(
+                _availableFrom != null
+                    ? _formatDate(_availableFrom!)
+                    : 'Select availability date',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: _availableFrom != null
+                      ? FontWeight.w600
+                      : FontWeight.w400,
+                  color: _availableFrom != null
+                      ? AppTheme.accentColor
+                      : AppTheme.textHint,
                 ),
               ),
             ),
-            child: Row(
-              children: [
-                Container(
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: AppTheme.accentColor.withOpacity(0.1),
-                    borderRadius: BorderRadius.circular(12),
-                  ),
-                  child: Icon(icon, size: 20, color: AppTheme.accentColor),
-                ),
-                const SizedBox(width: 12),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      RichText(
-                        text: TextSpan(
-                          text: title,
-                          style: GoogleFonts.inter(
-                            fontSize: isSmallScreen ? 14 : 15,
-                            fontWeight: FontWeight.w700,
-                            color: AppTheme.textPrimary,
-                          ),
-                          children: required
-                              ? [
-                                  TextSpan(
-                                    text: ' *',
-                                    style: GoogleFonts.inter(
-                                      color: AppTheme.error,
-                                      fontWeight: FontWeight.w700,
-                                    ),
-                                  ),
-                                ]
-                              : [],
-                        ),
-                      ),
-                      if (subtitle != null) ...[
-                        const SizedBox(height: 2),
-                        Text(
-                          subtitle,
-                          style: GoogleFonts.inter(
-                            fontSize: isSmallScreen ? 10 : 11,
-                            color: AppTheme.textHint,
-                          ),
-                        ),
-                      ],
-                    ],
-                  ),
-                ),
-              ],
+            Icon(
+              Icons.keyboard_arrow_down_rounded,
+              size: 18,
+              color: AppTheme.textHint,
             ),
-          ),
-          Padding(
-            padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
-            child: child,
-          ),
-        ],
+          ],
+        ),
       ),
     );
   }
@@ -1090,62 +1445,147 @@ class _CreateVacancyPostScreenState
     required Color color,
     required bool isSmallScreen,
   }) {
-    return Container(
-      decoration: BoxDecoration(
-        color: color.withOpacity(0.05),
-        borderRadius: BorderRadius.circular(12),
-        border: Border.all(color: color.withOpacity(0.2)),
-      ),
-      child: TextFormField(
-        controller: controller,
-        keyboardType: TextInputType.number,
-        onChanged: (_) => setState(() {}),
-        validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-        style: GoogleFonts.inter(
-          fontSize: isSmallScreen ? 13 : 14,
-          fontWeight: FontWeight.w500,
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: [
+        Row(
+          children: [
+            Icon(icon, size: 16, color: AppTheme.textSecondary),
+            const SizedBox(width: 6),
+            Expanded(
+              child: Text(
+                '$title Vacancy Count ',
+                style: GoogleFonts.plusJakartaSans(
+                  fontSize: 13,
+                  fontWeight: FontWeight.w600,
+                  color: AppTheme.textPrimary,
+                ),
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            Text(
+              '*',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: 13,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.error,
+              ),
+            ),
+          ],
         ),
-        decoration: InputDecoration(
-          prefixIcon: Icon(icon, color: color, size: 20),
-          hintText: title,
-          hintStyle: GoogleFonts.inter(
-            fontSize: isSmallScreen ? 13 : 14,
-            color: AppTheme.textHint,
+        const SizedBox(height: 8),
+        Container(
+          decoration: BoxDecoration(
+            color: const Color(0xFFF8F9FF),
+            borderRadius: BorderRadius.circular(12),
+            border: Border.all(color: const Color(0xFFE5E7EB), width: 1.5),
           ),
-          border: InputBorder.none,
-          contentPadding: EdgeInsets.symmetric(
-            horizontal: 12,
-            vertical: isSmallScreen ? 12 : 14,
+          child: TextFormField(
+            controller: controller,
+            keyboardType: TextInputType.number,
+            onChanged: (_) => setState(() {}),
+            validator: (v) {
+              if (v == null || v.trim().isEmpty) return 'Required';
+              final val = int.tryParse(v);
+              if (val == null) return 'Invalid';
+              if (_pgTotalVacancy != null && _totalVacancy > _pgTotalVacancy!) {
+                return 'Total sum of male and female cannot exceed actual available beds ($_pgTotalVacancy)';
+              }
+              return null;
+            },
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: 14,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textPrimary,
+            ),
+            decoration: InputDecoration(
+              border: InputBorder.none,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 14,
+                vertical: 14,
+              ),
+            ),
           ),
         ),
-      ),
+        if (_pgTotalVacancy != null) ...[
+          const SizedBox(height: 6),
+          RichText(
+            text: TextSpan(
+              text: 'PG vacant beds: ',
+              style: GoogleFonts.plusJakartaSans(
+                fontSize: isSmallScreen ? 10 : 11,
+                color: AppTheme.textHint,
+              ),
+              children: [
+                TextSpan(
+                  text: '$_pgTotalVacancy',
+                  style: GoogleFonts.plusJakartaSans(
+                    fontWeight: FontWeight.w700,
+                    color: AppTheme.warning,
+                  ),
+                ),
+                TextSpan(text: ' (Override if needed)'),
+              ],
+            ),
+          ),
+        ],
+      ],
     );
   }
 
   Widget _buildTotalVacancyChip(bool isSmallScreen) {
+    final int maleCount = int.tryParse(_maleVacancyController.text) ?? 0;
+    final int femaleCount = int.tryParse(_femaleVacancyController.text) ?? 0;
+
     return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+      width: double.infinity,
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 16),
       decoration: BoxDecoration(
-        gradient: LinearGradient(
-          colors: [
-            AppTheme.accentColor.withOpacity(0.1),
-            AppTheme.accentColor.withOpacity(0.05),
-          ],
-        ),
-        borderRadius: BorderRadius.circular(12),
+        color: AppTheme.accentColor.withOpacity(0.05),
+        borderRadius: BorderRadius.circular(24),
         border: Border.all(color: AppTheme.accentColor.withOpacity(0.2)),
       ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
+      child: Wrap(
+        crossAxisAlignment: WrapCrossAlignment.center,
         children: [
-          Icon(Icons.people_alt_rounded, size: 18, color: AppTheme.accentColor),
+          Text(
+            'Total vacancies: ',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isSmallScreen ? 13 : 14,
+              fontWeight: FontWeight.w500,
+              color: AppTheme.textSecondary,
+            ),
+          ),
+          Text(
+            '$_totalVacancy',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isSmallScreen ? 15 : 16,
+              fontWeight: FontWeight.w700,
+              color: AppTheme.accentColor,
+            ),
+          ),
           const SizedBox(width: 8),
           Text(
-            'Total Vacancies: $_totalVacancy',
-            style: GoogleFonts.inter(
+            '( ',
+            style: GoogleFonts.plusJakartaSans(
               fontSize: isSmallScreen ? 12 : 13,
-              fontWeight: FontWeight.w600,
-              color: AppTheme.accentColor,
+              color: AppTheme.textHint,
+            ),
+          ),
+          Icon(Icons.male, size: 14, color: AppTheme.textHint),
+          Text(
+            ' $maleCount male + ',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isSmallScreen ? 12 : 13,
+              color: AppTheme.textHint,
+            ),
+          ),
+          Icon(Icons.female, size: 14, color: AppTheme.textHint),
+          Text(
+            ' $femaleCount female )',
+            style: GoogleFonts.plusJakartaSans(
+              fontSize: isSmallScreen ? 12 : 13,
+              color: AppTheme.textHint,
             ),
           ),
         ],
@@ -1162,65 +1602,18 @@ class _CreateVacancyPostScreenState
       ),
       child: Row(
         children: [
-          Icon(Icons.info_outline_rounded, size: 16, color: AppTheme.warning),
-          const SizedBox(width: 8),
+          Icon(Icons.info_outline_rounded, size: 14, color: AppTheme.warning),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               'PG has $_pgTotalVacancy vacant bed(s) • You can override this value',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: isSmallScreen ? 10 : 11,
                 color: AppTheme.warning,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildPriceField({
-    required TextEditingController controller,
-    required String hint,
-    required bool isSmallScreen,
-  }) {
-    return TextFormField(
-      controller: controller,
-      keyboardType: TextInputType.number,
-      validator: (v) => v == null || v.trim().isEmpty ? 'Required' : null,
-      style: GoogleFonts.inter(
-        fontSize: isSmallScreen ? 13 : 14,
-        fontWeight: FontWeight.w500,
-      ),
-      decoration: InputDecoration(
-        prefixText: '₹ ',
-        prefixStyle: GoogleFonts.inter(
-          fontSize: isSmallScreen ? 13 : 14,
-          fontWeight: FontWeight.w600,
-          color: AppTheme.accentColor,
-        ),
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
-          fontSize: isSmallScreen ? 13 : 14,
-          color: AppTheme.textHint,
-        ),
-        filled: true,
-        fillColor: AppTheme.surfaceWhite,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: isSmallScreen ? 12 : 14,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.surfaceBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.surfaceBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.accentColor, width: 1.5),
-        ),
       ),
     );
   }
@@ -1236,78 +1629,20 @@ class _CreateVacancyPostScreenState
         children: [
           Icon(
             Icons.trending_up_rounded,
-            size: 16,
+            size: 14,
             color: AppTheme.accentColor,
           ),
-          const SizedBox(width: 8),
+          const SizedBox(width: 6),
           Expanded(
             child: Text(
               'PG price range: ${_pgMinPrice != null ? '₹${_pgMinPrice!.toInt()}' : 'N/A'} - ${_pgMaxPrice != null ? '₹${_pgMaxPrice!.toInt()}' : 'N/A'}',
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: isSmallScreen ? 10 : 11,
                 color: AppTheme.accentColor,
               ),
             ),
           ),
         ],
-      ),
-    );
-  }
-
-  Widget _buildDatePicker(bool isSmallScreen) {
-    return GestureDetector(
-      onTap: _pickDate,
-      child: Container(
-        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 14),
-        decoration: BoxDecoration(
-          gradient: LinearGradient(
-            colors: [
-              _availableFrom != null
-                  ? AppTheme.accentColor.withOpacity(0.05)
-                  : Colors.transparent,
-              Colors.transparent,
-            ],
-          ),
-          borderRadius: BorderRadius.circular(12),
-          border: Border.all(
-            color: _availableFrom != null
-                ? AppTheme.accentColor.withOpacity(0.3)
-                : AppTheme.surfaceBorder,
-          ),
-        ),
-        child: Row(
-          children: [
-            Icon(
-              Icons.calendar_today_rounded,
-              size: 20,
-              color: _availableFrom != null
-                  ? AppTheme.accentColor
-                  : AppTheme.textHint,
-            ),
-            const SizedBox(width: 12),
-            Expanded(
-              child: Text(
-                _availableFrom != null
-                    ? _formatDate(_availableFrom!)
-                    : 'Select availability date',
-                style: GoogleFonts.inter(
-                  fontSize: isSmallScreen ? 13 : 14,
-                  fontWeight: _availableFrom != null
-                      ? FontWeight.w600
-                      : FontWeight.w400,
-                  color: _availableFrom != null
-                      ? AppTheme.accentColor
-                      : AppTheme.textHint,
-                ),
-              ),
-            ),
-            Icon(
-              Icons.keyboard_arrow_down_rounded,
-              size: 20,
-              color: AppTheme.textHint,
-            ),
-          ],
-        ),
       ),
     );
   }
@@ -1325,14 +1660,16 @@ class _CreateVacancyPostScreenState
         const SizedBox(height: 16),
         Text(
           'Loading room information...',
-          style: GoogleFonts.inter(fontSize: 12, color: AppTheme.textHint),
+          style: GoogleFonts.plusJakartaSans(
+            fontSize: 12,
+            color: AppTheme.textHint,
+          ),
         ),
         const SizedBox(height: 16),
       ],
     );
   }
 
-  // ─── Occupancy Type Grid ────────────────────────────────────────────
   Widget _buildOccupancyGrid(bool isSmallScreen) {
     final types = ['single', 'double', 'triple', 'four', 'other'];
     final typeNames = {
@@ -1351,8 +1688,8 @@ class _CreateVacancyPostScreenState
     };
 
     return Wrap(
-      spacing: 12,
-      runSpacing: 12,
+      spacing: 10,
+      runSpacing: 10,
       children: types.map((type) {
         final isSelected = _occupancySelected[type] ?? false;
         final rooms = _occupancyRoomCount[type] ?? 0;
@@ -1365,7 +1702,7 @@ class _CreateVacancyPostScreenState
             duration: const Duration(milliseconds: 250),
             width:
                 (MediaQuery.of(context).size.width -
-                    (isSmallScreen ? 68 : 84)) /
+                    (isSmallScreen ? 60 : 76)) /
                 2.2,
             padding: const EdgeInsets.all(14),
             decoration: BoxDecoration(
@@ -1374,20 +1711,20 @@ class _CreateVacancyPostScreenState
                       begin: Alignment.topLeft,
                       end: Alignment.bottomRight,
                       colors: [
-                        AppTheme.accentColor.withOpacity(0.15),
+                        AppTheme.accentColor.withOpacity(0.12),
                         AppTheme.accentColor.withOpacity(0.05),
                       ],
                     )
                   : null,
               color: isSelected ? null : Colors.white,
-              borderRadius: BorderRadius.circular(16),
+              borderRadius: BorderRadius.circular(14),
               border: Border.all(
                 color: isSelected
                     ? AppTheme.accentColor
                     : (hasAvailability
                           ? AppTheme.success.withOpacity(0.3)
-                          : AppTheme.surfaceBorder),
-                width: isSelected ? 2 : 1,
+                          : const Color(0xFFE5E7EB)),
+                width: isSelected ? 2 : 1.5,
               ),
               boxShadow: isSelected
                   ? [
@@ -1408,13 +1745,13 @@ class _CreateVacancyPostScreenState
                       padding: const EdgeInsets.all(6),
                       decoration: BoxDecoration(
                         color: isSelected
-                            ? AppTheme.accentColor.withOpacity(0.2)
-                            : AppTheme.surfaceBorder.withOpacity(0.5),
+                            ? AppTheme.accentColor.withOpacity(0.15)
+                            : const Color(0xFFF1F4F9),
                         borderRadius: BorderRadius.circular(10),
                       ),
                       child: Icon(
                         typeIcons[type],
-                        size: 18,
+                        size: 16,
                         color: isSelected
                             ? AppTheme.accentColor
                             : (hasAvailability
@@ -1426,7 +1763,7 @@ class _CreateVacancyPostScreenState
                     Expanded(
                       child: Text(
                         typeNames[type]!,
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: isSmallScreen ? 13 : 14,
                           fontWeight: FontWeight.w600,
                           color: isSelected
@@ -1461,10 +1798,10 @@ class _CreateVacancyPostScreenState
                     ),
                   ],
                 ),
-                const SizedBox(height: 10),
+                const SizedBox(height: 8),
                 Divider(
                   height: 1,
-                  color: AppTheme.surfaceBorder.withOpacity(0.5),
+                  color: const Color(0xFFE5E7EB).withOpacity(0.5),
                 ),
                 const SizedBox(height: 8),
                 Row(
@@ -1476,7 +1813,7 @@ class _CreateVacancyPostScreenState
                         isSmallScreen,
                       ),
                     ),
-                    const SizedBox(width: 8),
+                    const SizedBox(width: 6),
                     Expanded(
                       child: _buildStatChip(
                         Icons.bed_rounded,
@@ -1506,7 +1843,7 @@ class _CreateVacancyPostScreenState
       decoration: BoxDecoration(
         color: highlight
             ? AppTheme.success.withOpacity(0.1)
-            : AppTheme.surfaceBorder.withOpacity(0.3),
+            : const Color(0xFFF1F4F9),
         borderRadius: BorderRadius.circular(8),
       ),
       child: Row(
@@ -1520,7 +1857,7 @@ class _CreateVacancyPostScreenState
           Expanded(
             child: Text(
               label,
-              style: GoogleFonts.inter(
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: isSmallScreen ? 9 : 10,
                 fontWeight: highlight ? FontWeight.w600 : FontWeight.w400,
                 color: highlight ? AppTheme.success : AppTheme.textHint,
@@ -1540,19 +1877,28 @@ class _CreateVacancyPostScreenState
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         Wrap(
-          spacing: 12,
-          runSpacing: 12,
+          spacing: 10,
+          runSpacing: 10,
           children: [
-            ..._existingImages.map((img) => _buildImageItem(img, true, isSmallScreen)),
-            ..._selectedImages.map((file) => _buildImageItem(file, false, isSmallScreen)),
+            ..._existingImages.asMap().entries.map(
+              (e) => _buildImageItem(e.value, true, isSmallScreen, e.key),
+            ),
+            ..._selectedImages.asMap().entries.map(
+              (e) => _buildImageItem(
+                e.value,
+                false,
+                isSmallScreen,
+                _existingImages.length + e.key,
+              ),
+            ),
             if (totalImages < 5) _buildAddImageButton(isSmallScreen),
           ],
         ),
-        const SizedBox(height: 12),
+        const SizedBox(height: 10),
         Container(
           padding: const EdgeInsets.all(10),
           decoration: BoxDecoration(
-            color: AppTheme.surfaceBorder.withOpacity(0.3),
+            color: const Color(0xFFF8F9FF),
             borderRadius: BorderRadius.circular(10),
           ),
           child: Row(
@@ -1566,8 +1912,8 @@ class _CreateVacancyPostScreenState
               Expanded(
                 child: Text(
                   'Upload up to 5 images (JPEG, PNG, WEBP) • Max 5MB each',
-                  style: GoogleFonts.inter(
-                    fontSize: isSmallScreen ? 9 : 10,
+                  style: GoogleFonts.plusJakartaSans(
+                    fontSize: isSmallScreen ? 10 : 11,
                     color: AppTheme.textHint,
                   ),
                 ),
@@ -1579,15 +1925,20 @@ class _CreateVacancyPostScreenState
     );
   }
 
-  Widget _buildImageItem(dynamic img, bool isExisting, bool isSmallScreen) {
+  Widget _buildImageItem(
+    dynamic img,
+    bool isExisting,
+    bool isSmallScreen,
+    int globalIndex,
+  ) {
     return Container(
       width: isSmallScreen ? 100 : 110,
       height: isSmallScreen ? 100 : 110,
       decoration: BoxDecoration(
-        borderRadius: BorderRadius.circular(16),
+        borderRadius: BorderRadius.circular(14),
         boxShadow: [
           BoxShadow(
-            color: Colors.black.withOpacity(0.1),
+            color: Colors.black.withOpacity(0.08),
             blurRadius: 8,
             offset: const Offset(0, 2),
           ),
@@ -1597,20 +1948,26 @@ class _CreateVacancyPostScreenState
         fit: StackFit.expand,
         children: [
           ClipRRect(
-            borderRadius: BorderRadius.circular(16),
-            child: isExisting
-                ? PgImageWidget(
-                    imageUrl: img as String,
-                    fit: BoxFit.cover,
-                    fallbackWidget: Container(
-                      color: AppTheme.surfaceBorder,
-                      child: const Icon(Icons.broken_image, color: Colors.grey),
-                    ),
-                  )
-                : Image.file(
-                    File((img as XFile).path),
-                    fit: BoxFit.cover,
-                  ),
+            borderRadius: BorderRadius.circular(14),
+            child: GestureDetector(
+              onTap: () => _showFullScreenGallery(globalIndex),
+              child: Hero(
+                tag: 'hero_image_$img',
+                child: isExisting
+                    ? PgImageWidget(
+                        imageUrl: img as String,
+                        fit: BoxFit.cover,
+                        fallbackWidget: Container(
+                          color: const Color(0xFFF1F4F9),
+                          child: const Icon(
+                            Icons.broken_image,
+                            color: Colors.grey,
+                          ),
+                        ),
+                      )
+                    : Image.file(File((img as XFile).path), fit: BoxFit.cover),
+              ),
+            ),
           ),
           Positioned(
             top: 6,
@@ -1636,13 +1993,13 @@ class _CreateVacancyPostScreenState
               },
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(
-                  color: Colors.black.withOpacity(0.6),
+                decoration: const BoxDecoration(
+                  color: Color(0xFFEF4444),
                   shape: BoxShape.circle,
                 ),
                 child: const Icon(
                   Icons.close_rounded,
-                  size: 14,
+                  size: 12,
                   color: Colors.white,
                 ),
               ),
@@ -1660,43 +2017,41 @@ class _CreateVacancyPostScreenState
         width: isSmallScreen ? 100 : 110,
         height: isSmallScreen ? 100 : 110,
         decoration: BoxDecoration(
-          color: Colors.white,
-          borderRadius: BorderRadius.circular(16),
+          color: const Color(0xFFF8F9FF),
+          borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: AppTheme.surfaceBorder,
+            color: const Color(0xFFE5E7EB),
             width: 2,
             style: BorderStyle.solid,
           ),
-          boxShadow: [
-            BoxShadow(
-              color: Colors.black.withOpacity(0.04),
-              blurRadius: 8,
-              offset: const Offset(0, 2),
-            ),
-          ],
         ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(
-              Icons.cloud_upload_rounded,
-              size: isSmallScreen ? 28 : 32,
-              color: AppTheme.accentColor,
-            ),
-            const SizedBox(height: 8),
-            Text(
-              'Upload',
-              style: GoogleFonts.inter(
-                fontSize: isSmallScreen ? 11 : 12,
-                fontWeight: FontWeight.w600,
-                color: AppTheme.accentColor,
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  colors: [
+                    AppTheme.accentColor,
+                    AppTheme.accentColor.withOpacity(0.7),
+                  ],
+                ),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(
+                Icons.add_rounded,
+                size: isSmallScreen ? 18 : 20,
+                color: Colors.white,
               ),
             ),
+            const SizedBox(height: 4),
             Text(
-              'Image',
-              style: GoogleFonts.inter(
+              'Add Photo',
+              style: GoogleFonts.plusJakartaSans(
                 fontSize: isSmallScreen ? 10 : 11,
-                color: AppTheme.textHint,
+                fontWeight: FontWeight.w600,
+                color: AppTheme.accentColor,
               ),
             ),
           ],
@@ -1705,92 +2060,123 @@ class _CreateVacancyPostScreenState
     );
   }
 
-  Widget _buildActionButtons(bool isSmallScreen) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.end,
-      children: [
-        TextButton(
-          onPressed: () => Navigator.pop(context),
-          style: TextButton.styleFrom(
-            padding: EdgeInsets.symmetric(
-              horizontal: isSmallScreen ? 16 : 20,
-              vertical: isSmallScreen ? 10 : 12,
-            ),
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(12),
-              side: BorderSide(color: AppTheme.surfaceBorder),
-            ),
-          ),
-          child: Text(
-            'Cancel',
-            style: GoogleFonts.inter(
-              fontWeight: FontWeight.w600,
-              color: AppTheme.textSecondary,
-              fontSize: isSmallScreen ? 13 : 14,
-            ),
-          ),
-        ),
-        const SizedBox(width: 16),
-        SizedBox(
-          height: 48,
-          child: ElevatedButton(
-            onPressed: _isSubmitting ? null : _submit,
-            style: ElevatedButton.styleFrom(
-              backgroundColor: AppTheme.accentColor,
-              disabledBackgroundColor: AppTheme.accentColor.withOpacity(0.4),
-              shape: RoundedRectangleBorder(
-                borderRadius: BorderRadius.circular(12),
-              ),
-              padding: EdgeInsets.symmetric(
-                horizontal: isSmallScreen ? 20 : 28,
-              ),
-              elevation: 0,
-            ),
-            child: _isSubmitting
-                ? const SizedBox(
-                    height: 20,
-                    width: 20,
-                    child: CircularProgressIndicator(
-                      color: Colors.white,
-                      strokeWidth: 2,
+  void _showFullScreenGallery(int initialIndex) {
+    final pageController = PageController(initialPage: initialIndex);
+    final totalImages = _existingImages.length + _selectedImages.length;
+    int currentIndex = initialIndex;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.zero,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(dialogContext),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.9),
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: totalImages,
+                      onPageChanged: (index) {
+                        setStateDialog(() {
+                          currentIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final isExisting = index < _existingImages.length;
+                        final img = isExisting
+                            ? _existingImages[index]
+                            : _selectedImages[index - _existingImages.length];
+
+                        return InteractiveViewer(
+                          panEnabled: true,
+                          minScale: 0.5,
+                          maxScale: 4,
+                          child: Center(
+                            child: Hero(
+                              tag: 'hero_image_$img',
+                              child: isExisting
+                                  ? PgImageWidget(
+                                      imageUrl: img as String,
+                                      fit: BoxFit.contain,
+                                      fallbackWidget: Container(
+                                        color: const Color(0xFFF1F4F9),
+                                        child: const Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    )
+                                  : Image.file(
+                                      File((img as XFile).path),
+                                      fit: BoxFit.contain,
+                                    ),
+                            ),
+                          ),
+                        );
+                      },
                     ),
-                  )
-                : Row(
-                    mainAxisSize: MainAxisSize.min,
-                    children: [
-                      Text(
-                        _isEditMode ? 'Update Post' : 'Create Post',
-                        style: GoogleFonts.inter(
-                          fontWeight: FontWeight.w700,
-                          color: Colors.white,
-                          fontSize: isSmallScreen ? 13 : 14,
-                        ),
-                      ),
-                      const SizedBox(width: 8),
-                      Icon(
-                        Icons.arrow_forward_rounded,
-                        size: 18,
-                        color: Colors.white,
-                      ),
-                    ],
                   ),
-          ),
-        ),
-      ],
+                ),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(dialogContext),
+                  ),
+                ),
+                if (totalImages > 1)
+                  Positioned(
+                    bottom: 40,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(totalImages, (index) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: currentIndex == index ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: currentIndex == index
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
     );
   }
 
-  // ─── PG Dropdown ─────────────────────────────────────────────────────────
   Widget _buildDropdown(List<PgModel> pgs, bool isSmallScreen) {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 4),
       decoration: BoxDecoration(
-        color: AppTheme.surfaceWhite,
+        color: const Color(0xFFF8F9FF),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
           color: _selectedPg != null
               ? AppTheme.accentColor.withOpacity(0.5)
-              : AppTheme.surfaceBorder,
+              : const Color(0xFFE5E7EB),
+          width: 1.5,
         ),
       ),
       child: DropdownButtonHideUnderline(
@@ -1804,7 +2190,7 @@ class _CreateVacancyPostScreenState
               const SizedBox(width: 8),
               Text(
                 'Search or select PG...',
-                style: GoogleFonts.inter(
+                style: GoogleFonts.plusJakartaSans(
                   color: AppTheme.textHint,
                   fontSize: isSmallScreen ? 13 : 14,
                 ),
@@ -1825,7 +2211,7 @@ class _CreateVacancyPostScreenState
                   children: [
                     Text(
                       pg.name,
-                      style: GoogleFonts.inter(
+                      style: GoogleFonts.plusJakartaSans(
                         fontSize: isSmallScreen ? 13 : 14,
                         fontWeight: FontWeight.w500,
                       ),
@@ -1835,7 +2221,7 @@ class _CreateVacancyPostScreenState
                       const SizedBox(height: 2),
                       Text(
                         _formatAddress(pg.address!),
-                        style: GoogleFonts.inter(
+                        style: GoogleFonts.plusJakartaSans(
                           fontSize: isSmallScreen ? 10 : 11,
                           color: AppTheme.textHint,
                         ),
@@ -1865,66 +2251,137 @@ class _CreateVacancyPostScreenState
     return parts.join(', ');
   }
 
-  Widget _buildTextField({
-    required TextEditingController controller,
-    required String hint,
-    int maxLines = 1,
-    TextInputType keyboardType = TextInputType.text,
-    String? Function(String?)? validator,
-    void Function(String)? onChanged,
-    String? helperText,
-    required bool isSmallScreen,
-  }) {
-    return TextFormField(
-      controller: controller,
-      maxLines: maxLines,
-      keyboardType: keyboardType,
-      validator: validator,
-      onChanged: onChanged,
-      style: GoogleFonts.inter(
-        fontSize: isSmallScreen ? 13 : 14,
-        color: AppTheme.textPrimary,
+  Widget _buildModernBottomNav() {
+    final primaryColor = AppTheme.primary;
+    return Container(
+      padding: const EdgeInsets.all(16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        boxShadow: [
+          BoxShadow(
+            color: primaryColor.withOpacity(0.04),
+            blurRadius: 16,
+            offset: const Offset(0, -4),
+          ),
+          BoxShadow(
+            color: primaryColor.withOpacity(0.02),
+            blurRadius: 6,
+            offset: const Offset(0, -2),
+          ),
+        ],
+        borderRadius: const BorderRadius.only(
+          topLeft: Radius.circular(20),
+          topRight: Radius.circular(20),
+        ),
       ),
-      decoration: InputDecoration(
-        hintText: hint,
-        hintStyle: GoogleFonts.inter(
-          color: AppTheme.textHint,
-          fontSize: isSmallScreen ? 13 : 14,
-        ),
-        helperText: helperText,
-        helperStyle: GoogleFonts.inter(
-          color: AppTheme.textHint,
-          fontSize: isSmallScreen ? 9 : 10,
-        ),
-        filled: true,
-        fillColor: AppTheme.surfaceWhite,
-        contentPadding: EdgeInsets.symmetric(
-          horizontal: 14,
-          vertical: maxLines > 1 ? 14 : 12,
-        ),
-        border: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.surfaceBorder),
-        ),
-        enabledBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.surfaceBorder),
-        ),
-        focusedBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.accentColor, width: 1.5),
-        ),
-        errorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.error),
-        ),
-        focusedErrorBorder: OutlineInputBorder(
-          borderRadius: BorderRadius.circular(12),
-          borderSide: const BorderSide(color: AppTheme.error, width: 1.5),
-        ),
-        errorStyle: GoogleFonts.inter(
-          color: AppTheme.error,
-          fontSize: isSmallScreen ? 9 : 10,
+      child: SafeArea(
+        top: false,
+        child: Padding(
+          padding: const EdgeInsets.only(bottom: 4),
+          child: Row(
+            children: [
+              Expanded(
+                child: TextButton(
+                  onPressed: _isSubmitting
+                      ? null
+                      : (_currentStep == 0
+                            ? () => Navigator.pop(context)
+                            : _prevStep),
+                  style: TextButton.styleFrom(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 16,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                      side: const BorderSide(
+                        color: Color(0xFFE5E7EB),
+                        width: 1.5,
+                      ),
+                    ),
+                  ),
+                  child: Row(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      if (_currentStep > 0)
+                        const Icon(
+                          Icons.arrow_circle_left_outlined,
+                          color: Color(0xFF03045E),
+                          size: 14,
+                        ),
+                      if (_currentStep > 0) const SizedBox(width: 4),
+                      Text(
+                        _currentStep == 0 ? 'Cancel' : 'Back',
+                        style: GoogleFonts.plusJakartaSans(
+                          color: _currentStep == 0
+                              ? const Color(0xFF6B7280)
+                              : primaryColor,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                    ],
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: ElevatedButton(
+                  onPressed:
+                      _isSubmitting ||
+                          (_isEditMode &&
+                              _currentStep == _totalSteps - 1 &&
+                              !_hasChanges)
+                      ? null
+                      : _nextStep,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: primaryColor,
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 14,
+                    ),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(12),
+                    ),
+                    elevation: 0,
+                    shadowColor: primaryColor.withOpacity(0.3),
+                  ),
+                  child: _isSubmitting
+                      ? const SizedBox(
+                          width: 20,
+                          height: 20,
+                          child: CircularProgressIndicator(
+                            color: Colors.white,
+                            strokeWidth: 2.5,
+                          ),
+                        )
+                      : Row(
+                          mainAxisAlignment: MainAxisAlignment.center,
+                          children: [
+                            Text(
+                              _currentStep < _totalSteps - 1
+                                  ? 'Continue'
+                                  : (_isEditMode ? 'Update' : 'Create'),
+                              style: GoogleFonts.plusJakartaSans(
+                                color: Colors.white,
+                                fontSize: 14,
+                                fontWeight: FontWeight.w600,
+                              ),
+                            ),
+                            if (_currentStep < _totalSteps - 1) ...[
+                              const SizedBox(width: 6),
+                              const Icon(
+                                Icons.arrow_circle_right_outlined,
+                                color: Colors.white,
+                                size: 16,
+                              ),
+                            ],
+                          ],
+                        ),
+                ),
+              ),
+            ],
+          ),
         ),
       ),
     );

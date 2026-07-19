@@ -36,12 +36,12 @@ import 'package:pgstay/features/pg_listing/screens/browse_posts_screen.dart';
 import 'package:pgstay/features/pg_listing/screens/property_details_screen.dart';
 import 'package:pgstay/features/enquiries/screens/enquiry_details_screen.dart';
 import 'package:pgstay/features/rent/screens/rent_details_screen.dart';
-import 'package:pgstay/features/profile/screens/edit_profile_screen.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/enquiries/models/enquiry_model.dart';
 import 'package:pgstay/features/rent/models/rent_model.dart';
 import 'package:pgstay/features/profile/models/profile_model.dart';
 import 'package:pgstay/features/staff/screens/staff_expense_tracker_screen.dart';
+import 'package:pgstay/features/onboarding/screens/tenant_onboarding_screen.dart';
 
 final GlobalKey<NavigatorState> _rootNavigatorKey = GlobalKey<NavigatorState>(
   debugLabel: 'root',
@@ -230,18 +230,18 @@ final appRouterProvider = Provider<GoRouter>((ref) {
       ),
       GoRoute(
         parentNavigatorKey: _rootNavigatorKey,
-        path: '/edit-profile',
-        builder: (context, state) {
-          final profile = state.extra as UserProfile;
-          return EditProfileScreen(profile: profile);
-        },
-      ),
-      GoRoute(
-        parentNavigatorKey: _rootNavigatorKey,
         path: '/add-pg',
         builder: (context, state) {
           final pgToEdit = state.extra as PgModel?;
           return AddPgScreen(pgToEdit: pgToEdit);
+        },
+      ),
+      GoRoute(
+        parentNavigatorKey: _rootNavigatorKey,
+        path: '/onboarding',
+        builder: (context, state) {
+          final enquiry = state.extra as EnquiryModel;
+          return TenantOnboardingScreen(enquiry: enquiry);
         },
       ),
       GoRoute(

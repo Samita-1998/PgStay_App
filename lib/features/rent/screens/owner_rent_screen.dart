@@ -95,8 +95,11 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       extendBodyBehindAppBar: true,
       appBar: CustomAppBar(
         title: 'Rent Hub',
-        subtitle: 'Track, collect, and manage monthly rent seamlessly.',
+        showBackButton: true,
+        showLeading: true,
         pinnedSCurve: true,
+        isCompact: true,
+        backgroundColor: AppTheme.backgroundLight,
       ),
       body: MediaQuery.removePadding(
         context: context,
@@ -121,7 +124,12 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
     final pgsAsync = ref.watch(_ownerPgsProvider);
 
     return Padding(
-      padding: EdgeInsets.fromLTRB(24, 110 + MediaQuery.of(context).padding.top + 32, 24, 4),
+      padding: EdgeInsets.fromLTRB(
+        24,
+        100 + MediaQuery.of(context).padding.top + 32,
+        24,
+        4,
+      ),
       child: pgsAsync.when(
         data: (pgs) {
           if (pgs.isEmpty) {
@@ -514,7 +522,11 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
       // Due date = 5th of the selected month
       final parts = _selectedMonth.split('-');
       final dueDate = '${parts[0]}-${parts[1]}-05T00:00:00.000Z';
-      final result = await repo.generateRent(_selectedPgId!, _selectedMonth, dueDate);
+      final result = await repo.generateRent(
+        _selectedPgId!,
+        _selectedMonth,
+        dueDate,
+      );
 
       // Refresh the list
       ref.invalidate(pgRentsProvider);
@@ -628,116 +640,136 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
     final collected = rents
         .where((r) => r.status == 'paid')
         .fold(0.0, (s, r) => s + r.paidAmount);
-    final pending = rents
-        .where((r) => r.status == 'pending' || r.status == 'overdue')
-        .fold(0.0, (s, r) => s + r.amount);
+
     final paidCount = rents.where((r) => r.status == 'paid').length;
     final totalCount = rents.length;
-    final progress = totalCount > 0 ? paidCount / totalCount : 0.0;
+    final pendingCount = rents.where((r) => r.status == 'pending').length;
+    final overdueCount = rents.where((r) => r.status == 'overdue').length;
+
+    final collectedPercent = total > 0 ? (collected / total) * 100 : 0.0;
+    final collectionRate = totalCount > 0
+        ? (paidCount / totalCount) * 100
+        : 0.0;
 
     return Padding(
       padding: const EdgeInsets.fromLTRB(24, 8, 24, 24),
-      child: Container(
-        padding: const EdgeInsets.all(24),
-        decoration: BoxDecoration(
-          gradient: AppTheme.darkGradient,
-          borderRadius: BorderRadius.circular(24),
-          boxShadow: [
-            BoxShadow(
-              color: AppTheme.primaryDark.withValues(alpha: 0.2),
-              blurRadius: 24,
-              offset: const Offset(0, 12),
-            ),
-          ],
-        ),
-        child: Column(
-          children: [
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                _summaryItem('Total Rent', '₹${total.toInt()}', Colors.white),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                _summaryItem(
-                  'Collected',
-                  '₹${collected.toInt()}',
-                  AppTheme.success,
-                ),
-                Container(
-                  width: 1,
-                  height: 40,
-                  color: Colors.white.withValues(alpha: 0.1),
-                ),
-                _summaryItem(
-                  'Pending',
-                  '₹${pending.toInt()}',
-                  AppTheme.warning,
-                ),
-              ],
-            ),
-            const SizedBox(height: 24),
-            // Progress bar
-            ClipRRect(
-              borderRadius: BorderRadius.circular(8),
-              child: LinearProgressIndicator(
-                value: progress,
-                backgroundColor: Colors.white.withValues(alpha: 0.05),
-                valueColor: const AlwaysStoppedAnimation(AppTheme.success),
-                minHeight: 8,
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: Container(
+          padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 16),
+          decoration: BoxDecoration(
+            color: const Color(0xFF191924),
+            borderRadius: BorderRadius.circular(20),
+            border: Border.all(color: const Color(0xFF2C2D43)),
+          ),
+          child: Row(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              _buildStatItem(
+                icon: Icons.currency_rupee_rounded,
+                iconColor: const Color(0xFF34D399),
+                iconBgColor: const Color(0xFF34D399).withValues(alpha: 0.15),
+                title: 'COLLECTED',
+                value: '₹${collected.toInt()}',
+                valueColor: const Color(0xFF34D399),
+                subtitle: '${collectedPercent.toInt()}% of ₹${total.toInt()}',
               ),
-            ),
-            const SizedBox(height: 12),
-            Row(
-              mainAxisAlignment: MainAxisAlignment.spaceBetween,
-              children: [
-                Text(
-                  '$paidCount of $totalCount collected',
-                  style: GoogleFonts.inter(
-                    fontSize: 13,
-                    fontWeight: FontWeight.w500,
-                    color: Colors.white.withValues(alpha: 0.5),
-                  ),
-                ),
-                Text(
-                  totalCount > 0 ? '${(progress * 100).toInt()}%' : '0%',
-                  style: GoogleFonts.inter(
-                    fontSize: 14,
-                    fontWeight: FontWeight.w800,
-                    color: Colors.white,
-                  ),
-                ),
-              ],
-            ),
-          ],
+              _buildDivider(),
+              _buildStatItem(
+                icon: Icons.trending_up_rounded,
+                iconColor: const Color(0xFF818CF8),
+                iconBgColor: const Color(0xFF818CF8).withValues(alpha: 0.15),
+                title: 'COLLECTION RATE',
+                value: '$paidCount / $totalCount',
+                valueColor: const Color(0xFF818CF8),
+                subtitle: '${collectionRate.toInt()}% tenants paid',
+              ),
+              _buildDivider(),
+              _buildStatItem(
+                icon: Icons.access_time_rounded,
+                iconColor: const Color(0xFFFBBF24),
+                iconBgColor: const Color(0xFFFBBF24).withValues(alpha: 0.15),
+                title: 'PENDING',
+                value: '$pendingCount',
+                valueColor: const Color(0xFFFBBF24),
+                subtitle: 'payments due',
+              ),
+              _buildDivider(),
+              _buildStatItem(
+                icon: Icons.error_outline_rounded,
+                iconColor: const Color(0xFFF87171),
+                iconBgColor: const Color(0xFFF87171).withValues(alpha: 0.15),
+                title: 'OVERDUE',
+                value: '$overdueCount',
+                valueColor: const Color(0xFFF87171),
+                subtitle: 'past due date',
+              ),
+            ],
+          ),
         ),
       ),
     );
   }
 
-  Widget _summaryItem(String label, String value, Color color) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
+  Widget _buildDivider() {
+    return Container(
+      height: 40,
+      width: 1,
+      margin: const EdgeInsets.symmetric(horizontal: 24),
+      color: Colors.white.withValues(alpha: 0.1),
+    );
+  }
+
+  Widget _buildStatItem({
+    required IconData icon,
+    required Color iconColor,
+    required Color iconBgColor,
+    required String title,
+    required String value,
+    required Color valueColor,
+    required String subtitle,
+  }) {
+    return Row(
+      mainAxisSize: MainAxisSize.min,
       children: [
-        Text(
-          label,
-          style: GoogleFonts.inter(
-            fontSize: 11,
-            fontWeight: FontWeight.w600,
-            color: Colors.white.withValues(alpha: 0.5),
-            letterSpacing: 0.5,
-          ),
+        Container(
+          padding: const EdgeInsets.all(10),
+          decoration: BoxDecoration(color: iconBgColor, shape: BoxShape.circle),
+          child: Icon(icon, color: iconColor, size: 20),
         ),
-        const SizedBox(height: 6),
-        Text(
-          value,
-          style: GoogleFonts.inter(
-            fontSize: 18,
-            fontWeight: FontWeight.w800,
-            color: color,
-          ),
+        const SizedBox(width: 16),
+        Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              title,
+              style: GoogleFonts.inter(
+                fontSize: 10,
+                fontWeight: FontWeight.w700,
+                color: Colors.white.withValues(alpha: 0.5),
+                letterSpacing: 1.0,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              value,
+              style: GoogleFonts.inter(
+                fontSize: 20,
+                fontWeight: FontWeight.w800,
+                color: valueColor,
+              ),
+            ),
+            const SizedBox(height: 2),
+            Text(
+              subtitle,
+              style: GoogleFonts.inter(
+                fontSize: 11,
+                fontWeight: FontWeight.w500,
+                color: Colors.white.withValues(alpha: 0.4),
+              ),
+            ),
+          ],
         ),
       ],
     );
@@ -1401,21 +1433,26 @@ class _OwnerRentScreenState extends ConsumerState<OwnerRentScreen> {
             child: SingleChildScrollView(
               child: Column(
                 mainAxisSize: MainAxisSize.min,
-                children: months.map(
-                  (m) => ListTile(
-                    title: Text(
-                      _monthLabel(m),
-                      style: GoogleFonts.inter(fontWeight: FontWeight.w600),
-                    ),
-                    trailing: m == _selectedMonth
-                        ? const Icon(Icons.check_rounded, color: AppTheme.primary)
-                        : null,
-                    onTap: () {
-                      setState(() => _selectedMonth = m);
-                      Navigator.pop(ctx);
-                    },
-                  ),
-                ).toList(),
+                children: months
+                    .map(
+                      (m) => ListTile(
+                        title: Text(
+                          _monthLabel(m),
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                        ),
+                        trailing: m == _selectedMonth
+                            ? const Icon(
+                                Icons.check_rounded,
+                                color: AppTheme.primary,
+                              )
+                            : null,
+                        onTap: () {
+                          setState(() => _selectedMonth = m);
+                          Navigator.pop(ctx);
+                        },
+                      ),
+                    )
+                    .toList(),
               ),
             ),
           ),

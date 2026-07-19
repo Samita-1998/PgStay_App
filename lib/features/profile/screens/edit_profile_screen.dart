@@ -5,6 +5,8 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/profile/models/profile_model.dart';
 import 'package:pgstay/features/profile/providers/profile_provider.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
+import 'package:pgstay/core/widgets/custom_app_bar.dart';
 
 class EditProfileScreen extends ConsumerStatefulWidget {
   final UserProfile profile;
@@ -29,7 +31,13 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   late TextEditingController _stateCtrl;
   late TextEditingController _countryCtrl;
   late TextEditingController _pincodeCtrl;
+  late TextEditingController _vehicleTypeCtrl;
+  late TextEditingController _vehicleNumberCtrl;
+  late TextEditingController _aadharNumberCtrl;
   bool _isLoading = false;
+  late final ChangeTracker _tracker;
+
+  bool get _hasChanges => _tracker.hasChanges;
 
   @override
   void initState() {
@@ -48,6 +56,41 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _stateCtrl = TextEditingController(text: widget.profile.state ?? '');
     _countryCtrl = TextEditingController(text: widget.profile.country ?? '');
     _pincodeCtrl = TextEditingController(text: widget.profile.pincode ?? '');
+    _vehicleTypeCtrl = TextEditingController(text: widget.profile.vehicleType ?? '');
+    _vehicleNumberCtrl = TextEditingController(text: widget.profile.vehicleNumber ?? '');
+    _aadharNumberCtrl = TextEditingController(text: widget.profile.aadharNumber ?? '');
+
+    _tracker = ChangeTracker(onStateChanged: () {
+      if (mounted) setState(() {});
+    });
+
+    _tracker.setOriginal('name', widget.profile.name);
+    _tracker.setOriginal('mobNo1', widget.profile.mobNo1);
+    _tracker.setOriginal('mobNo2', widget.profile.mobNo2 ?? '');
+    _tracker.setOriginal('gender', widget.profile.gender ?? '');
+    _tracker.setOriginal('locationDesc', widget.profile.locationDescription ?? '');
+    _tracker.setOriginal('landmark', widget.profile.landmark ?? '');
+    _tracker.setOriginal('city', widget.profile.city ?? '');
+    _tracker.setOriginal('state', widget.profile.state ?? '');
+    _tracker.setOriginal('country', widget.profile.country ?? '');
+    _tracker.setOriginal('pincode', widget.profile.pincode ?? '');
+    _tracker.setOriginal('vehicleType', widget.profile.vehicleType ?? '');
+    _tracker.setOriginal('vehicleNumber', widget.profile.vehicleNumber ?? '');
+    _tracker.setOriginal('aadharNumber', widget.profile.aadharNumber ?? '');
+
+    _nameCtrl.addListener(() => _tracker.updateValue('name', _nameCtrl.text.trim()));
+    _mobNo1Ctrl.addListener(() => _tracker.updateValue('mobNo1', _mobNo1Ctrl.text.trim()));
+    _mobNo2Ctrl.addListener(() => _tracker.updateValue('mobNo2', _mobNo2Ctrl.text.trim()));
+    _genderCtrl.addListener(() => _tracker.updateValue('gender', _genderCtrl.text.trim()));
+    _locationDescCtrl.addListener(() => _tracker.updateValue('locationDesc', _locationDescCtrl.text.trim()));
+    _landmarkCtrl.addListener(() => _tracker.updateValue('landmark', _landmarkCtrl.text.trim()));
+    _cityCtrl.addListener(() => _tracker.updateValue('city', _cityCtrl.text.trim()));
+    _stateCtrl.addListener(() => _tracker.updateValue('state', _stateCtrl.text.trim()));
+    _countryCtrl.addListener(() => _tracker.updateValue('country', _countryCtrl.text.trim()));
+    _pincodeCtrl.addListener(() => _tracker.updateValue('pincode', _pincodeCtrl.text.trim()));
+    _vehicleTypeCtrl.addListener(() => _tracker.updateValue('vehicleType', _vehicleTypeCtrl.text.trim()));
+    _vehicleNumberCtrl.addListener(() => _tracker.updateValue('vehicleNumber', _vehicleNumberCtrl.text.trim()));
+    _aadharNumberCtrl.addListener(() => _tracker.updateValue('aadharNumber', _aadharNumberCtrl.text.trim()));
   }
 
   @override
@@ -64,6 +107,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
     _stateCtrl.dispose();
     _countryCtrl.dispose();
     _pincodeCtrl.dispose();
+    _vehicleTypeCtrl.dispose();
+    _vehicleNumberCtrl.dispose();
+    _aadharNumberCtrl.dispose();
     super.dispose();
   }
 
@@ -78,6 +124,9 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
         'mobNo1': _mobNo1Ctrl.text.trim(),
         'mobNo2': _mobNo2Ctrl.text.trim(),
         'gender': _genderCtrl.text.trim(),
+        'vehicleType': _vehicleTypeCtrl.text.trim(),
+        'vehicleNumber': _vehicleNumberCtrl.text.trim(),
+        'aadharNumber': _aadharNumberCtrl.text.trim(),
         'address': {
           'locationDescription': _locationDescCtrl.text.trim(),
           'landmark': _landmarkCtrl.text.trim(),
@@ -87,6 +136,7 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
           'pincode': _pincodeCtrl.text.trim(),
         },
       });
+      _tracker.commitChanges();
 
       ref.invalidate(userProfileProvider);
       if (mounted) {
@@ -116,38 +166,20 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: AppTheme.backgroundLight,
-      appBar: AppBar(
-        title: Text(
-          'Edit Profile',
-          style: GoogleFonts.inter(fontWeight: FontWeight.w800),
-        ),
-        actions: [
-          if (_isLoading)
-            const Padding(
-              padding: EdgeInsets.symmetric(horizontal: 20),
-              child: Center(
-                child: SizedBox(
-                  width: 20,
-                  height: 20,
-                  child: CircularProgressIndicator(strokeWidth: 2),
-                ),
-              ),
-            )
-          else
-            TextButton(
-              onPressed: _updateProfile,
-              child: Text(
-                'Save',
-                style: GoogleFonts.inter(
-                  color: AppTheme.primary,
-                  fontWeight: FontWeight.w800,
-                ),
-              ),
-            ),
-        ],
+      extendBodyBehindAppBar: true,
+      appBar: const CustomAppBar(
+        title: 'Edit Profile',
+        showBackButton: true,
+        pinnedSCurve: true,
+        isCompact: true,
       ),
       body: SingleChildScrollView(
-        padding: const EdgeInsets.all(24),
+        padding: EdgeInsets.fromLTRB(
+          24,
+          80 + MediaQuery.of(context).padding.top + 32,
+          24,
+          40,
+        ),
         child: Form(
           key: _formKey,
           child: Column(
@@ -228,11 +260,75 @@ class _EditProfileScreenState extends ConsumerState<EditProfileScreen> {
                   ),
                 ],
               ),
+              Row(
+                children: [
+                  Expanded(
+                    child: _buildTextField(
+                      'Pincode',
+                      _pincodeCtrl,
+                      icon: Icons.pin_drop_outlined,
+                      keyboardType: TextInputType.number,
+                    ),
+                  ),
+                  const SizedBox(width: 16),
+                  Expanded(
+                    child: _buildTextField(
+                      'Country',
+                      _countryCtrl,
+                      icon: Icons.public_outlined,
+                    ),
+                  ),
+                ],
+              ),
+              const SizedBox(height: 24),
+              _buildSectionTitle('Vehicle & KYC Details'),
               _buildTextField(
-                'Pincode',
-                _pincodeCtrl,
-                icon: Icons.pin_drop_outlined,
+                'Aadhar Number',
+                _aadharNumberCtrl,
+                icon: Icons.badge_outlined,
                 keyboardType: TextInputType.number,
+              ),
+              _buildTextField(
+                'Vehicle Type (e.g. two-wheeler, four-wheeler, none)',
+                _vehicleTypeCtrl,
+                icon: Icons.directions_car_outlined,
+              ),
+              _buildTextField(
+                'Vehicle Number',
+                _vehicleNumberCtrl,
+                icon: Icons.numbers_outlined,
+              ),
+              const SizedBox(height: 24),
+              SizedBox(
+                height: 56,
+                child: ElevatedButton(
+                  onPressed: _hasChanges && !_isLoading ? _updateProfile : null,
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: AppTheme.primary,
+                    disabledBackgroundColor: AppTheme.primary.withValues(alpha: 0.5),
+                    shape: RoundedRectangleBorder(
+                      borderRadius: BorderRadius.circular(16),
+                    ),
+                    elevation: 0,
+                  ),
+                  child: _isLoading
+                      ? const SizedBox(
+                          width: 24,
+                          height: 24,
+                          child: CircularProgressIndicator(
+                            strokeWidth: 2.5,
+                            valueColor: AlwaysStoppedAnimation<Color>(Colors.white),
+                          ),
+                        )
+                      : Text(
+                          'Save Changes',
+                          style: GoogleFonts.inter(
+                            fontSize: 16,
+                            fontWeight: FontWeight.w700,
+                            color: Colors.white,
+                          ),
+                        ),
+                ),
               ),
               const SizedBox(height: 40),
             ],

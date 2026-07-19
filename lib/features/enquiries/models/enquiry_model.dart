@@ -4,6 +4,9 @@ class EnquiryUserModel {
   final String email;
   final String? mobNo1;
   final String? picture;
+  final String? gender;
+  final String? aadharNumber;
+  final String? aadharFileUrl;
 
   EnquiryUserModel({
     required this.id,
@@ -11,6 +14,9 @@ class EnquiryUserModel {
     required this.email,
     this.mobNo1,
     this.picture,
+    this.gender,
+    this.aadharNumber,
+    this.aadharFileUrl,
   });
 
   factory EnquiryUserModel.fromJson(Map<String, dynamic> json) {
@@ -20,6 +26,9 @@ class EnquiryUserModel {
       email: json['email'] ?? '',
       mobNo1: json['mobNo1'],
       picture: json['picture'],
+      gender: json['gender'],
+      aadharNumber: json['aadharNumber'],
+      aadharFileUrl: json['aadharFileUrl'],
     );
   }
 }

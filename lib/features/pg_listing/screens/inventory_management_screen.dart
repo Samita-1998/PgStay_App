@@ -1,10 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/models/post_model.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:pgstay/core/widgets/custom_app_bar.dart';
+import 'package:url_launcher/url_launcher.dart';
 
 class BedData {
   final String id;
@@ -13,6 +13,9 @@ class BedData {
   final double price;
   final String status;
   final String? tenantName;
+  final String? tenantMobile;
+  final String? vehicleType;
+  final String? vehicleNumber;
 
   BedData({
     required this.id,
@@ -21,17 +24,38 @@ class BedData {
     required this.price,
     required this.status,
     this.tenantName,
+    this.tenantMobile,
+    this.vehicleType,
+    this.vehicleNumber,
   });
 
   factory BedData.fromJson(Map<String, dynamic> json) {
+    final user = json['userId'];
+    final tName =
+        json['tenantName'] ??
+        (user is Map ? (user['name'] ?? user['fullName']) : null)?.toString() ??
+        (user != null ? 'Occupied' : null);
+
+    final tMobile =
+        json['tenantMobile'] ??
+        (user is Map
+                ? (user['mobNo1'] ?? user['mobileNumber'] ?? user['phone'])
+                : null)
+            ?.toString();
+
+    final vType = (user is Map) ? user['vehicleType']?.toString() : null;
+    final vNum = (user is Map) ? user['vehicleNumber']?.toString() : null;
+
     return BedData(
       id: json['_id'] ?? '',
       bedNumber: json['bedNumber'] ?? '',
       position: json['position'] ?? 'Standard',
       price: (json['price'] as num?)?.toDouble() ?? 0.0,
       status: json['status'] ?? 'available',
-      tenantName:
-          json['tenantName'] ?? (json['userId'] != null ? 'Occupied' : null),
+      tenantName: tName,
+      tenantMobile: tMobile,
+      vehicleType: vType,
+      vehicleNumber: vNum,
     );
   }
 }
@@ -99,15 +123,15 @@ class _InventoryManagementScreenState
       appBar: CustomAppBar(
         title: 'Inventory',
         showBackButton: true,
+        pinnedSCurve: true,
+        isCompact: true,
       ),
       floatingActionButton: FloatingActionButton.extended(
         onPressed: () {
           showDialog(
             context: context,
-            builder: (context) => _AddRoomDialog(
-              pgId: widget.pg.id,
-              pgName: widget.pg.name,
-            ),
+            builder: (context) =>
+                _AddRoomDialog(pgId: widget.pg.id, pgName: widget.pg.name),
           );
         },
         icon: const Icon(Icons.add),
@@ -150,6 +174,22 @@ class _InventoryManagementScreenState
                         return true;
                       })
                       .toList();
+
+                  rooms.sort((a, b) {
+                    final aNum =
+                        int.tryParse(
+                          a.roomNumber.replaceAll(RegExp(r'[^0-9]'), ''),
+                        ) ??
+                        0;
+                    final bNum =
+                        int.tryParse(
+                          b.roomNumber.replaceAll(RegExp(r'[^0-9]'), ''),
+                        ) ??
+                        0;
+                    if (aNum != bNum) return aNum.compareTo(bNum);
+                    return a.roomNumber.compareTo(b.roomNumber);
+                  });
+
                   if (rooms.isEmpty) {
                     return Center(
                       child: Text(
@@ -161,9 +201,11 @@ class _InventoryManagementScreenState
                     );
                   }
                   return ListView.separated(
-                    padding: EdgeInsets.symmetric(
-                      horizontal: context.spacingMD,
-                      vertical: context.spacingMD,
+                    padding: EdgeInsets.only(
+                      left: context.spacingMD,
+                      right: context.spacingMD,
+                      top: context.spacingMD,
+                      bottom: 100,
                     ),
                     itemCount: rooms.length,
                     separatorBuilder: (context, index) =>
@@ -294,65 +336,121 @@ class _InventoryManagementScreenState
   }
 
   Widget _buildRoomCard(BuildContext context, RoomData room) {
+    int availableBeds = room.beds.where((b) => b.status == 'available').length;
+    bool isFull = availableBeds == 0;
+
     return Container(
+      clipBehavior: Clip.antiAlias,
       decoration: BoxDecoration(
-        color: context.surfaceWhite,
-        borderRadius: BorderRadius.circular(context.radiusXL),
-        border: Border.all(color: context.surfaceBorder),
-        boxShadow: AppTheme.cardShadow,
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(
+          color: isFull
+              ? context.warningColor.withOpacity(0.2)
+              : context.primaryColor.withOpacity(0.1),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.04),
+            blurRadius: 20,
+            offset: const Offset(0, 8),
+          ),
+        ],
       ),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: [
           // Room Header
-          Padding(
-            padding: EdgeInsets.all(context.spacingMD),
+          Container(
+            padding: EdgeInsets.symmetric(
+              horizontal: context.spacingMD,
+              vertical: context.spacingMD,
+            ),
+            decoration: BoxDecoration(
+              color: isFull
+                  ? context.warningColor.withOpacity(0.05)
+                  : context.primaryColor.withOpacity(0.05),
+              border: Border(
+                bottom: BorderSide(color: context.surfaceBorder, width: 1),
+              ),
+            ),
             child: Row(
               mainAxisAlignment: MainAxisAlignment.spaceBetween,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.end,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
-                    Text(
-                      'Room ${room.roomNumber}',
-                      style: context.textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w800,
+                    Container(
+                      padding: const EdgeInsets.all(10),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: Colors.black.withOpacity(0.05),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.meeting_room_rounded,
+                        color: isFull
+                            ? context.warningColor
+                            : context.primaryColor,
+                        size: 20,
                       ),
                     ),
-                    SizedBox(width: context.spacingXS),
-                    Padding(
-                      padding: EdgeInsets.only(bottom: 2),
-                      child: Text(
-                        'F${room.floor} • ${room.roomType}',
-                        style: context.textTheme.bodySmall,
-                      ),
+                    SizedBox(width: context.spacingSM),
+                    Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          'Room ${room.roomNumber}',
+                          style: context.textTheme.titleMedium?.copyWith(
+                            fontWeight: FontWeight.w800,
+                            letterSpacing: -0.2,
+                          ),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          'Floor ${room.floor} • ${room.roomType}',
+                          style: context.textTheme.labelMedium?.copyWith(
+                            color: context.textSecondary,
+                            fontWeight: FontWeight.w500,
+                          ),
+                        ),
+                      ],
                     ),
                   ],
                 ),
                 Row(
                   children: [
                     Container(
-                      padding: EdgeInsets.symmetric(
-                        horizontal: context.spacingXS,
-                        vertical: context.spacingXXS,
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 12,
+                        vertical: 6,
                       ),
                       decoration: BoxDecoration(
-                        color: context.successColor.withOpacity(0.1),
-                        borderRadius: BorderRadius.circular(context.radiusSM),
+                        color: context.primaryColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(20),
                         border: Border.all(
-                          color: context.successColor.withOpacity(0.3),
+                          color: context.primaryColor.withOpacity(0.2),
                         ),
                       ),
                       child: Text(
                         '${room.beds.length} Beds',
                         style: context.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: context.successColor,
+                          color: context.primaryColor,
                         ),
                       ),
                     ),
-                    SizedBox(width: context.spacingXS),
-                    InkWell(
+                    const SizedBox(width: 8),
+                    _buildIconButton(
+                      context,
+                      icon: Icons.edit_rounded,
+                      color: context.primaryColor,
                       onTap: () {
                         showDialog(
                           context: context,
@@ -363,23 +461,14 @@ class _InventoryManagementScreenState
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(context.radiusXL),
-                      child: Container(
-                        padding: EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: context.primaryColor.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.edit_outlined,
-                          color: context.primaryColor,
-                          size: 16,
-                        ),
-                      ),
                     ),
-                    SizedBox(width: context.spacingXS),
-                    InkWell(
+                    const SizedBox(width: 4),
+                    _buildIconButton(
+                      context,
+                      icon: Icons.delete_outline_rounded,
+                      color: context.errorColor,
                       onTap: () {
+                        // Delete logic
                         showDialog(
                           context: context,
                           builder: (context) => AlertDialog(
@@ -411,7 +500,7 @@ class _InventoryManagementScreenState
                                     ref.invalidate(
                                       pgRoomsProvider(widget.pg.id),
                                     );
-                                    if (mounted) {
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -426,7 +515,7 @@ class _InventoryManagementScreenState
                                       );
                                     }
                                   } catch (e) {
-                                    if (mounted) {
+                                    if (context.mounted) {
                                       ScaffoldMessenger.of(
                                         context,
                                       ).showSnackBar(
@@ -448,19 +537,6 @@ class _InventoryManagementScreenState
                           ),
                         );
                       },
-                      borderRadius: BorderRadius.circular(context.radiusXL),
-                      child: Container(
-                        padding: EdgeInsets.all(6),
-                        decoration: BoxDecoration(
-                          color: context.errorColor.withOpacity(0.15),
-                          shape: BoxShape.circle,
-                        ),
-                        child: Icon(
-                          Icons.delete_outline,
-                          color: context.errorColor,
-                          size: 16,
-                        ),
-                      ),
                     ),
                   ],
                 ),
@@ -471,17 +547,16 @@ class _InventoryManagementScreenState
           ListView.separated(
             shrinkWrap: true,
             physics: const NeverScrollableScrollPhysics(),
-            padding: EdgeInsets.fromLTRB(
-              context.spacingSM,
-              0,
-              context.spacingSM,
-              context.spacingSM,
-            ),
+            padding: EdgeInsets.all(context.spacingMD),
             itemCount: room.beds.length,
             separatorBuilder: (context, index) =>
-                SizedBox(height: context.spacingXS),
+                SizedBox(height: context.spacingSM),
             itemBuilder: (context, index) {
-              return _buildBedItem(context, room, room.beds[index]);
+              return _BedItemTile(
+                room: room,
+                bed: room.beds[index],
+                pg: widget.pg,
+              );
             },
           ),
         ],
@@ -489,91 +564,138 @@ class _InventoryManagementScreenState
     );
   }
 
-  Widget _buildBedItem(BuildContext context, RoomData room, BedData bed) {
+  Widget _buildIconButton(
+    BuildContext context, {
+    required IconData icon,
+    required Color color,
+    required VoidCallback onTap,
+  }) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(12),
+      child: Container(
+        padding: const EdgeInsets.all(8),
+        decoration: BoxDecoration(
+          color: color.withOpacity(0.08),
+          borderRadius: BorderRadius.circular(12),
+        ),
+        child: Icon(icon, color: color, size: 18),
+      ),
+    );
+  }
+}
+
+class _BedItemTile extends ConsumerWidget {
+  final RoomData room;
+  final BedData bed;
+  final PgModel pg;
+
+  const _BedItemTile({required this.room, required this.bed, required this.pg});
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
     bool isAvailable = bed.status == 'available';
     String bedLetter = bed.bedNumber.contains('-')
         ? bed.bedNumber.split('-').last
         : bed.bedNumber;
+    Color statusColor = isAvailable
+        ? context.successColor
+        : context.primaryColor;
 
     return Container(
       padding: EdgeInsets.all(context.spacingSM),
       decoration: BoxDecoration(
-        color: context.backgroundLight,
-        borderRadius: BorderRadius.circular(context.radiusLG),
+        color: statusColor.withOpacity(0.03),
+        borderRadius: BorderRadius.circular(16),
+        border: Border.all(color: statusColor.withOpacity(0.15)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.center,
         children: [
-          Icon(
-            Icons.bed_outlined,
-            color: isAvailable ? context.successColor : context.warningColor,
-            size: 20,
+          Container(
+            padding: const EdgeInsets.all(10),
+            decoration: BoxDecoration(
+              color: statusColor.withOpacity(0.1),
+              borderRadius: BorderRadius.circular(12),
+            ),
+            child: Icon(Icons.bed_outlined, color: statusColor, size: 22),
           ),
-          SizedBox(width: context.spacingSM),
+          SizedBox(width: context.spacingMD),
           Expanded(
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
                 Row(
-                  crossAxisAlignment: CrossAxisAlignment.start,
+                  crossAxisAlignment: CrossAxisAlignment.center,
                   children: [
                     Text(
-                      'Bed\n$bedLetter',
+                      'Bed $bedLetter',
                       style: context.textTheme.titleSmall?.copyWith(
                         fontWeight: FontWeight.w800,
-                        height: 1.2,
+                        letterSpacing: -0.2,
                       ),
                     ),
-                    SizedBox(width: context.spacingXS),
-                    Expanded(
-                      child: Text(
-                        '(${bed.position} • ₹${bed.price.toStringAsFixed(0)})',
-                        style: context.textTheme.bodySmall,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
+                    const Spacer(),
+                    Text(
+                      '₹${bed.price.toStringAsFixed(0)} /mo',
+                      style: context.textTheme.labelMedium?.copyWith(
+                        fontWeight: FontWeight.w700,
+                        color: context.textPrimary,
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: context.spacingXXS),
-                if (isAvailable)
-                  Text(
-                    'Available',
-                    style: context.textTheme.labelSmall?.copyWith(
-                      fontWeight: FontWeight.w600,
-                      color: context.successColor,
+                SizedBox(height: 4),
+                Row(
+                  children: [
+                    Icon(
+                      Icons.info_outline_rounded,
+                      size: 14,
+                      color: context.textHint,
                     ),
-                  )
-                else
-                  Row(
-                    children: [
-                      Text(
-                        bed.tenantName ?? 'Occupied',
-                        style: context.textTheme.labelMedium?.copyWith(
+                    SizedBox(width: 4),
+                    Flexible(
+                      child: Text(
+                        bed.position,
+                        overflow: TextOverflow.ellipsis,
+                        style: context.textTheme.bodySmall?.copyWith(
+                          color: context.textSecondary,
+                        ),
+                      ),
+                    ),
+                    const Spacer(),
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 8,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        color: statusColor.withOpacity(0.1),
+                        borderRadius: BorderRadius.circular(8),
+                      ),
+                      child: Text(
+                        isAvailable ? 'Available' : 'Occupied',
+                        style: context.textTheme.labelSmall?.copyWith(
                           fontWeight: FontWeight.w700,
-                          color: context.primaryColor,
+                          color: statusColor,
+                          fontSize: 10,
                         ),
                       ),
-                      Text(
-                        ' • ...',
-                        style: context.textTheme.labelMedium?.copyWith(
-                          color: context.primaryColor,
-                        ),
-                      ),
-                    ],
-                  ),
+                    ),
+                  ],
+                ),
               ],
             ),
           ),
-          SizedBox(width: context.spacingXS),
+          SizedBox(width: context.spacingSM),
           InkWell(
             onTap: () {
               if (isAvailable) {
                 showDialog(
                   context: context,
                   builder: (context) => _AssignTenantDialog(
-                    pgId: widget.pg.id,
-                    pgName: widget.pg.name,
+                    pgId: pg.id,
+                    pgName: pg.name,
                     room: room,
                     bed: bed,
                   ),
@@ -581,7 +703,244 @@ class _InventoryManagementScreenState
               } else {
                 showDialog(
                   context: context,
-                  builder: (context) => AlertDialog(
+                  builder: (context) =>
+                      _OccupiedBedDialog(room: room, bed: bed, pg: pg),
+                );
+              }
+            },
+            borderRadius: BorderRadius.circular(12),
+            child: Container(
+              padding: const EdgeInsets.all(8),
+              decoration: BoxDecoration(
+                color: statusColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Icon(
+                isAvailable
+                    ? Icons.person_add_alt_1_rounded
+                    : Icons.visibility_outlined,
+                color: statusColor,
+                size: 18,
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _OccupiedBedDialog extends ConsumerWidget {
+  final RoomData room;
+  final BedData bed;
+  final PgModel pg;
+
+  const _OccupiedBedDialog({
+    required this.room,
+    required this.bed,
+    required this.pg,
+  });
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    String initials = bed.tenantName?.isNotEmpty == true
+        ? bed.tenantName!
+              .trim()
+              .split(' ')
+              .map((e) => e.isNotEmpty ? e[0] : '')
+              .take(2)
+              .join()
+              .toUpperCase()
+        : 'O';
+
+    return Dialog(
+      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
+      backgroundColor: context.surfaceWhite,
+      elevation: 0,
+      insetPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 24),
+      child: Container(
+        width: double.infinity,
+        padding: const EdgeInsets.all(24),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: [
+            Row(
+              mainAxisAlignment: MainAxisAlignment.spaceBetween,
+              children: [
+                Text(
+                  'Bed Details',
+                  style: context.textTheme.titleMedium?.copyWith(
+                    fontWeight: FontWeight.w800,
+                  ),
+                ),
+                InkWell(
+                  onTap: () => Navigator.pop(context),
+                  borderRadius: BorderRadius.circular(12),
+                  child: Container(
+                    padding: const EdgeInsets.all(6),
+                    decoration: BoxDecoration(
+                      color: context.textHint.withOpacity(0.1),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      Icons.close_rounded,
+                      size: 16,
+                      color: context.textPrimary,
+                    ),
+                  ),
+                ),
+              ],
+            ),
+            const SizedBox(height: 24),
+            Center(
+              child: Container(
+                width: 72,
+                height: 72,
+                decoration: BoxDecoration(
+                  color: context.primaryColor.withOpacity(0.1),
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: context.primaryColor.withOpacity(0.2),
+                    width: 2,
+                  ),
+                ),
+                child: Center(
+                  child: Text(
+                    initials,
+                    style: context.textTheme.titleLarge?.copyWith(
+                      fontWeight: FontWeight.w800,
+                      color: context.primaryColor,
+                    ),
+                  ),
+                ),
+              ),
+            ),
+            const SizedBox(height: 16),
+            Text(
+              bed.tenantName ?? 'Occupied',
+              textAlign: TextAlign.center,
+              style: context.textTheme.titleMedium?.copyWith(
+                fontWeight: FontWeight.w800,
+              ),
+            ),
+            const SizedBox(height: 24),
+            Container(
+              padding: const EdgeInsets.all(16),
+              decoration: BoxDecoration(
+                color: context.backgroundLight,
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: context.surfaceBorder),
+              ),
+              child: Column(
+                children: [
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.meeting_room_outlined,
+                    label: 'Room',
+                    value: room.roomNumber,
+                  ),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(vertical: 8),
+                    child: Divider(height: 1),
+                  ),
+                  _buildDetailRow(
+                    context,
+                    icon: Icons.bed_outlined,
+                    label: 'Bed',
+                    value: bed.bedNumber.contains('-')
+                        ? bed.bedNumber.split('-').last
+                        : bed.bedNumber,
+                  ),
+                  if (bed.tenantMobile != null &&
+                      bed.tenantMobile!.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1),
+                    ),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      children: [
+                        Row(
+                          children: [
+                            Container(
+                              padding: const EdgeInsets.all(6),
+                              decoration: BoxDecoration(
+                                color: context.primaryColor.withOpacity(0.1),
+                                borderRadius: BorderRadius.circular(8),
+                              ),
+                              child: Icon(
+                                Icons.phone_outlined,
+                                size: 14,
+                                color: context.primaryColor,
+                              ),
+                            ),
+                            const SizedBox(width: 12),
+                            Text(
+                              'Mobile',
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                color: context.textSecondary,
+                              ),
+                            ),
+                          ],
+                        ),
+                        InkWell(
+                          onTap: () async {
+                            final uri = Uri.parse('tel:${bed.tenantMobile}');
+                            if (await canLaunchUrl(uri)) await launchUrl(uri);
+                          },
+                          child: Container(
+                            padding: const EdgeInsets.symmetric(
+                              horizontal: 10,
+                              vertical: 4,
+                            ),
+                            decoration: BoxDecoration(
+                              color: context.primaryColor.withOpacity(0.1),
+                              borderRadius: BorderRadius.circular(8),
+                            ),
+                            child: Row(
+                              children: [
+                                Text(
+                                  bed.tenantMobile!,
+                                  style: context.textTheme.labelMedium
+                                      ?.copyWith(
+                                        fontWeight: FontWeight.w700,
+                                        color: context.primaryColor,
+                                      ),
+                                ),
+                              ],
+                            ),
+                          ),
+                        ),
+                      ],
+                    ),
+                  ],
+                  if (bed.vehicleNumber != null &&
+                      bed.vehicleNumber!.isNotEmpty) ...[
+                    const Padding(
+                      padding: EdgeInsets.symmetric(vertical: 8),
+                      child: Divider(height: 1),
+                    ),
+                    _buildDetailRow(
+                      context,
+                      icon:
+                          (bed.vehicleType?.toLowerCase() == 'bike' ||
+                              bed.vehicleType?.toLowerCase() == '2-wheeler')
+                          ? Icons.motorcycle_outlined
+                          : Icons.directions_car_outlined,
+                      label: 'Vehicle',
+                      value: bed.vehicleNumber!,
+                    ),
+                  ],
+                ],
+              ),
+            ),
+            const SizedBox(height: 24),
+            ElevatedButton.icon(
+              onPressed: () {
+                showDialog(
+                  context: context,
+                  builder: (ctx) => AlertDialog(
                     backgroundColor: context.surfaceWhite,
                     title: Text(
                       'Vacate Bed',
@@ -593,7 +952,7 @@ class _InventoryManagementScreenState
                     ),
                     actions: [
                       TextButton(
-                        onPressed: () => Navigator.pop(context),
+                        onPressed: () => Navigator.pop(ctx),
                         child: Text(
                           'Cancel',
                           style: context.textTheme.labelMedium?.copyWith(
@@ -603,17 +962,18 @@ class _InventoryManagementScreenState
                       ),
                       TextButton(
                         onPressed: () async {
+                          Navigator.pop(ctx);
                           Navigator.pop(context);
                           try {
                             await ref
                                 .read(pgListingRepositoryProvider)
                                 .unassignBedFromTenant(bed.id);
-                            ref.invalidate(pgRoomsProvider(widget.pg.id));
+                            ref.invalidate(pgRoomsProvider(pg.id));
                             if (context.mounted) {
                               ScaffoldMessenger.of(context).showSnackBar(
                                 SnackBar(
                                   content: Text(
-                                    'Tenant removed from bed successfully',
+                                    'Bed vacated successfully',
                                     style: context.textTheme.bodyMedium
                                         ?.copyWith(color: Colors.white),
                                   ),
@@ -642,18 +1002,70 @@ class _InventoryManagementScreenState
                     ],
                   ),
                 );
-              }
-            },
-            child: Text(
-              isAvailable ? 'Assign' : 'Vacate',
-              style: context.textTheme.labelMedium?.copyWith(
-                fontWeight: FontWeight.w700,
-                color: isAvailable ? context.textPrimary : context.errorColor,
+              },
+              icon: Icon(
+                Icons.person_remove_rounded,
+                size: 18,
+                color: context.errorColor,
+              ),
+              label: Text(
+                'Vacate Bed',
+                style: context.textTheme.labelLarge?.copyWith(
+                  fontWeight: FontWeight.w700,
+                  color: context.errorColor,
+                ),
+              ),
+              style: ElevatedButton.styleFrom(
+                backgroundColor: context.errorColor.withOpacity(0.1),
+                elevation: 0,
+                padding: const EdgeInsets.symmetric(vertical: 16),
+                shape: RoundedRectangleBorder(
+                  borderRadius: BorderRadius.circular(16),
+                ),
               ),
             ),
-          ),
-        ],
+          ],
+        ),
       ),
+    );
+  }
+
+  Widget _buildDetailRow(
+    BuildContext context, {
+    required IconData icon,
+    required String label,
+    required String value,
+  }) {
+    return Row(
+      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+      children: [
+        Row(
+          children: [
+            Container(
+              padding: const EdgeInsets.all(6),
+              decoration: BoxDecoration(
+                color: context.primaryColor.withOpacity(0.1),
+                borderRadius: BorderRadius.circular(8),
+              ),
+              child: Icon(icon, size: 14, color: context.primaryColor),
+            ),
+            const SizedBox(width: 12),
+            Text(
+              label,
+              style: context.textTheme.bodyMedium?.copyWith(
+                color: context.textSecondary,
+              ),
+            ),
+          ],
+        ),
+        Text(
+          value,
+          style: context.textTheme.labelMedium?.copyWith(
+            fontWeight: FontWeight.w700,
+            color: context.textPrimary,
+          ),
+        ),
+      ],
     );
   }
 }
@@ -999,16 +1411,41 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
 
   final List<TextEditingController> _priceControllers = [];
   final List<TextEditingController> _positionControllers = [];
+  final List<String?> _priceErrors = [];
   bool _isSubmitting = false;
+  String? _roomNumberError;
+  String? _floorError;
 
   @override
   void initState() {
     super.initState();
+    _roomNumberController.addListener(_validateRoomNumber);
     _updateBedControllers();
+  }
+
+  void _validateRoomNumber() {
+    final roomNo = _roomNumberController.text.trim();
+    if (roomNo.isEmpty) {
+      if (_roomNumberError != null) setState(() => _roomNumberError = null);
+      return;
+    }
+    final roomsState = ref.read(pgRoomsProvider(widget.pgId));
+    final currentRooms = roomsState.valueOrNull ?? [];
+    bool exists = currentRooms.any((r) {
+      final String existingRoomNo =
+          (r is Map ? r['roomNumber'] : r.roomNumber)?.toString() ?? '';
+      return existingRoomNo.toLowerCase() == roomNo.toLowerCase();
+    });
+    if (exists && _roomNumberError == null) {
+      setState(() => _roomNumberError = 'Room already exists');
+    } else if (!exists && _roomNumberError != null) {
+      setState(() => _roomNumberError = null);
+    }
   }
 
   @override
   void dispose() {
+    _roomNumberController.removeListener(_validateRoomNumber);
     _roomNumberController.dispose();
     _floorController.dispose();
     for (var c in _priceControllers) {
@@ -1024,39 +1461,57 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     while (_priceControllers.length < _occupancy) {
       _priceControllers.add(TextEditingController());
       _positionControllers.add(TextEditingController());
+      _priceErrors.add(null);
     }
     while (_priceControllers.length > _occupancy) {
       _priceControllers.removeLast().dispose();
       _positionControllers.removeLast().dispose();
+      _priceErrors.removeLast();
     }
   }
 
   Future<void> _submit() async {
-    if (_roomNumberController.text.trim().isEmpty ||
-        _floorController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please fill all room fields'),
-          backgroundColor: context.errorColor,
-        ),
-      );
-      return;
+    setState(() {
+      _floorError = null;
+      for (int i = 0; i < _priceErrors.length; i++) {
+        _priceErrors[i] = null;
+      }
+    });
+
+    final roomNo = _roomNumberController.text.trim();
+    bool hasError = false;
+
+    if (roomNo.isEmpty) {
+      _roomNumberError = 'Room number is required';
+      hasError = true;
+    }
+    if (_floorController.text.trim().isEmpty) {
+      _floorError = 'Floor is required';
+      hasError = true;
+    }
+
+    if (roomNo.isNotEmpty) {
+      final roomsState = ref.read(pgRoomsProvider(widget.pgId));
+      final currentRooms = roomsState.valueOrNull ?? [];
+      if (currentRooms.any((r) {
+        final String existingRoomNo =
+            (r is Map ? r['roomNumber'] : r.roomNumber)?.toString() ?? '';
+        return existingRoomNo.toLowerCase() == roomNo.toLowerCase();
+      })) {
+        _roomNumberError = 'Room already exists in this PG';
+        hasError = true;
+      }
     }
 
     final List<Map<String, dynamic>> beds = [];
-    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 
     for (int i = 0; i < _occupancy; i++) {
       final priceText = _priceControllers[i].text.trim();
       final posText = _positionControllers[i].text.trim();
-      if (priceText.isEmpty || posText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Please fill all bed fields'),
-            backgroundColor: context.errorColor,
-          ),
-        );
-        return;
+      if (priceText.isEmpty) {
+        _priceErrors[i] = 'Required';
+        hasError = true;
       }
 
       beds.add({
@@ -1064,6 +1519,11 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
         'price': double.tryParse(priceText) ?? 0.0,
         'position': posText,
       });
+    }
+
+    if (hasError) {
+      setState(() {});
+      return;
     }
 
     setState(() {
@@ -1113,8 +1573,8 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
       return Text(
         text,
         style: context.textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: context.textSecondary,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade700,
         ),
       );
     }
@@ -1124,14 +1584,14 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
       text: TextSpan(
         text: parts[0],
         style: context.textTheme.labelMedium?.copyWith(
-          fontWeight: FontWeight.bold,
-          color: context.textSecondary,
+          fontWeight: FontWeight.w700,
+          color: Colors.grey.shade700,
         ),
         children: [
           TextSpan(
             text: '*',
             style: context.textTheme.labelMedium?.copyWith(
-              fontWeight: FontWeight.bold,
+              fontWeight: FontWeight.w800,
               color: context.errorColor,
             ),
           ),
@@ -1145,34 +1605,55 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
     BuildContext context,
     String label,
     TextEditingController controller,
-    String hint,
-  ) {
+    String hint, {
+    TextInputType keyboardType = TextInputType.text,
+    String? errorText,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(context, label),
-        SizedBox(height: context.spacingXS),
+        const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
-            color: context.backgroundLight,
-            borderRadius: BorderRadius.circular(context.radiusSM),
-            border: Border.all(color: context.surfaceBorder),
+            color: const Color(0xFFF8F9FB),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: errorText != null
+                  ? context.errorColor
+                  : Colors.grey.shade200,
+            ),
           ),
           child: TextField(
             controller: controller,
             cursorColor: context.primaryColor,
-            style: context.textTheme.bodyMedium,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+            keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: context.textTheme.bodySmall,
+              hintStyle: context.textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade400,
+              ),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.spacingMD,
-                vertical: context.spacingSM,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
           ),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            errorText,
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.errorColor,
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1183,302 +1664,405 @@ class _AddRoomDialogState extends ConsumerState<_AddRoomDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
       elevation: 0,
-      child: Material(
-        color: context.surfaceWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.radiusXL),
-          side: BorderSide(color: context.surfaceBorder),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 500),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            ),
+          ],
         ),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(context.spacingLG),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: context.primaryColor.withOpacity(0.04),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade100),
+                  ),
+                ),
+                child: Row(
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.primaryColor.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.add_home_work_outlined,
+                        color: context.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        'Add New Room to ${widget.pgName}',
-                        style: context.textTheme.headlineSmall,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Add New Room',
+                            style: context.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            widget.pgName,
+                            style: context.textTheme.labelSmall?.copyWith(
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: Icon(
-                        Icons.close,
-                        color: context.textHint,
-                        size: 20,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey.shade600,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: context.spacingLG),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        context,
-                        'Room Number *',
-                        _roomNumberController,
-                        'e.g. 101',
-                      ),
-                    ),
-                    SizedBox(width: context.spacingMD),
-                    Expanded(
-                      child: _buildTextField(
-                        context,
-                        'Floor *',
-                        _floorController,
-                        'e.g. 1',
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.spacingMD),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              // Body
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          _buildLabel(context, 'Occupancy (Beds) *'),
-                          SizedBox(height: context.spacingXS),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingMD,
+                          Expanded(
+                            child: _buildTextField(
+                              context,
+                              'Room No. *',
+                              _roomNumberController,
+                              'e.g. 101',
+                              errorText: _roomNumberError,
                             ),
-                            decoration: BoxDecoration(
-                              color: context.backgroundLight,
-                              borderRadius: BorderRadius.circular(
-                                context.radiusSM,
-                              ),
-                              border: Border.all(color: context.surfaceBorder),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _occupancy,
-                                isExpanded: true,
-                                dropdownColor: context.surfaceWhite,
-                                icon: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: context.textHint,
-                                ),
-                                items: [1, 2, 3, 4, 5, 6]
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(
-                                          e.toString(),
-                                          style: context.textTheme.bodyMedium,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() {
-                                      _occupancy = val;
-                                      _updateBedControllers();
-                                    });
-                                  }
-                                },
-                              ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTextField(
+                              context,
+                              'Floor *',
+                              _floorController,
+                              'e.g. 1',
+                              keyboardType: TextInputType.number,
+                              errorText: _floorError,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(width: context.spacingMD),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          _buildLabel(context, 'Room Type'),
-                          SizedBox(height: context.spacingXS),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingMD,
-                            ),
-                            decoration: BoxDecoration(
-                              color: context.backgroundLight,
-                              borderRadius: BorderRadius.circular(
-                                context.radiusSM,
-                              ),
-                              border: Border.all(color: context.surfaceBorder),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _roomType,
-                                isExpanded: true,
-                                dropdownColor: context.surfaceWhite,
-                                icon: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: context.textHint,
-                                ),
-                                items: ['Non-AC', 'AC']
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(
-                                          e,
-                                          style: context.textTheme.bodyMedium,
-                                        ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(context, 'Occupancy *'),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      value: _occupancy,
+                                      isExpanded: true,
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.grey.shade400,
                                       ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() {
-                                      _roomType = val;
-                                    });
-                                  }
-                                },
-                              ),
+                                      items: List.generate(10, (i) => i + 1)
+                                          .map((e) {
+                                            return DropdownMenuItem(
+                                              value: e,
+                                              child: Text(
+                                                '$e Beds',
+                                                style: context
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            );
+                                          })
+                                          .toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _occupancy = val;
+                                            _updateBedControllers();
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(context, 'Type'),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _roomType,
+                                      isExpanded: true,
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      items: ['Non-AC', 'AC'].map((e) {
+                                        return DropdownMenuItem(
+                                          value: e,
+                                          child: Text(
+                                            e,
+                                            style: context.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() => _roomType = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.spacingLG),
-                Text(
-                  'Bed Configurations',
-                  style: context.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: context.spacingXS),
-                Divider(color: AppTheme.dividerColor),
-                SizedBox(height: context.spacingXS),
-                ...List.generate(_occupancy, (index) {
-                  final letter = [
-                    'A',
-                    'B',
-                    'C',
-                    'D',
-                    'E',
-                    'F',
-                    'G',
-                    'H',
-                  ][index];
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMD),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Column(
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.king_bed_outlined,
+                            color: context.primaryColor,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Bed Details',
+                            style: context.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...List.generate(_occupancy, (index) {
+                        final letter = [
+                          'A',
+                          'B',
+                          'C',
+                          'D',
+                          'E',
+                          'F',
+                          'G',
+                          'H',
+                          'I',
+                          'J',
+                        ][index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.01),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Bed $letter',
-                                style: context.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: context.textSecondary,
-                                ),
-                              ),
-                              SizedBox(height: context.spacingXS),
                               Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: context.spacingMD,
-                                  vertical: context.spacingSM,
-                                ),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: context.backgroundLight,
-                                  borderRadius: BorderRadius.circular(
-                                    context.radiusSM,
-                                  ),
-                                  border: Border.all(
-                                    color: context.surfaceBorder,
-                                  ),
+                                  color: context.primaryColor.withOpacity(0.08),
+                                  shape: BoxShape.circle,
                                 ),
                                 child: Text(
                                   letter,
-                                  style: context.textTheme.bodySmall,
+                                  style: context.textTheme.titleSmall?.copyWith(
+                                    color: context.primaryColor,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    _buildTextField(
+                                      context,
+                                      'Price/Mo *',
+                                      _priceControllers[index],
+                                      '₹',
+                                      keyboardType: TextInputType.number,
+                                      errorText: _priceErrors[index],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildTextField(
+                                      context,
+                                      'Position',
+                                      _positionControllers[index],
+                                      'e.g. Window',
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        SizedBox(width: context.spacingSM),
-                        Expanded(
-                          flex: 2,
-                          child: _buildTextField(
-                            context,
-                            'Price *',
-                            _priceControllers[index],
-                            'Price',
-                          ),
-                        ),
-                        SizedBox(width: context.spacingSM),
-                        Expanded(
-                          flex: 2,
-                          child: _buildTextField(
-                            context,
-                            'Position',
-                            _positionControllers[index],
-                            'Window Side',
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                SizedBox(height: context.spacingMD),
-                Divider(color: AppTheme.dividerColor),
-                SizedBox(height: context.spacingMD),
-                Row(
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              // Footer
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       child: Text(
                         'Cancel',
                         style: context.textTheme.labelLarge?.copyWith(
-                          color: context.textHint,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    SizedBox(width: context.spacingLG),
+                    const SizedBox(width: 12),
                     ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submit,
+                      onPressed: (_isSubmitting || _roomNumberError != null)
+                          ? null
+                          : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: context.primaryColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacingXL,
-                          vertical: context.spacingSM,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
                         ),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(context.radiusLG),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: _isSubmitting
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
                                 color: Colors.white,
-                                strokeWidth: 2,
+                                strokeWidth: 2.5,
                               ),
                             )
                           : Text(
-                              'Create Room & Beds',
+                              'Save Room',
                               style: context.textTheme.labelLarge?.copyWith(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),
@@ -1508,7 +2092,10 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
 
   final List<TextEditingController> _priceControllers = [];
   final List<TextEditingController> _positionControllers = [];
+  final List<String?> _priceErrors = [];
   bool _isSubmitting = false;
+  String? _roomNumberError;
+  String? _floorError;
 
   @override
   void initState() {
@@ -1537,10 +2124,12 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     while (_priceControllers.length < _occupancy) {
       _priceControllers.add(TextEditingController());
       _positionControllers.add(TextEditingController());
+      _priceErrors.add(null);
     }
     while (_priceControllers.length > _occupancy) {
       _priceControllers.removeLast().dispose();
       _positionControllers.removeLast().dispose();
+      _priceErrors.removeLast();
     }
     if (initializeWithData) {
       for (int i = 0; i < widget.room.beds.length && i < _occupancy; i++) {
@@ -1555,31 +2144,49 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
   }
 
   Future<void> _submit() async {
-    if (_roomNumberController.text.trim().isEmpty ||
-        _floorController.text.trim().isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: const Text('Please fill all room fields'),
-          backgroundColor: context.errorColor,
-        ),
-      );
-      return;
+    setState(() {
+      _roomNumberError = null;
+      _floorError = null;
+      for (int i = 0; i < _priceErrors.length; i++) {
+        _priceErrors[i] = null;
+      }
+    });
+
+    final roomNo = _roomNumberController.text.trim();
+    bool hasError = false;
+
+    if (roomNo.isEmpty) {
+      _roomNumberError = 'Room number is required';
+      hasError = true;
+    }
+    if (_floorController.text.trim().isEmpty) {
+      _floorError = 'Floor is required';
+      hasError = true;
+    }
+
+    if (roomNo.isNotEmpty &&
+        roomNo.toLowerCase() != widget.room.roomNumber.toLowerCase()) {
+      final roomsState = ref.read(pgRoomsProvider(widget.pgId));
+      final currentRooms = roomsState.valueOrNull ?? [];
+      if (currentRooms.any((r) {
+        final String existingRoomNo =
+            (r is Map ? r['roomNumber'] : r.roomNumber)?.toString() ?? '';
+        return existingRoomNo.toLowerCase() == roomNo.toLowerCase();
+      })) {
+        _roomNumberError = 'Room already exists in this PG';
+        hasError = true;
+      }
     }
 
     final List<Map<String, dynamic>> beds = [];
-    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H'];
+    final letters = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J'];
 
     for (int i = 0; i < _occupancy; i++) {
       final priceText = _priceControllers[i].text.trim();
       final posText = _positionControllers[i].text.trim();
-      if (priceText.isEmpty || posText.isEmpty) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Text('Please fill all bed fields'),
-            backgroundColor: context.errorColor,
-          ),
-        );
-        return;
+      if (priceText.isEmpty) {
+        _priceErrors[i] = 'Required';
+        hasError = true;
       }
 
       final bedPayload = <String, dynamic>{
@@ -1593,6 +2200,11 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
       }
 
       beds.add(bedPayload);
+    }
+
+    if (hasError) {
+      setState(() {});
+      return;
     }
 
     setState(() {
@@ -1673,34 +2285,54 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
     BuildContext context,
     String label,
     TextEditingController controller,
-    String hint,
-  ) {
+    String hint, {
+    TextInputType keyboardType = TextInputType.text,
+    String? errorText,
+  }) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         _buildLabel(context, label),
-        SizedBox(height: context.spacingXS),
+        const SizedBox(height: 4),
         Container(
           decoration: BoxDecoration(
-            color: context.backgroundLight,
-            borderRadius: BorderRadius.circular(context.radiusSM),
-            border: Border.all(color: context.surfaceBorder),
+            color: const Color(0xFFF8F9FB),
+            borderRadius: BorderRadius.circular(8),
+            border: Border.all(
+              color: errorText != null
+                  ? context.errorColor
+                  : Colors.grey.shade200,
+            ),
           ),
           child: TextField(
             controller: controller,
             cursorColor: context.primaryColor,
-            style: context.textTheme.bodyMedium,
+            style: context.textTheme.bodyMedium?.copyWith(
+              fontWeight: FontWeight.w500,
+            ),
+            keyboardType: keyboardType,
             decoration: InputDecoration(
               hintText: hint,
-              hintStyle: context.textTheme.bodySmall,
+              hintStyle: context.textTheme.bodySmall?.copyWith(
+                color: Colors.grey.shade400,
+              ),
               border: InputBorder.none,
-              contentPadding: EdgeInsets.symmetric(
-                horizontal: context.spacingMD,
-                vertical: context.spacingSM,
+              contentPadding: const EdgeInsets.symmetric(
+                horizontal: 12,
+                vertical: 10,
               ),
             ),
           ),
         ),
+        if (errorText != null) ...[
+          const SizedBox(height: 4),
+          Text(
+            errorText,
+            style: context.textTheme.labelSmall?.copyWith(
+              color: context.errorColor,
+            ),
+          ),
+        ],
       ],
     );
   }
@@ -1711,302 +2343,403 @@ class _EditRoomDialogState extends ConsumerState<_EditRoomDialog> {
       backgroundColor: Colors.transparent,
       insetPadding: const EdgeInsets.all(20),
       elevation: 0,
-      child: Material(
-        color: context.surfaceWhite,
-        shape: RoundedRectangleBorder(
-          borderRadius: BorderRadius.circular(context.radiusXL),
-          side: BorderSide(color: context.surfaceBorder),
+      child: Container(
+        width: double.infinity,
+        constraints: const BoxConstraints(maxWidth: 500),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: Colors.black.withOpacity(0.1),
+              blurRadius: 32,
+              offset: const Offset(0, 16),
+            ),
+          ],
         ),
-        child: Container(
-          width: double.infinity,
-          padding: EdgeInsets.all(context.spacingLG),
-          child: SingleChildScrollView(
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              crossAxisAlignment: CrossAxisAlignment.stretch,
-              children: [
-                Row(
-                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        child: ClipRRect(
+          borderRadius: BorderRadius.circular(20),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: [
+              // Header
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: context.primaryColor.withOpacity(0.04),
+                  border: Border(
+                    bottom: BorderSide(color: Colors.grey.shade100),
+                  ),
+                ),
+                child: Row(
                   children: [
+                    Container(
+                      padding: const EdgeInsets.all(8),
+                      decoration: BoxDecoration(
+                        color: Colors.white,
+                        shape: BoxShape.circle,
+                        boxShadow: [
+                          BoxShadow(
+                            color: context.primaryColor.withOpacity(0.1),
+                            blurRadius: 8,
+                            offset: const Offset(0, 2),
+                          ),
+                        ],
+                      ),
+                      child: Icon(
+                        Icons.edit_square,
+                        color: context.primaryColor,
+                        size: 18,
+                      ),
+                    ),
+                    const SizedBox(width: 12),
                     Expanded(
-                      child: Text(
-                        'Edit Room Details - ${widget.pgName}',
-                        style: context.textTheme.headlineSmall,
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Edit Room',
+                            style: context.textTheme.titleMedium?.copyWith(
+                              fontWeight: FontWeight.w800,
+                              letterSpacing: -0.3,
+                            ),
+                          ),
+                          Text(
+                            widget.pgName,
+                            style: context.textTheme.labelSmall?.copyWith(
+                              color: Colors.grey.shade500,
+                              fontWeight: FontWeight.w500,
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                     InkWell(
                       onTap: () => Navigator.pop(context),
-                      child: Icon(
-                        Icons.close,
-                        color: context.textHint,
-                        size: 20,
+                      borderRadius: BorderRadius.circular(20),
+                      child: Container(
+                        padding: const EdgeInsets.all(8),
+                        decoration: BoxDecoration(
+                          color: Colors.grey.shade100,
+                          shape: BoxShape.circle,
+                        ),
+                        child: Icon(
+                          Icons.close_rounded,
+                          color: Colors.grey.shade600,
+                          size: 18,
+                        ),
                       ),
                     ),
                   ],
                 ),
-                SizedBox(height: context.spacingLG),
-                Row(
-                  children: [
-                    Expanded(
-                      child: _buildTextField(
-                        context,
-                        'Room Number *',
-                        _roomNumberController,
-                        'e.g. 101',
-                      ),
-                    ),
-                    SizedBox(width: context.spacingMD),
-                    Expanded(
-                      child: _buildTextField(
-                        context,
-                        'Floor *',
-                        _floorController,
-                        'e.g. 1',
-                      ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.spacingMD),
-                Row(
-                  children: [
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+              ),
+              // Body
+              Flexible(
+                child: SingleChildScrollView(
+                  padding: const EdgeInsets.all(20),
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.stretch,
+                    children: [
+                      Row(
                         children: [
-                          _buildLabel(context, 'Occupancy (Beds) *'),
-                          SizedBox(height: context.spacingXS),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingMD,
+                          Expanded(
+                            child: _buildTextField(
+                              context,
+                              'Room No. *',
+                              _roomNumberController,
+                              'e.g. 101',
+                              errorText: _roomNumberError,
                             ),
-                            decoration: BoxDecoration(
-                              color: context.backgroundLight,
-                              borderRadius: BorderRadius.circular(
-                                context.radiusSM,
-                              ),
-                              border: Border.all(color: context.surfaceBorder),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<int>(
-                                value: _occupancy,
-                                isExpanded: true,
-                                dropdownColor: context.surfaceWhite,
-                                icon: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: context.textHint,
-                                ),
-                                items: [1, 2, 3, 4, 5, 6]
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(
-                                          e.toString(),
-                                          style: context.textTheme.bodyMedium,
-                                        ),
-                                      ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() {
-                                      _occupancy = val;
-                                      _updateBedControllers();
-                                    });
-                                  }
-                                },
-                              ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: _buildTextField(
+                              context,
+                              'Floor *',
+                              _floorController,
+                              'e.g. 1',
+                              keyboardType: TextInputType.number,
+                              errorText: _floorError,
                             ),
                           ),
                         ],
                       ),
-                    ),
-                    SizedBox(width: context.spacingMD),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                      const SizedBox(height: 16),
+                      Row(
                         children: [
-                          _buildLabel(context, 'Room Type'),
-                          SizedBox(height: context.spacingXS),
-                          Container(
-                            padding: EdgeInsets.symmetric(
-                              horizontal: context.spacingMD,
-                            ),
-                            decoration: BoxDecoration(
-                              color: context.backgroundLight,
-                              borderRadius: BorderRadius.circular(
-                                context.radiusSM,
-                              ),
-                              border: Border.all(color: context.surfaceBorder),
-                            ),
-                            child: DropdownButtonHideUnderline(
-                              child: DropdownButton<String>(
-                                value: _roomType,
-                                isExpanded: true,
-                                dropdownColor: context.surfaceWhite,
-                                icon: Icon(
-                                  Icons.keyboard_arrow_down,
-                                  color: context.textHint,
-                                ),
-                                items: ['Non-AC', 'AC']
-                                    .map(
-                                      (e) => DropdownMenuItem(
-                                        value: e,
-                                        child: Text(
-                                          e,
-                                          style: context.textTheme.bodyMedium,
-                                        ),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(context, 'Occupancy *'),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<int>(
+                                      value: _occupancy,
+                                      isExpanded: true,
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.grey.shade400,
                                       ),
-                                    )
-                                    .toList(),
-                                onChanged: (val) {
-                                  if (val != null) {
-                                    setState(() {
-                                      _roomType = val;
-                                    });
-                                  }
-                                },
-                              ),
+                                      items: List.generate(10, (i) => i + 1)
+                                          .map((e) {
+                                            return DropdownMenuItem(
+                                              value: e,
+                                              child: Text(
+                                                '$e Beds',
+                                                style: context
+                                                    .textTheme
+                                                    .bodyMedium
+                                                    ?.copyWith(
+                                                      fontWeight:
+                                                          FontWeight.w600,
+                                                    ),
+                                              ),
+                                            );
+                                          })
+                                          .toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() {
+                                            _occupancy = val;
+                                            _updateBedControllers();
+                                          });
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
+                            ),
+                          ),
+                          const SizedBox(width: 12),
+                          Expanded(
+                            child: Column(
+                              crossAxisAlignment: CrossAxisAlignment.start,
+                              children: [
+                                _buildLabel(context, 'Type'),
+                                const SizedBox(height: 4),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 12,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: const Color(0xFFF8F9FB),
+                                    borderRadius: BorderRadius.circular(8),
+                                    border: Border.all(
+                                      color: Colors.grey.shade200,
+                                    ),
+                                  ),
+                                  child: DropdownButtonHideUnderline(
+                                    child: DropdownButton<String>(
+                                      value: _roomType,
+                                      isExpanded: true,
+                                      dropdownColor: Colors.white,
+                                      icon: Icon(
+                                        Icons.keyboard_arrow_down_rounded,
+                                        color: Colors.grey.shade400,
+                                      ),
+                                      items: ['Non-AC', 'AC'].map((e) {
+                                        return DropdownMenuItem(
+                                          value: e,
+                                          child: Text(
+                                            e,
+                                            style: context.textTheme.bodyMedium
+                                                ?.copyWith(
+                                                  fontWeight: FontWeight.w600,
+                                                ),
+                                          ),
+                                        );
+                                      }).toList(),
+                                      onChanged: (val) {
+                                        if (val != null) {
+                                          setState(() => _roomType = val);
+                                        }
+                                      },
+                                    ),
+                                  ),
+                                ),
+                              ],
                             ),
                           ),
                         ],
                       ),
-                    ),
-                  ],
-                ),
-                SizedBox(height: context.spacingLG),
-                Text(
-                  'Bed Configurations',
-                  style: context.textTheme.titleMedium?.copyWith(
-                    fontWeight: FontWeight.bold,
-                  ),
-                ),
-                SizedBox(height: context.spacingXS),
-                Divider(color: AppTheme.dividerColor),
-                SizedBox(height: context.spacingXS),
-                ...List.generate(_occupancy, (index) {
-                  final letter = [
-                    'A',
-                    'B',
-                    'C',
-                    'D',
-                    'E',
-                    'F',
-                    'G',
-                    'H',
-                  ][index];
-                  return Padding(
-                    padding: EdgeInsets.only(bottom: context.spacingMD),
-                    child: Row(
-                      children: [
-                        Expanded(
-                          flex: 1,
-                          child: Column(
+                      const SizedBox(height: 24),
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.king_bed_outlined,
+                            color: context.primaryColor,
+                            size: 18,
+                          ),
+                          const SizedBox(width: 6),
+                          Text(
+                            'Bed Details',
+                            style: context.textTheme.titleSmall?.copyWith(
+                              fontWeight: FontWeight.w800,
+                            ),
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 12),
+                      ...List.generate(_occupancy, (index) {
+                        final letter = [
+                          'A',
+                          'B',
+                          'C',
+                          'D',
+                          'E',
+                          'F',
+                          'G',
+                          'H',
+                          'I',
+                          'J',
+                        ][index];
+                        return Container(
+                          margin: const EdgeInsets.only(bottom: 12),
+                          padding: const EdgeInsets.all(12),
+                          decoration: BoxDecoration(
+                            color: Colors.white,
+                            borderRadius: BorderRadius.circular(12),
+                            border: Border.all(color: Colors.grey.shade200),
+                            boxShadow: [
+                              BoxShadow(
+                                color: Colors.black.withOpacity(0.01),
+                                blurRadius: 4,
+                                offset: const Offset(0, 2),
+                              ),
+                            ],
+                          ),
+                          child: Row(
                             crossAxisAlignment: CrossAxisAlignment.start,
                             children: [
-                              Text(
-                                'Bed ${_roomNumberController.text.isNotEmpty ? _roomNumberController.text : "Room"}-$letter',
-                                style: context.textTheme.labelMedium?.copyWith(
-                                  fontWeight: FontWeight.bold,
-                                  color: context.textSecondary,
-                                ),
-                              ),
-                              SizedBox(height: context.spacingXS),
                               Container(
-                                padding: EdgeInsets.symmetric(
-                                  horizontal: context.spacingMD,
-                                  vertical: context.spacingSM,
-                                ),
+                                padding: const EdgeInsets.all(10),
                                 decoration: BoxDecoration(
-                                  color: context.backgroundLight,
-                                  borderRadius: BorderRadius.circular(
-                                    context.radiusSM,
-                                  ),
-                                  border: Border.all(
-                                    color: context.surfaceBorder,
-                                  ),
+                                  color: context.primaryColor.withOpacity(0.08),
+                                  shape: BoxShape.circle,
                                 ),
                                 child: Text(
-                                  '${_roomNumberController.text.isNotEmpty ? _roomNumberController.text : "Room"}-$letter',
-                                  style: context.textTheme.bodySmall,
+                                  letter,
+                                  style: context.textTheme.titleSmall?.copyWith(
+                                    color: context.primaryColor,
+                                    fontWeight: FontWeight.w900,
+                                  ),
+                                ),
+                              ),
+                              const SizedBox(width: 12),
+                              Expanded(
+                                child: Column(
+                                  children: [
+                                    _buildTextField(
+                                      context,
+                                      'Price/Mo *',
+                                      _priceControllers[index],
+                                      '₹',
+                                      keyboardType: TextInputType.number,
+                                      errorText: _priceErrors[index],
+                                    ),
+                                    const SizedBox(height: 8),
+                                    _buildTextField(
+                                      context,
+                                      'Position',
+                                      _positionControllers[index],
+                                      'e.g. Window',
+                                    ),
+                                  ],
                                 ),
                               ),
                             ],
                           ),
-                        ),
-                        SizedBox(width: context.spacingSM),
-                        Expanded(
-                          flex: 2,
-                          child: _buildTextField(
-                            context,
-                            'Price *',
-                            _priceControllers[index],
-                            'Price',
-                          ),
-                        ),
-                        SizedBox(width: context.spacingSM),
-                        Expanded(
-                          flex: 2,
-                          child: _buildTextField(
-                            context,
-                            'Position',
-                            _positionControllers[index],
-                            'Window Side',
-                          ),
-                        ),
-                      ],
-                    ),
-                  );
-                }),
-                SizedBox(height: context.spacingMD),
-                Divider(color: AppTheme.dividerColor),
-                SizedBox(height: context.spacingMD),
-                Row(
+                        );
+                      }),
+                    ],
+                  ),
+                ),
+              ),
+              // Footer
+              Container(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 20,
+                  vertical: 16,
+                ),
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  border: Border(top: BorderSide(color: Colors.grey.shade100)),
+                ),
+                child: Row(
                   mainAxisAlignment: MainAxisAlignment.end,
                   children: [
                     TextButton(
                       onPressed: () => Navigator.pop(context),
+                      style: TextButton.styleFrom(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 20,
+                          vertical: 12,
+                        ),
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(12),
+                        ),
+                      ),
                       child: Text(
                         'Cancel',
                         style: context.textTheme.labelLarge?.copyWith(
-                          color: context.textHint,
-                          fontWeight: FontWeight.bold,
+                          color: Colors.grey.shade600,
+                          fontWeight: FontWeight.w700,
                         ),
                       ),
                     ),
-                    SizedBox(width: context.spacingLG),
+                    const SizedBox(width: 12),
                     ElevatedButton(
                       onPressed: _isSubmitting ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: context.primaryColor,
-                        padding: EdgeInsets.symmetric(
-                          horizontal: context.spacingXL,
-                          vertical: context.spacingSM,
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 24,
+                          vertical: 14,
                         ),
+                        elevation: 0,
                         shape: RoundedRectangleBorder(
-                          borderRadius: BorderRadius.circular(context.radiusLG),
+                          borderRadius: BorderRadius.circular(12),
                         ),
                       ),
                       child: _isSubmitting
-                          ? SizedBox(
-                              width: 16,
-                              height: 16,
+                          ? const SizedBox(
+                              width: 18,
+                              height: 18,
                               child: CircularProgressIndicator(
                                 color: Colors.white,
-                                strokeWidth: 2,
+                                strokeWidth: 2.5,
                               ),
                             )
                           : Text(
-                              'Update Room',
+                              'Save Changes',
                               style: context.textTheme.labelLarge?.copyWith(
                                 color: Colors.white,
-                                fontWeight: FontWeight.bold,
+                                fontWeight: FontWeight.w700,
                               ),
                             ),
                     ),
                   ],
                 ),
-              ],
-            ),
+              ),
+            ],
           ),
         ),
       ),

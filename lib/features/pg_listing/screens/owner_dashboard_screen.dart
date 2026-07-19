@@ -1329,6 +1329,56 @@ class _OwnerDashboardScreenState extends ConsumerState<OwnerDashboardScreen> {
                         : ThemeMode.light;
                   },
                 ),
+                const SizedBox(height: 16),
+                _buildModernDrawerTile(
+                  icon: Icons.logout_rounded,
+                  title: 'Logout',
+                  onTap: () {
+                    Navigator.pop(context);
+                    showDialog(
+                      context: context,
+                      builder: (ctx) => AlertDialog(
+                        shape: RoundedRectangleBorder(
+                          borderRadius: BorderRadius.circular(20),
+                        ),
+                        title: Text(
+                          'Logout',
+                          style: GoogleFonts.inter(fontWeight: FontWeight.w800),
+                        ),
+                        content: Text(
+                          'Are you sure you want to logout?',
+                          style: GoogleFonts.inter(
+                            color: const Color(0xFF64748B),
+                          ),
+                        ),
+                        actions: [
+                          TextButton(
+                            onPressed: () => Navigator.pop(ctx),
+                            child: Text(
+                              'Cancel',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFF64748B),
+                              ),
+                            ),
+                          ),
+                          TextButton(
+                            onPressed: () {
+                              Navigator.pop(ctx);
+                              ref.read(authProvider.notifier).logout();
+                            },
+                            child: Text(
+                              'Logout',
+                              style: GoogleFonts.inter(
+                                color: const Color(0xFFEF4444),
+                                fontWeight: FontWeight.w700,
+                              ),
+                            ),
+                          ),
+                        ],
+                      ),
+                    );
+                  },
+                ),
               ],
             ),
           ),

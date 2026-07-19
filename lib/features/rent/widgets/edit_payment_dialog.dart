@@ -5,7 +5,9 @@ import 'package:intl/intl.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/rent/models/rent_model.dart';
+import 'package:pgstay/features/rent/models/rent_model.dart';
 import 'package:pgstay/features/rent/providers/rent_provider.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
 
 class EditPaymentScreen extends ConsumerStatefulWidget {
   final RentModel rent;
@@ -24,6 +26,9 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
   DateTime? _paymentDate;
 
   bool _isSaving = false;
+  late final ChangeTracker _tracker;
+
+  bool get _hasChanges => _tracker.hasChanges;
 
   final List<String> _statusOptions = ['pending', 'paid', 'partial', 'under review'];
   final List<String> _paymentModeOptions = ['cash', 'upi', 'bank_transfer', 'cheque', 'online'];
@@ -40,6 +45,27 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
     _notesCtrl = TextEditingController(text: widget.rent.staffRemarks ?? '');
     _referenceNoCtrl = TextEditingController(text: widget.rent.receiptNo ?? '');
     _paymentDate = widget.rent.paidDate ?? DateTime.now();
+
+    _tracker = ChangeTracker(onStateChanged: () {
+      if (mounted) setState(() {});
+    });
+
+    _tracker.setOriginal('status', _status);
+    _tracker.setOriginal('paymentMode', _paymentMode);
+    _tracker.setOriginal('amountPaid', _amountPaidCtrl.text);
+    _tracker.setOriginal('notes', _notesCtrl.text);
+    _tracker.setOriginal('referenceNo', _referenceNoCtrl.text);
+    _tracker.setOriginal('paymentDate', _paymentDate?.toIso8601String());
+
+    void addTrackerListener(TextEditingController ctrl, String key) {
+      ctrl.addListener(() {
+        _tracker.updateValue(key, ctrl.text);
+      });
+    }
+
+    addTrackerListener(_amountPaidCtrl, 'amountPaid');
+    addTrackerListener(_notesCtrl, 'notes');
+    addTrackerListener(_referenceNoCtrl, 'referenceNo');
   }
 
   @override
@@ -70,7 +96,10 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
       },
     );
     if (date != null) {
-      setState(() => _paymentDate = date);
+      setState(() {
+        _paymentDate = date;
+        _tracker.updateValue('paymentDate', date.toIso8601String());
+      });
     }
   }
 
@@ -213,7 +242,12 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
                             value: _status,
                             items: _statusOptions,
                             onChanged: (val) {
-                              if (val != null) setState(() => _status = val);
+                              if (val != null) {
+                                setState(() {
+                                  _status = val;
+                                  _tracker.updateValue('status', val);
+                                });
+                              }
                             },
                           ),
                         ),
@@ -241,7 +275,12 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
                                   items: _paymentModeOptions,
                                   hint: '-- Select Mode --',
                                   onChanged: (val) {
-                                    if (val != null) setState(() => _paymentMode = val);
+                                    if (val != null) {
+                                      setState(() {
+                                        _paymentMode = val;
+                                        _tracker.updateValue('paymentMode', val);
+                                      });
+                                    }
                                   },
                                 )
                               : _buildDisabledField('-- No Payment Mode --', dropdownIcon: true),
@@ -312,7 +351,7 @@ class _EditPaymentScreenState extends ConsumerState<EditPaymentScreen> {
                       const SizedBox(width: 16),
                       Expanded(
                         child: ElevatedButton(
-                          onPressed: _isSaving ? null : _saveChanges,
+                          onPressed: (_isSaving || !_hasChanges) ? null : _saveChanges,
                           style: ElevatedButton.styleFrom(
                             backgroundColor: AppTheme.primary,
                             foregroundColor: Colors.white,

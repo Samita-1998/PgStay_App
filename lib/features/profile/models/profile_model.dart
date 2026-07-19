@@ -7,10 +7,14 @@ class UserProfile {
   final String role;
   final String? picture;
   final String? gender;
+  final String? profileImageKey;
   final String? aadharNumber;
+  final String? aadharFileKey;
   final String? aadharFileUrl;
   final bool isEmailVerified;
   final DateTime? createdAt;
+  final String? vehicleType;
+  final String? vehicleNumber;
   
   // Address fields
   final String? pincode;
@@ -29,10 +33,14 @@ class UserProfile {
     required this.role,
     this.picture,
     this.gender,
+    this.profileImageKey,
     this.aadharNumber,
+    this.aadharFileKey,
     this.aadharFileUrl,
     this.isEmailVerified = false,
     this.createdAt,
+    this.vehicleType,
+    this.vehicleNumber,
     this.pincode,
     this.locationDescription,
     this.landmark,
@@ -55,10 +63,14 @@ class UserProfile {
       role: user['role'] ?? 'user',
       picture: user['picture'],
       gender: user['gender'],
+      profileImageKey: user['profileImageKey'],
       aadharNumber: user['aadharNumber'],
+      aadharFileKey: user['aadharFileKey'],
       aadharFileUrl: user['aadharFileUrl'],
       isEmailVerified: user['isEmailVerified'] ?? false,
       createdAt: user['createdAt'] != null ? DateTime.tryParse(user['createdAt']) : null,
+      vehicleType: user['vehicleType'],
+      vehicleNumber: user['vehicleNumber'],
       pincode: address?['pincode']?.toString(),
       locationDescription: address?['locationDescription'],
       landmark: address?['landmark'],
@@ -74,6 +86,8 @@ class UserProfile {
       'mobNo1': mobNo1,
       'mobNo2': mobNo2,
       'gender': gender,
+      'vehicleType': vehicleType,
+      'vehicleNumber': vehicleNumber,
       'address': {
         'pincode': pincode,
         'locationDescription': locationDescription,

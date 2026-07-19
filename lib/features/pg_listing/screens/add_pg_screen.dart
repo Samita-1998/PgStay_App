@@ -14,6 +14,7 @@ import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:url_launcher/url_launcher.dart';
 import 'package:pgstay/core/widgets/custom_app_bar.dart';
 import 'package:pgstay/features/pg_listing/screens/modern_text_field_widget.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
 
 class AddPgScreen extends ConsumerStatefulWidget {
   final PgModel? pgToEdit;
@@ -78,6 +79,34 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
   List<XFile> _selectedImages = [];
   List<String> _existingImages = [];
 
+  bool get _hasChanges => _tracker.hasChanges || _untrackedHasChanges;
+  late final ChangeTracker _tracker;
+
+  bool get _untrackedHasChanges {
+    if (widget.pgToEdit == null) return true;
+    final pg = widget.pgToEdit!;
+
+    final type = pg.pgType.toLowerCase();
+    final originalType =
+        {'male': 'Male', 'female': 'Female', 'unisex': 'Unisex'}[type] ??
+        'Co-Living';
+    if (_selectedPgType != originalType) return true;
+    if (_selectedManagerId != pg.managerId) return true;
+
+    if (_capturedLocation != pg.location) return true;
+    if (_selectedImages.isNotEmpty) return true;
+    if (_existingImages.length != pg.images.length) return true;
+    if (_qrImageFile != null) return true;
+    if (_existingQrImage != pg.paymentQrImage) return true;
+
+    if (_selectedFacilityIds.length != _initialFacilityIds.length) return true;
+    for (final id in _selectedFacilityIds) {
+      if (!_initialFacilityIds.contains(id)) return true;
+    }
+
+    return false;
+  }
+
   @override
   void initState() {
     super.initState();
@@ -100,11 +129,53 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
     _animationController.forward();
 
+    _tracker = ChangeTracker(
+      onStateChanged: () {
+        if (mounted &&
+            widget.pgToEdit != null &&
+            _currentStep == _totalSteps - 1) {
+          setState(() {});
+        }
+      },
+    );
+
     if (widget.pgToEdit != null) {
       _maxStepReached = _totalSteps - 1;
       _populateFormWithExistingData();
     }
     _loadFormData();
+
+    final listener = () {
+      if (mounted &&
+          widget.pgToEdit != null &&
+          _currentStep == _totalSteps - 1) {
+        setState(() {});
+      }
+    };
+
+    void addTrackerListener(TextEditingController ctrl, String key) {
+      ctrl.addListener(() {
+        _tracker.updateValue(key, ctrl.text.trim());
+        listener();
+      });
+    }
+
+    addTrackerListener(_nameController, 'name');
+    addTrackerListener(_landlineController, 'landline');
+    addTrackerListener(_descriptionController, 'description');
+    addTrackerListener(_startedDateController, 'startedDate');
+    addTrackerListener(_landmarkController, 'landmark');
+    addTrackerListener(_cityController, 'city');
+    addTrackerListener(_stateController, 'state');
+    addTrackerListener(_countryController, 'country');
+    addTrackerListener(_pincodeController, 'pincode');
+    addTrackerListener(_locationLinkController, 'locationLink');
+    addTrackerListener(_locationDescriptionController, 'locationDesc');
+    addTrackerListener(_checkInController, 'checkIn');
+    addTrackerListener(_checkOutController, 'checkOut');
+    addTrackerListener(_dueDayController, 'dueDay');
+    addTrackerListener(_lateFeeController, 'lateFee');
+    addTrackerListener(_upiIdController, 'upiId');
   }
 
   @override
@@ -169,6 +240,35 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     _selectedPgType =
         {'male': 'Male', 'female': 'Female', 'unisex': 'Unisex'}[type] ??
         'Co-Living';
+
+    _tracker.setOriginal('name', widget.pgToEdit!.name);
+    _tracker.setOriginal('landline', widget.pgToEdit!.landline ?? '');
+    _tracker.setOriginal('description', widget.pgToEdit!.description ?? '');
+    _tracker.setOriginal('startedDate', _startedDateController.text);
+    _tracker.setOriginal('landmark', widget.pgToEdit!.address.landmark);
+    _tracker.setOriginal('city', widget.pgToEdit!.address.city);
+    _tracker.setOriginal('state', widget.pgToEdit!.address.state);
+    _tracker.setOriginal('country', widget.pgToEdit!.address.country);
+    _tracker.setOriginal(
+      'pincode',
+      widget.pgToEdit!.address.pincode.toString(),
+    );
+    _tracker.setOriginal('locationLink', widget.pgToEdit!.locationLink ?? '');
+    _tracker.setOriginal(
+      'locationDesc',
+      widget.pgToEdit!.address.locationDescription ?? '',
+    );
+    _tracker.setOriginal('checkIn', widget.pgToEdit!.checkInTime);
+    _tracker.setOriginal('checkOut', widget.pgToEdit!.checkOutTime);
+    _tracker.setOriginal(
+      'dueDay',
+      widget.pgToEdit!.dueDayOfMonth?.toString() ?? '10',
+    );
+    _tracker.setOriginal(
+      'lateFee',
+      widget.pgToEdit!.lateFee?.toStringAsFixed(0) ?? '0',
+    );
+    _tracker.setOriginal('upiId', widget.pgToEdit!.upiId ?? '');
   }
 
   String _formatDate(DateTime date) {
@@ -367,7 +467,15 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           'locationDescription': _locationDescriptionController.text.trim(),
       };
 
-      List<String> finalImages = List.from(_existingImages);
+      List<String> finalImages = [];
+      for (String img in _existingImages) {
+        if (img.contains('.com/')) {
+          finalImages.add(img.split('.com/').last.split('?').first);
+        } else {
+          finalImages.add(img.split('?').first);
+        }
+      }
+
       for (var file in _selectedImages) {
         final bytes = await file.readAsBytes();
         final uploadData = await repository.getUploadUrl(
@@ -376,11 +484,16 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         );
         final uploadUrl = uploadData['uploadUrl']!;
         await repository.uploadFileToS3(uploadUrl, bytes, 'image/jpeg');
-        final publicUrl = uploadUrl.split('?').first;
-        finalImages.add(publicUrl);
+        finalImages.add(uploadData['key']!);
       }
 
-      String? finalQrImageUrl = _existingQrImage;
+      String? finalQrImageKey;
+      if (_existingQrImage != null && _existingQrImage!.isNotEmpty) {
+        finalQrImageKey = _existingQrImage!.contains('.com/')
+            ? _existingQrImage!.split('.com/').last.split('?').first
+            : _existingQrImage!.split('?').first;
+      }
+
       if (_qrImageFile != null) {
         final bytes = await _qrImageFile!.readAsBytes();
         final uploadData = await repository.getPaymentQrUploadUrl(
@@ -389,7 +502,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         );
         final uploadUrl = uploadData['uploadUrl']!;
         await repository.uploadFileToS3(uploadUrl, bytes, 'image/jpeg');
-        finalQrImageUrl = uploadUrl.split('?').first;
+        finalQrImageKey = uploadData['key']!;
       }
 
       final pgData = {
@@ -416,7 +529,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         if (_capturedLocation != null) 'location': _capturedLocation!.toJson(),
         if (_upiIdController.text.trim().isNotEmpty)
           'upiId': _upiIdController.text.trim(),
-        if (finalQrImageUrl != null) 'paymentQrImage': finalQrImageUrl,
+        if (finalQrImageKey != null) 'paymentQrKey': finalQrImageKey,
       };
 
       if (widget.pgToEdit != null) {
@@ -449,8 +562,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         if (!safeCompare(pgData['locationLink'], pg.locationLink))
           changedFields.add('locationLink');
         if (!safeCompare(pgData['upiId'], pg.upiId)) changedFields.add('upiId');
-        if (!safeCompare(pgData['paymentQrImage'], pg.paymentQrImage))
-          changedFields.add('paymentQrImage');
+        if (!safeCompare(pgData['paymentQrKey'], pg.paymentQrImage))
+          changedFields.add('paymentQrKey');
 
         if (pgData['pgStartedDate'] != pg.pgStartedDate) {
           try {
@@ -814,7 +927,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               _buildModernTextField(
                 label: 'Contact',
                 controller: _landlineController,
-                hint: '+91 98765 43210',
+                hint: 'Enter contact number',
                 icon: Icons.phone_outlined,
                 keyboardType: TextInputType.phone,
               ),
@@ -894,7 +1007,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               _buildModernTextField(
                 label: 'Location Description',
                 controller: _locationDescriptionController,
-                hint: 'Opposite Central Park',
+                hint: 'Enter description',
                 icon: Icons.info_outline,
               ),
               const SizedBox(height: 10),
@@ -1144,7 +1257,6 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     IconData? icon,
     bool required = false,
   }) {
-
     // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = context.primaryColor;
@@ -1250,7 +1362,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                       ),
                     )
                   : null,
-              prefixIconConstraints: const BoxConstraints(minWidth: 0, minHeight: 0),
+              prefixIconConstraints: const BoxConstraints(
+                minWidth: 0,
+                minHeight: 0,
+              ),
               filled: true,
               fillColor: Colors.transparent,
               contentPadding: const EdgeInsets.symmetric(
@@ -1325,7 +1440,6 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
     String Function(String)? itemLabel,
     bool required = false,
   }) {
-
     // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = context.primaryColor;
@@ -1394,10 +1508,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   ],
                 ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: context.surfaceBorder,
-                  width: 1.5,
-                ),
+                border: Border.all(color: context.surfaceBorder, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Theme.of(context).brightness == Brightness.dark
@@ -1867,7 +1978,6 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== UPDATED MODERN DATE PICKER ====================
   Widget _buildModernDatePicker() {
-
     // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = context.primaryColor;
@@ -1911,10 +2021,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                   ],
                 ),
                 borderRadius: BorderRadius.circular(14),
-                border: Border.all(
-                  color: context.surfaceBorder,
-                  width: 1.5,
-                ),
+                border: Border.all(color: context.surfaceBorder, width: 1.5),
                 boxShadow: [
                   BoxShadow(
                     color: Theme.of(context).brightness == Brightness.dark
@@ -2126,7 +2233,6 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== PAYMENT SETTINGS ====================
   Widget _buildPaymentSettings() {
-
     // ignore: unused_local_variable
     final isDark = Theme.of(context).brightness == Brightness.dark;
     final primaryColor = context.primaryColor;
@@ -2205,6 +2311,16 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             : Image.network(
                                 _existingQrImage!,
                                 fit: BoxFit.cover,
+                                errorBuilder: (context, error, stackTrace) =>
+                                    Container(
+                                      color: Colors.grey[200],
+                                      child: const Center(
+                                        child: Icon(
+                                          Icons.broken_image,
+                                          color: Colors.grey,
+                                        ),
+                                      ),
+                                    ),
                               ),
                       ),
                       Positioned(
@@ -2365,10 +2481,7 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           decoration: BoxDecoration(
             color: context.colorScheme.surface,
             borderRadius: BorderRadius.circular(14),
-            border: Border.all(
-              color: context.surfaceBorder,
-              width: 1.5,
-            ),
+            border: Border.all(color: context.surfaceBorder, width: 1.5),
           ),
           child: TextField(
             controller: _facilitySearchController,
@@ -2526,6 +2639,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             if (index < _existingImages.length) {
               String img = _existingImages[index];
               return _buildModernImageTile(
+                index: index,
+                onTap: () => _showFullScreenGallery(index),
                 imageWidget: img.startsWith('data:image')
                     ? Image.memory(
                         base64Decode(img.split(',').last),
@@ -2554,6 +2669,12 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
                             ),
                           );
                         },
+                        errorBuilder: (context, error, stackTrace) => Container(
+                          color: Colors.grey[200],
+                          child: const Center(
+                            child: Icon(Icons.broken_image, color: Colors.grey),
+                          ),
+                        ),
                       ),
                 onDelete: () async {
                   try {
@@ -2580,6 +2701,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
               int selectedIdx = index - _existingImages.length;
               XFile file = _selectedImages[selectedIdx];
               return _buildModernImageTile(
+                index: index,
+                onTap: () => _showFullScreenGallery(index),
                 imageWidget: FutureBuilder<Uint8List>(
                   future: file.readAsBytes(),
                   builder: (context, snapshot) {
@@ -2714,6 +2837,8 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
 
   // ==================== IMAGE TILE ====================
   Widget _buildModernImageTile({
+    required int index,
+    required VoidCallback onTap,
     required Widget imageWidget,
     required VoidCallback onDelete,
     bool isLoading = false,
@@ -2736,7 +2861,10 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
           child: Stack(
             fit: StackFit.expand,
             children: [
-              imageWidget,
+              GestureDetector(
+                onTap: onTap,
+                child: Hero(tag: 'hero_image_$index', child: imageWidget),
+              ),
               if (isLoading)
                 Container(
                   color: Colors.white.withOpacity(0.7),
@@ -2868,7 +2996,13 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
             const SizedBox(width: 12),
             Expanded(
               child: ElevatedButton(
-                onPressed: _isSubmitting ? null : _nextStep,
+                onPressed:
+                    _isSubmitting ||
+                        (widget.pgToEdit != null &&
+                            _currentStep == _totalSteps - 1 &&
+                            !_hasChanges)
+                    ? null
+                    : _nextStep,
                 style: ElevatedButton.styleFrom(
                   backgroundColor: primaryColor,
                   padding: const EdgeInsets.symmetric(
@@ -2994,5 +3128,130 @@ class _AddPgScreenState extends ConsumerState<AddPgScreen>
         controller.text = time.format(context);
       });
     }
+  }
+
+  void _showFullScreenGallery(int initialIndex) {
+    final pageController = PageController(initialPage: initialIndex);
+    final totalImages = _existingImages.length + _selectedImages.length;
+    int currentIndex = initialIndex;
+
+    showDialog(
+      context: context,
+      builder: (dialogContext) => StatefulBuilder(
+        builder: (context, setStateDialog) {
+          return Dialog(
+            backgroundColor: Colors.transparent,
+            insetPadding: EdgeInsets.zero,
+            child: Stack(
+              fit: StackFit.expand,
+              children: [
+                GestureDetector(
+                  onTap: () => Navigator.pop(dialogContext),
+                  child: Container(
+                    color: Colors.black.withOpacity(0.9),
+                    child: PageView.builder(
+                      controller: pageController,
+                      itemCount: totalImages,
+                      onPageChanged: (index) {
+                        setStateDialog(() {
+                          currentIndex = index;
+                        });
+                      },
+                      itemBuilder: (context, index) {
+                        final isExisting = index < _existingImages.length;
+
+                        Widget imageWidget;
+                        if (isExisting) {
+                          String img = _existingImages[index];
+                          imageWidget = img.startsWith('data:image')
+                              ? Image.memory(
+                                  base64Decode(img.split(',').last),
+                                  fit: BoxFit.contain,
+                                )
+                              : Image.network(
+                                  img,
+                                  fit: BoxFit.contain,
+                                  errorBuilder: (context, error, stackTrace) =>
+                                      const Icon(
+                                        Icons.broken_image,
+                                        color: Colors.grey,
+                                        size: 40,
+                                      ),
+                                );
+                        } else {
+                          XFile file =
+                              _selectedImages[index - _existingImages.length];
+                          imageWidget = FutureBuilder<Uint8List>(
+                            future: file.readAsBytes(),
+                            builder: (context, snapshot) {
+                              if (snapshot.hasData) {
+                                return Image.memory(
+                                  snapshot.data!,
+                                  fit: BoxFit.contain,
+                                );
+                              }
+                              return const Center(
+                                child: CircularProgressIndicator(),
+                              );
+                            },
+                          );
+                        }
+
+                        return InteractiveViewer(
+                          panEnabled: true,
+                          minScale: 0.5,
+                          maxScale: 4,
+                          child: Center(
+                            child: Hero(
+                              tag: 'hero_image_$index',
+                              child: imageWidget,
+                            ),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ),
+                Positioned(
+                  top: 40,
+                  right: 20,
+                  child: IconButton(
+                    icon: const Icon(
+                      Icons.close,
+                      color: Colors.white,
+                      size: 30,
+                    ),
+                    onPressed: () => Navigator.pop(dialogContext),
+                  ),
+                ),
+                if (totalImages > 1)
+                  Positioned(
+                    bottom: 40,
+                    left: 0,
+                    right: 0,
+                    child: Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: List.generate(totalImages, (index) {
+                        return AnimatedContainer(
+                          duration: const Duration(milliseconds: 300),
+                          margin: const EdgeInsets.symmetric(horizontal: 4),
+                          width: currentIndex == index ? 24 : 8,
+                          height: 8,
+                          decoration: BoxDecoration(
+                            color: currentIndex == index
+                                ? Colors.white
+                                : Colors.white.withOpacity(0.4),
+                            borderRadius: BorderRadius.circular(4),
+                          ),
+                        );
+                      }),
+                    ),
+                  ),
+              ],
+            ),
+          );
+        },
+      ),
+    );
   }
 }

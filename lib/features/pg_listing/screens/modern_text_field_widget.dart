@@ -13,6 +13,8 @@ class ModernTextFieldWidget extends StatefulWidget {
   final int maxLines;
   final TextInputType keyboardType;
   final bool required;
+  final String? Function(String?)? validator;
+  final void Function(String)? onChanged;
 
   const ModernTextFieldWidget({
     Key? key,
@@ -25,6 +27,8 @@ class ModernTextFieldWidget extends StatefulWidget {
     this.maxLines = 1,
     this.keyboardType = TextInputType.text,
     this.required = false,
+    this.validator,
+    this.onChanged,
   }) : super(key: key);
 
   @override
@@ -57,7 +61,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
   @override
   Widget build(BuildContext context) {
 
-    final primaryColor = context.primaryColor;
+    final primaryColor = AppTheme.primary;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
@@ -67,7 +71,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             Text(
               widget.label,
               style: GoogleFonts.plusJakartaSans(
-                color: context.textPrimary,
+                color: AppTheme.textPrimary,
                 fontSize: 14,
                 fontWeight: FontWeight.w600,
                 letterSpacing: 0.3,
@@ -94,8 +98,8 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
               begin: Alignment.topLeft,
               end: Alignment.bottomRight,
               colors: [
-                context.colorScheme.surface,
-                context.theme.scaffoldBackgroundColor,
+                Theme.of(context).colorScheme.surface,
+                Theme.of(context).scaffoldBackgroundColor,
               ],
             ),
             borderRadius: BorderRadius.circular(14),
@@ -103,7 +107,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
               BoxShadow(
                 color: Theme.of(context).brightness == Brightness.dark
                     ? Colors.black.withOpacity(0.2)
-                    : context.primaryColor.withOpacity(0.06),
+                    : AppTheme.primary.withOpacity(0.06),
                 blurRadius: 10,
                 offset: const Offset(0, 3),
               ),
@@ -119,6 +123,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             focusNode: _focusNode,
             readOnly: widget.readOnly,
             onTap: widget.onTap,
+            onChanged: widget.onChanged,
             maxLines: widget.maxLines,
             keyboardType: widget.keyboardType,
             autovalidateMode: _hasInteracted
@@ -200,7 +205,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
                                         Text(
                                           'Negative numbers are not allowed.',
                                           style: GoogleFonts.plusJakartaSans(
-                                            color: context.textHint,
+                                            color: AppTheme.textHint,
                                             fontSize: 12,
                                           ),
                                         ),
@@ -238,11 +243,15 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
                 }),
             ],
             style: GoogleFonts.plusJakartaSans(
-              color: context.textPrimary,
+              color: AppTheme.textPrimary,
               fontSize: 14,
               fontWeight: FontWeight.w500,
             ),
             validator: (value) {
+              if (widget.validator != null) {
+                final customValidation = widget.validator!(value);
+                if (customValidation != null) return customValidation;
+              }
               if (widget.required && (value == null || value.trim().isEmpty)) {
                 return 'This field is required';
               }
@@ -258,7 +267,7 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
             decoration: InputDecoration(
               hintText: widget.hint,
               hintStyle: GoogleFonts.plusJakartaSans(
-                color: context.textHint,
+                color: AppTheme.textHint,
                 fontSize: 14,
                 fontWeight: FontWeight.w400,
               ),
@@ -290,14 +299,14 @@ class _ModernTextFieldWidgetState extends State<ModernTextFieldWidget> {
               border: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: context.surfaceBorder,
+                  color: AppTheme.surfaceBorder,
                   width: 1.5,
                 ),
               ),
               enabledBorder: OutlineInputBorder(
                 borderRadius: BorderRadius.circular(14),
                 borderSide: BorderSide(
-                  color: context.surfaceBorder,
+                  color: AppTheme.surfaceBorder,
                   width: 1.5,
                 ),
               ),

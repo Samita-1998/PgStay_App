@@ -6,6 +6,7 @@ import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/pg_listing/providers/pg_listing_provider.dart';
 import 'package:pgstay/features/staff/models/employee_model.dart';
 import 'package:pgstay/features/staff/providers/staff_provider.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
 
 class EditStaffBottomSheet extends ConsumerStatefulWidget {
   final EmployeeModel employee;
@@ -24,6 +25,17 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
   final Map<String, TextEditingController> _salaryControllers = {};
   DateTime? _joinDate;
   bool _isSubmitting = false;
+  late final ChangeTracker _tracker;
+
+  bool get _untrackedHasChanges {
+    if (_selectedPgIds.length != widget.employee.assignedPgs.length) return true;
+    for (final pg in widget.employee.assignedPgs) {
+      if (!_selectedPgIds.contains(pg.id)) return true;
+    }
+    return false;
+  }
+
+  bool get _hasChanges => _tracker.hasChanges || _untrackedHasChanges;
 
   @override
   void initState() {
@@ -38,8 +50,25 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
       _selectedPgIds.add(pg.id);
       final salary = widget.employee.pgSalaries[pg.id] ?? 0;
       _salaryControllers[pg.id] = TextEditingController(text: salary > 0 ? salary.toString() : '');
-      _salaryControllers[pg.id]!.addListener(() => setState(() {}));
     }
+
+    _tracker = ChangeTracker(onStateChanged: () {
+      if (mounted) setState(() {});
+    });
+
+    _tracker.setOriginal('status', _status);
+    _tracker.setOriginal('joinDate', _joinDate?.toIso8601String());
+    _tracker.setOriginal('notes', _notesController.text);
+    
+    for (var id in _salaryControllers.keys) {
+      _tracker.setOriginal('salary_$id', _salaryControllers[id]!.text);
+      _salaryControllers[id]!.addListener(() {
+        _tracker.updateValue('salary_$id', _salaryControllers[id]!.text);
+        if (mounted) setState(() {});
+      });
+    }
+
+    _notesController.addListener(() => _tracker.updateValue('notes', _notesController.text));
   }
 
   @override
@@ -84,6 +113,7 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
     if (picked != null && picked != _joinDate) {
       setState(() {
         _joinDate = picked;
+        _tracker.updateValue('joinDate', picked.toIso8601String());
       });
     }
   }
@@ -240,7 +270,12 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
                             DropdownMenuItem(value: 'inactive', child: Text('Inactive')),
                           ],
                           onChanged: (val) {
-                            if (val != null) setState(() => _status = val);
+                            if (val != null) {
+                              setState(() {
+                                _status = val;
+                                _tracker.updateValue('status', val);
+                              });
+                            }
                           },
                         ),
                       ),
@@ -286,13 +321,17 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
                               final isSelected = _selectedPgIds.contains(pg.id);
                               return CheckboxListTile(
                                 value: isSelected,
-                                onChanged: (value) {
+                                onChanged: (selected) {
                                   setState(() {
-                                    if (value == true) {
+                                    if (selected == true) {
                                       _selectedPgIds.add(pg.id);
                                       if (!_salaryControllers.containsKey(pg.id)) {
                                         _salaryControllers[pg.id] = TextEditingController();
-                                        _salaryControllers[pg.id]!.addListener(() => setState(() {}));
+                                        _tracker.setOriginal('salary_${pg.id}', '');
+                                        _salaryControllers[pg.id]!.addListener(() {
+                                          _tracker.updateValue('salary_${pg.id}', _salaryControllers[pg.id]!.text);
+                                          if (mounted) setState(() {});
+                                        });
                                       }
                                     } else {
                                       _selectedPgIds.remove(pg.id);
@@ -529,7 +568,7 @@ class _EditStaffBottomSheetState extends ConsumerState<EditStaffBottomSheet> {
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submit,
+                      onPressed: (_isSubmitting || !_hasChanges) ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         backgroundColor: AppTheme.primary,
                         disabledBackgroundColor: AppTheme.primary.withValues(alpha: 0.5),

@@ -503,7 +503,7 @@ class PgListingRepository {
       final dio = Dio();
       final response = await dio.put(
         uploadUrl,
-        data: Stream.fromIterable([bytes]),
+        data: bytes,
         options: Options(
           headers: {
             'Content-Type': fileType,
@@ -515,7 +515,7 @@ class PgListingRepository {
         throw Exception('Failed to upload file to S3');
       }
     } catch (e) {
-      throw Exception('Network error occurred while uploading file');
+      throw Exception('Network error occurred while uploading file: $e');
     }
   }
 

@@ -4,6 +4,7 @@ import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/staff/models/payment_model.dart';
 import 'package:pgstay/features/staff/providers/staff_provider.dart';
+import 'package:pgstay/core/utils/change_tracker.dart';
 
 class EditSalaryPayoutDialog extends ConsumerStatefulWidget {
   final PaymentModel payment;
@@ -18,6 +19,9 @@ class _EditSalaryPayoutDialogState extends ConsumerState<EditSalaryPayoutDialog>
   late TextEditingController _salaryController;
   late TextEditingController _expensesController;
   bool _isSubmitting = false;
+  late final ChangeTracker _tracker;
+
+  bool get _hasChanges => _tracker.hasChanges;
 
   @override
   void initState() {
@@ -30,8 +34,15 @@ class _EditSalaryPayoutDialogState extends ConsumerState<EditSalaryPayoutDialog>
     _expensesController = TextEditingController(
         text: expenses == expenses.toInt() ? expenses.toInt().toString() : expenses.toString());
 
-    _salaryController.addListener(() => setState(() {}));
-    _expensesController.addListener(() => setState(() {}));
+    _tracker = ChangeTracker(onStateChanged: () {
+      if (mounted) setState(() {});
+    });
+
+    _tracker.setOriginal('salary', _salaryController.text);
+    _tracker.setOriginal('expenses', _expensesController.text);
+
+    _salaryController.addListener(() => _tracker.updateValue('salary', _salaryController.text));
+    _expensesController.addListener(() => _tracker.updateValue('expenses', _expensesController.text));
   }
 
   @override
@@ -291,7 +302,7 @@ class _EditSalaryPayoutDialogState extends ConsumerState<EditSalaryPayoutDialog>
                   const SizedBox(width: 16),
                   Expanded(
                     child: ElevatedButton(
-                      onPressed: _isSubmitting ? null : _submit,
+                      onPressed: (_isSubmitting || !_hasChanges) ? null : _submit,
                       style: ElevatedButton.styleFrom(
                         padding: const EdgeInsets.symmetric(vertical: 16),
                         backgroundColor: AppTheme.primary,

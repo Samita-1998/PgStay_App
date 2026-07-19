@@ -166,8 +166,8 @@ class PgModel {
       }
     }
 
-    final ownerRaw = json['ownerId'];
-    final managerRaw = json['managerId'];
+    final ownerRaw = json['ownerId'] ?? json['owner'];
+    final managerRaw = json['managerId'] ?? json['manager'];
 
     return PgModel(
       id: json['_id'] ?? json['id'] ?? '',
@@ -189,17 +189,17 @@ class PgModel {
       managerId: managerRaw is Map
           ? (managerRaw['_id'] ?? managerRaw['id'])?.toString()
           : managerRaw?.toString(),
-      managerName: managerRaw is Map ? managerRaw['name']?.toString() : null,
-      managerMobNo1: managerRaw is Map ? managerRaw['mobNo1']?.toString() : null,
-      managerMobNo2: managerRaw is Map ? managerRaw['mobNo2']?.toString() : null,
-      managerEmail: managerRaw is Map ? managerRaw['email']?.toString() : null,
+      managerName: managerRaw is Map ? managerRaw['name']?.toString() : json['managerName']?.toString(),
+      managerMobNo1: managerRaw is Map ? managerRaw['mobNo1']?.toString() : json['managerMobNo1']?.toString() ?? json['mobNo1']?.toString(),
+      managerMobNo2: managerRaw is Map ? managerRaw['mobNo2']?.toString() : json['managerMobNo2']?.toString() ?? json['mobNo2']?.toString(),
+      managerEmail: managerRaw is Map ? managerRaw['email']?.toString() : json['managerEmail']?.toString(),
       // Owner
       ownerId: ownerRaw is Map
           ? (ownerRaw['_id'] ?? ownerRaw['id'])?.toString()
           : ownerRaw?.toString(),
-      ownerName: ownerRaw is Map ? ownerRaw['name']?.toString() : null,
-      ownerMobNo1: ownerRaw is Map ? ownerRaw['mobNo1']?.toString() : null,
-      ownerEmail: ownerRaw is Map ? ownerRaw['email']?.toString() : null,
+      ownerName: ownerRaw is Map ? ownerRaw['name']?.toString() : json['ownerName']?.toString(),
+      ownerMobNo1: ownerRaw is Map ? ownerRaw['mobNo1']?.toString() : json['ownerMobNo1']?.toString() ?? json['mobNo1']?.toString(),
+      ownerEmail: ownerRaw is Map ? ownerRaw['email']?.toString() : json['ownerEmail']?.toString(),
       // Extras
       description: json['description']?.toString(),
       pgStartedDate: json['pgStartedDate']?.toString(),
@@ -212,7 +212,7 @@ class PgModel {
       updatedAt: json['updatedAt']?.toString(),
       location: json['location'] != null ? PgLocation.fromJson(json['location']) : null,
       upiId: json['upiId']?.toString(),
-      paymentQrImage: json['paymentQrImage']?.toString() ?? json['paymentQrUrl']?.toString(),
+      paymentQrImage: json['paymentQrImage']?.toString() ?? json['paymentQrUrl']?.toString() ?? json['paymentQrKey']?.toString(),
       pgDisplayId: json['pgDisplayId']?.toString(),
     );
   }

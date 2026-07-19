@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/enquiries/providers/enquiries_provider.dart';
@@ -62,11 +63,17 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
       appBar: CustomAppBar(
         title: 'Enquiries',
         showBackButton: true,
+        showLeading: true,
         pinnedSCurve: true,
+        isCompact: true,
+        backgroundColor: AppTheme.backgroundLight,
+        onLeadingPressed: () {
+          Navigator.of(context).pop();
+        },
       ),
       body: Padding(
         padding: EdgeInsets.only(
-          top: 110 + MediaQuery.of(context).padding.top + 32,
+          top: 70 + MediaQuery.of(context).padding.top + 32,
         ),
         child: Column(
           children: [
@@ -559,56 +566,60 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
     );
   }
 
-  Widget _buildEnquiryCard_old(
+  Widget _buildEnquiryCard(
     EnquiryModel enquiry,
     bool isSmallScreen,
     int index,
   ) {
+    int days = 0;
+    try {
+      days = DateTime.now()
+          .difference(DateTime.parse(enquiry.createdAt).toLocal())
+          .inDays;
+    } catch (_) {}
+    Color statusColor = _getCardColor(enquiry.status);
+
     return AnimatedContainer(
       duration: Duration(milliseconds: 300 + (index * 50)),
       curve: Curves.easeOut,
-      margin: const EdgeInsets.only(bottom: 16.0),
+      margin: const EdgeInsets.only(bottom: 12.0),
       child: Container(
         decoration: BoxDecoration(
           color: Colors.white,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           boxShadow: [
             BoxShadow(
               color: Colors.black.withOpacity(0.04),
-              blurRadius: 12,
+              blurRadius: 10,
               offset: const Offset(0, 4),
             ),
           ],
+          border: Border.all(color: statusColor.withOpacity(0.3), width: 1),
         ),
         child: Material(
           color: Colors.transparent,
-          borderRadius: BorderRadius.circular(24),
+          borderRadius: BorderRadius.circular(16),
           child: InkWell(
-            onTap: () {
-              _showActionBottomSheet(enquiry);
-            },
-            borderRadius: BorderRadius.circular(24),
+            onTap: () => _showActionBottomSheet(enquiry),
+            borderRadius: BorderRadius.circular(16),
             child: Padding(
-              padding: EdgeInsets.all(isSmallScreen ? 16 : 20),
+              padding: const EdgeInsets.all(16),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Row(
                     crossAxisAlignment: CrossAxisAlignment.start,
                     children: [
+                      // Avatar
                       Container(
+                        padding: const EdgeInsets.all(2),
                         decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.accentColor.withOpacity(0.2),
-                              AppTheme.accentColor.withOpacity(0.1),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
+                          shape: BoxShape.circle,
+                          border: Border.all(color: statusColor, width: 2),
                         ),
                         child: CircleAvatar(
-                          radius: 28,
-                          backgroundColor: Colors.transparent,
+                          radius: 20,
+                          backgroundColor: statusColor.withOpacity(0.1),
                           backgroundImage:
                               (enquiry.user?.picture != null &&
                                   enquiry.user!.picture!.isNotEmpty)
@@ -619,180 +630,153 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                                   enquiry.user!.picture!.isEmpty)
                               ? Icon(
                                   Icons.person_outline_rounded,
-                                  size: 28,
-                                  color: AppTheme.accentColor,
+                                  color: statusColor,
+                                  size: 20,
                                 )
                               : null,
                         ),
                       ),
-                      const SizedBox(width: 14),
+                      const SizedBox(width: 12),
+                      // User Info & Status
                       Expanded(
                         child: Column(
                           crossAxisAlignment: CrossAxisAlignment.start,
                           children: [
-                            Text(
-                              enquiry.user?.name ?? 'Unknown User',
-                              style: GoogleFonts.inter(
-                                fontSize: isSmallScreen ? 15 : 16,
-                                fontWeight: FontWeight.w700,
-                                color: AppTheme.textPrimary,
-                                letterSpacing: -0.3,
-                              ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
-                            ),
-                            const SizedBox(height: 6),
                             Row(
+                              mainAxisAlignment: MainAxisAlignment.spaceBetween,
                               children: [
-                                Icon(
-                                  Icons.phone_rounded,
-                                  size: 14,
-                                  color: AppTheme.textSecondary,
-                                ),
-                                const SizedBox(width: 4),
                                 Expanded(
                                   child: Text(
-                                    enquiry.user?.mobNo1 ??
-                                        enquiry.user?.email ??
-                                        'No contact info',
+                                    enquiry.user?.name ?? 'Unknown',
                                     style: GoogleFonts.inter(
-                                      fontSize: 12,
-                                      color: AppTheme.textSecondary,
-                                      fontWeight: FontWeight.w500,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 15,
+                                      color: AppTheme.textPrimary,
+                                      letterSpacing: -0.2,
                                     ),
                                     maxLines: 1,
                                     overflow: TextOverflow.ellipsis,
+                                  ),
+                                ),
+                                Container(
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 8,
+                                    vertical: 4,
+                                  ),
+                                  decoration: BoxDecoration(
+                                    color: statusColor.withOpacity(0.1),
+                                    borderRadius: BorderRadius.circular(8),
+                                  ),
+                                  child: Text(
+                                    enquiry.status.toUpperCase(),
+                                    style: GoogleFonts.inter(
+                                      color: statusColor,
+                                      fontWeight: FontWeight.w700,
+                                      fontSize: 10,
+                                      letterSpacing: 0.5,
+                                    ),
                                   ),
                                 ),
                               ],
                             ),
+                            const SizedBox(height: 2),
+                            Text(
+                              enquiry.user?.mobNo1 ??
+                                  enquiry.user?.email ??
+                                  'No contact info',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textSecondary,
+                                fontSize: 12,
+                                fontWeight: FontWeight.w500,
+                              ),
+                            ),
                           ],
                         ),
                       ),
-                      _buildStatusBadge(enquiry.status, isSmallScreen),
                     ],
                   ),
-                  const SizedBox(height: 20),
-                  Container(
-                    padding: const EdgeInsets.all(14),
-                    decoration: BoxDecoration(
-                      gradient: LinearGradient(
-                        colors: [
-                          AppTheme.accentColor.withOpacity(0.05),
-                          AppTheme.accentColor.withOpacity(0.02),
-                        ],
-                        begin: Alignment.topLeft,
-                        end: Alignment.bottomRight,
+                  Padding(
+                    padding: const EdgeInsets.symmetric(vertical: 12),
+                    child: Container(
+                      height: 1,
+
+                      decoration: BoxDecoration(
+                        gradient: LinearGradient(
+                          colors: [
+                            Colors.transparent,
+                            AppTheme.primary.withOpacity(0.2),
+                            AppTheme.primary.withOpacity(0.4),
+                            AppTheme.primary.withOpacity(0.2),
+                            Colors.transparent,
+                          ],
+                          begin: Alignment.centerLeft,
+                          end: Alignment.centerRight,
+                        ),
                       ),
-                      borderRadius: BorderRadius.circular(16),
                     ),
-                    child: Column(
-                      children: [
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
+                  ),
+                  Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.apartment_rounded,
+                            size: 16,
+                            color: AppTheme.textHint,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              enquiry.pg?.name ?? 'Unknown PG',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textPrimary,
+                                fontWeight: FontWeight.w600,
+                                fontSize: 13,
                               ),
-                              child: Icon(
-                                Icons.apartment_rounded,
-                                size: 16,
-                                color: AppTheme.accentColor,
-                              ),
+                              maxLines: 1,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Property',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textHint,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    enquiry.pg?.name ?? 'Unknown PG',
-                                    style: GoogleFonts.inter(
-                                      fontSize: isSmallScreen ? 12 : 13,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textPrimary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
+                          ),
+                        ],
+                      ),
+                      const SizedBox(height: 6),
+                      Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Icon(
+                            Icons.bed_rounded,
+                            size: 16,
+                            color: AppTheme.textHint,
+                          ),
+                          const SizedBox(width: 6),
+                          Expanded(
+                            child: Text(
+                              enquiry.post?.title ?? 'Room',
+                              style: GoogleFonts.inter(
+                                color: AppTheme.textSecondary,
+                                fontWeight: FontWeight.w500,
+                                fontSize: 12,
                               ),
+                              maxLines: 2,
+                              overflow: TextOverflow.ellipsis,
                             ),
-                          ],
-                        ),
-                        const SizedBox(height: 12),
-                        Row(
-                          children: [
-                            Container(
-                              padding: const EdgeInsets.all(8),
-                              decoration: BoxDecoration(
-                                color: AppTheme.accentColor.withOpacity(0.1),
-                                borderRadius: BorderRadius.circular(12),
-                              ),
-                              child: Icon(
-                                Icons.bed_rounded,
-                                size: 16,
-                                color: AppTheme.accentColor,
-                              ),
-                            ),
-                            const SizedBox(width: 12),
-                            Expanded(
-                              child: Column(
-                                crossAxisAlignment: CrossAxisAlignment.start,
-                                children: [
-                                  Text(
-                                    'Room Type',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 10,
-                                      fontWeight: FontWeight.w600,
-                                      color: AppTheme.textHint,
-                                      letterSpacing: 0.5,
-                                    ),
-                                  ),
-                                  const SizedBox(height: 2),
-                                  Text(
-                                    enquiry.post?.title ?? 'Unknown Post',
-                                    style: GoogleFonts.inter(
-                                      fontSize: isSmallScreen ? 12 : 13,
-                                      fontWeight: FontWeight.w500,
-                                      color: AppTheme.textSecondary,
-                                    ),
-                                    maxLines: 1,
-                                    overflow: TextOverflow.ellipsis,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
-                      ],
-                    ),
+                          ),
+                        ],
+                      ),
+                    ],
                   ),
                   if (enquiry.staffRemarks != null &&
                       enquiry.staffRemarks!.isNotEmpty) ...[
                     const SizedBox(height: 12),
                     Container(
-                      padding: const EdgeInsets.all(12),
+                      padding: const EdgeInsets.all(10),
                       decoration: BoxDecoration(
                         color: AppTheme.backgroundLight,
-                        borderRadius: BorderRadius.circular(12),
-                        border: Border.all(
-                          color: AppTheme.accentColor.withOpacity(0.1),
-                        ),
+                        borderRadius: BorderRadius.circular(8),
                       ),
                       child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
                         children: [
                           Icon(
                             Icons.comment_rounded,
@@ -802,11 +786,11 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                           const SizedBox(width: 8),
                           Expanded(
                             child: Text(
-                              'Remarks: ${enquiry.staffRemarks}',
+                              enquiry.staffRemarks!,
                               style: GoogleFonts.inter(
-                                fontSize: 11,
-                                fontStyle: FontStyle.italic,
                                 color: AppTheme.textSecondary,
+                                fontStyle: FontStyle.italic,
+                                fontSize: 12,
                               ),
                             ),
                           ),
@@ -814,83 +798,79 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                       ),
                     ),
                   ],
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 12),
                   Row(
                     mainAxisAlignment: MainAxisAlignment.spaceBetween,
                     children: [
-                      Container(
-                        padding: const EdgeInsets.symmetric(
-                          horizontal: 10,
-                          vertical: 6,
-                        ),
-                        decoration: BoxDecoration(
-                          color: AppTheme.textHint.withOpacity(0.1),
-                          borderRadius: BorderRadius.circular(8),
-                        ),
-                        child: Row(
-                          mainAxisSize: MainAxisSize.min,
-                          children: [
-                            Icon(
-                              Icons.access_time_rounded,
-                              size: 12,
+                      Row(
+                        children: [
+                          Icon(
+                            Icons.access_time_rounded,
+                            size: 12,
+                            color: AppTheme.textHint,
+                          ),
+                          const SizedBox(width: 4),
+                          Text(
+                            days == 0 ? "Today" : "$days days ago",
+                            style: GoogleFonts.inter(
                               color: AppTheme.textHint,
+                              fontSize: 11,
+                              fontWeight: FontWeight.w500,
                             ),
-                            const SizedBox(width: 4),
-                            Text(
-                              _formatDate(enquiry.createdAt),
-                              style: GoogleFonts.inter(
-                                color: AppTheme.textHint,
-                                fontSize: 10,
-                                fontWeight: FontWeight.w500,
+                          ),
+                        ],
+                      ),
+                      Row(
+                        children: [
+                          if (enquiry.status.toLowerCase().replaceAll(' ', '') == 'dealdone') ...[
+                            InkWell(
+                              onTap: () {
+                                context.push('/onboarding', extra: enquiry);
+                              },
+                              borderRadius: BorderRadius.circular(6),
+                              child: Container(
+                                padding: const EdgeInsets.symmetric(
+                                  horizontal: 10,
+                                  vertical: 4,
+                                ),
+                                decoration: BoxDecoration(
+                                  color: AppTheme.primary.withOpacity(0.1),
+                                  borderRadius: BorderRadius.circular(6),
+                                  border: Border.all(
+                                    color: AppTheme.primary.withOpacity(0.3),
+                                  ),
+                                ),
+                                child: Text(
+                                  'Onboarding',
+                                  style: GoogleFonts.inter(
+                                    color: AppTheme.primary,
+                                    fontSize: 11,
+                                    fontWeight: FontWeight.w600,
+                                  ),
+                                ),
                               ),
                             ),
+                            const SizedBox(width: 12),
                           ],
-                        ),
-                      ),
-                      Container(
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              AppTheme.accentColor,
-                              AppTheme.accentColor.withOpacity(0.8),
+                          Row(
+                            children: [
+                              Text(
+                                'Action',
+                                style: GoogleFonts.inter(
+                                  color: AppTheme.accentColor,
+                                  fontSize: 12,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                              const SizedBox(width: 4),
+                              Icon(
+                                Icons.arrow_forward_ios_rounded,
+                                size: 10,
+                                color: AppTheme.accentColor,
+                              ),
                             ],
                           ),
-                          borderRadius: BorderRadius.circular(14),
-                        ),
-                        child: Material(
-                          color: Colors.transparent,
-                          child: InkWell(
-                            onTap: () {
-                              _showActionBottomSheet(enquiry);
-                            },
-                            borderRadius: BorderRadius.circular(14),
-                            child: Padding(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 16,
-                                vertical: 8,
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Text(
-                                    'Take Action',
-                                    style: GoogleFonts.inter(
-                                      fontSize: 11,
-                                      fontWeight: FontWeight.w700,
-                                      color: Colors.white,
-                                    ),
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Icon(
-                                    Icons.arrow_forward_rounded,
-                                    size: 14,
-                                    color: Colors.white,
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ),
-                        ),
+                        ],
                       ),
                     ],
                   ),
@@ -899,254 +879,6 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
             ),
           ),
         ),
-      ),
-    );
-  }
-
-  Widget _buildEnquiryCard(
-    EnquiryModel enquiry,
-    bool isSmallScreen,
-    int index,
-  ) {
-    int days = 0;
-    try {
-      days = DateTime.now().difference(DateTime.parse(enquiry.createdAt).toLocal()).inDays;
-    } catch (_) {}
-    Color statusColor = _getCardColor(enquiry.status);
-
-    return AnimatedContainer(
-      duration: Duration(milliseconds: 300 + (index * 50)),
-      curve: Curves.easeOut,
-      margin: const EdgeInsets.only(bottom: 24.0, right: 24.0, left: 8.0),
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          // Background white card with shadow
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(24),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withOpacity(0.06),
-                  blurRadius: 15,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: IntrinsicHeight(
-              child: Row(
-                crossAxisAlignment: CrossAxisAlignment.stretch,
-                children: [
-                  // Left Colored Area
-                  Container(
-                    width: isSmallScreen ? 100 : 120,
-                    decoration: BoxDecoration(
-                      color: statusColor,
-                      borderRadius: const BorderRadius.only(
-                        topLeft: Radius.circular(24),
-                        bottomLeft: Radius.circular(24),
-                      ),
-                    ),
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 16,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.center,
-                      children: [
-                        Text(
-                          enquiry.user?.name ?? 'User',
-                          style: GoogleFonts.inter(
-                            color: Colors.white,
-                            fontWeight: FontWeight.w600,
-                            fontSize: isSmallScreen ? 12 : 14,
-                          ),
-                          maxLines: 1,
-                          overflow: TextOverflow.ellipsis,
-                          textAlign: TextAlign.center,
-                        ),
-                        const SizedBox(height: 12),
-                        CircleAvatar(
-                          radius: isSmallScreen ? 28 : 34,
-                          backgroundColor: Colors.white.withOpacity(0.2),
-                          backgroundImage:
-                              (enquiry.user?.picture != null &&
-                                  enquiry.user!.picture!.isNotEmpty)
-                              ? NetworkImage(enquiry.user!.picture!)
-                              : null,
-                          child:
-                              (enquiry.user?.picture == null ||
-                                  enquiry.user!.picture!.isEmpty)
-                              ? Icon(
-                                  Icons.person_outline_rounded,
-                                  color: Colors.white,
-                                  size: isSmallScreen ? 28 : 34,
-                                )
-                              : null,
-                        ),
-                      ],
-                    ),
-                  ),
-
-                  // Right Area
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
-                        // Top Status Banner
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                            horizontal: 16,
-                            vertical: 8,
-                          ),
-                          decoration: BoxDecoration(
-                            color: statusColor,
-                            borderRadius: const BorderRadius.only(
-                              bottomRight: Radius.circular(24),
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Text(
-                                enquiry.status.toUpperCase(),
-                                style: GoogleFonts.inter(
-                                  color: Colors.white,
-                                  fontWeight: FontWeight.w800,
-                                  fontSize: 11,
-                                  letterSpacing: 1.2,
-                                ),
-                              ),
-                            ],
-                          ),
-                        ),
-
-                        // Content
-                        Padding(
-                          padding: const EdgeInsets.fromLTRB(16, 12, 32, 16),
-                          child: Column(
-                            crossAxisAlignment: CrossAxisAlignment.start,
-                            children: [
-                              Text(
-                                enquiry.pg?.name ?? 'Unknown Property',
-                                style: GoogleFonts.inter(
-                                  fontSize: isSmallScreen ? 14 : 16,
-                                  fontWeight: FontWeight.w700,
-                                  color: AppTheme.textPrimary,
-                                ),
-                                maxLines: 1,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                enquiry.post?.title ?? 'Room details',
-                                style: GoogleFonts.inter(
-                                  fontSize: isSmallScreen ? 12 : 13,
-                                  color: AppTheme.textSecondary,
-                                ),
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                              ),
-                              const SizedBox(height: 8),
-                              Row(
-                                children: [
-                                  Icon(
-                                    Icons.phone_rounded,
-                                    size: 14,
-                                    color: AppTheme.textHint,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Expanded(
-                                    child: Text(
-                                      enquiry.user?.mobNo1 ??
-                                          enquiry.user?.email ??
-                                          'No contact info',
-                                      style: GoogleFonts.inter(
-                                        fontSize: 12,
-                                        color: AppTheme.textHint,
-                                        fontWeight: FontWeight.w500,
-                                      ),
-                                      maxLines: 1,
-                                      overflow: TextOverflow.ellipsis,
-                                    ),
-                                  ),
-                                ],
-                              ),
-                            ],
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-            ),
-          ),
-
-          // Circular overlapping indicator on the right edge
-          Positioned(
-            right: -24,
-            top: 0,
-            bottom: 0,
-            child: Center(
-              child: Container(
-                width: 56,
-                height: 56,
-                decoration: BoxDecoration(
-                  color: statusColor,
-                  shape: BoxShape.circle,
-                  border: Border.all(color: Colors.white, width: 4),
-                  boxShadow: [
-                    BoxShadow(
-                      color: statusColor.withOpacity(0.4),
-                      blurRadius: 8,
-                      offset: const Offset(0, 4),
-                    ),
-                  ],
-                ),
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text(
-                      '$days',
-                      style: GoogleFonts.inter(
-                        color: Colors.white,
-                        fontSize: 20,
-                        fontWeight: FontWeight.w800,
-                        height: 1.1,
-                      ),
-                    ),
-                    Text(
-                      days == 1 ? 'DAY' : 'DAYS',
-                      style: GoogleFonts.inter(
-                        color: Colors.white.withOpacity(0.9),
-                        fontSize: 8,
-                        fontWeight: FontWeight.w700,
-                        letterSpacing: 0.5,
-                        height: 1.1,
-                      ),
-                    ),
-                  ],
-                ),
-              ),
-            ),
-          ),
-
-          // Touch target overlay
-          Positioned.fill(
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(24),
-              child: InkWell(
-                borderRadius: BorderRadius.circular(24),
-                onTap: () {
-                  _showActionBottomSheet(enquiry);
-                },
-              ),
-            ),
-          ),
-        ],
       ),
     );
   }
@@ -1178,7 +910,7 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
   void _showActionBottomSheet(EnquiryModel enquiry) {
     String selectedStatus = enquiry.status.toLowerCase();
 
-    // Map API status variations to our standard keys
+    // Map API status variations
     if (selectedStatus == 'dealdone' ||
         selectedStatus == 'confirmed' ||
         selectedStatus == 'deal done') {
@@ -1205,37 +937,32 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
     );
     bool isSaving = false;
 
-    // Status configuration using AppTheme colors
+    // Professional subtle colors for statuses
     final Map<String, Map<String, dynamic>> statusConfig = {
       'interested': {
         'label': 'Interested',
-        'icon': Icons.favorite_border_rounded,
-        'color': Colors.orange,
-        'gradient': [Colors.orange.shade400, Colors.orange.shade600],
+        'icon': Icons.bookmark_border_rounded,
+        'color': const Color(0xFFF07B3F),
       },
       'contacted': {
         'label': 'Contacted',
-        'icon': Icons.phone_rounded,
-        'color': AppTheme.primary,
-        'gradient': [AppTheme.primary, AppTheme.primaryDark],
+        'icon': Icons.phone_in_talk_rounded,
+        'color': const Color(0xFF1E88E5),
       },
       'visited': {
         'label': 'Visited',
-        'icon': Icons.visibility_rounded,
-        'color': AppTheme.accentColor,
-        'gradient': [AppTheme.accentColor, AppTheme.secondaryColor],
+        'icon': Icons.directions_walk_rounded,
+        'color': const Color(0xFF8E24AA),
       },
       'rejected': {
         'label': 'Rejected',
-        'icon': Icons.cancel_rounded,
-        'color': AppTheme.error,
-        'gradient': [AppTheme.error, AppTheme.error.withOpacity(0.8)],
+        'icon': Icons.block_rounded,
+        'color': const Color(0xFFE53935),
       },
       'dealDone': {
         'label': 'Deal Done',
-        'icon': Icons.check_circle_rounded,
-        'color': AppTheme.success,
-        'gradient': [AppTheme.success, AppTheme.success.withOpacity(0.8)],
+        'icon': Icons.check_circle_outline_rounded,
+        'color': const Color(0xFF4CAF50),
       },
     };
 
@@ -1243,99 +970,102 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
       context: context,
       isScrollControlled: true,
       backgroundColor: Colors.transparent,
+      elevation: 0,
       builder: (context) {
         return StatefulBuilder(
           builder: (context, setModalState) {
-            final currentStatusConfig =
-                statusConfig[selectedStatus] ?? statusConfig['interested']!;
-
             return Container(
+              margin: EdgeInsets.only(
+                top: MediaQuery.of(context).padding.top + kToolbarHeight,
+              ),
               decoration: BoxDecoration(
-                color: AppTheme.surfaceWhite,
+                color: Colors.white,
                 borderRadius: const BorderRadius.vertical(
-                  top: Radius.circular(AppTheme.radiusXXL),
+                  top: Radius.circular(24),
                 ),
-                boxShadow: AppTheme.elevatedShadow,
+                boxShadow: [
+                  BoxShadow(
+                    color: Colors.black.withOpacity(0.08),
+                    blurRadius: 24,
+                    offset: const Offset(0, -4),
+                  ),
+                ],
               ),
               child: Column(
                 mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.stretch,
                 children: [
-                  // Drag handle
-                  Container(
-                    margin: const EdgeInsets.only(top: 12),
-                    width: 40,
-                    height: 4,
-                    decoration: BoxDecoration(
-                      color: AppTheme.textHint.withOpacity(0.3),
-                      borderRadius: BorderRadius.circular(AppTheme.radiusXS),
+                  // Drag Handle
+                  Center(
+                    child: Container(
+                      margin: const EdgeInsets.only(top: 12, bottom: 8),
+                      width: 40,
+                      height: 4,
+                      decoration: BoxDecoration(
+                        color: Colors.grey.shade300,
+                        borderRadius: BorderRadius.circular(2),
+                      ),
                     ),
                   ),
-                  const SizedBox(height: 8),
 
-                  // Header
+                  // Professional Header
                   Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 8),
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 24,
+                      vertical: 12,
+                    ),
                     child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                      crossAxisAlignment: CrossAxisAlignment.center,
                       children: [
-                        Column(
-                          crossAxisAlignment: CrossAxisAlignment.start,
-                          children: [
-                            Text(
-                              'Update Enquiry Status',
-                              style: AppTheme.textTheme.displaySmall?.copyWith(
-                                fontSize: 20,
-                              ),
-                            ),
-                            const SizedBox(height: 4),
-                            Container(
-                              padding: const EdgeInsets.symmetric(
-                                horizontal: 8,
-                                vertical: 4,
-                              ),
-                              decoration: BoxDecoration(
-                                gradient: LinearGradient(
-                                  colors: currentStatusConfig['gradient'],
-                                ),
-                                borderRadius: BorderRadius.circular(
-                                  AppTheme.radiusLG,
-                                ),
-                              ),
-                              child: Row(
-                                mainAxisSize: MainAxisSize.min,
-                                children: [
-                                  Icon(
-                                    currentStatusConfig['icon'],
-                                    size: 12,
-                                    color: Colors.white,
-                                  ),
-                                  const SizedBox(width: 4),
-                                  Text(
-                                    currentStatusConfig['label'],
-                                    style: AppTheme.textTheme.labelSmall
-                                        ?.copyWith(
-                                          color: Colors.white,
-                                          fontSize: 10,
-                                        ),
-                                  ),
-                                ],
-                              ),
-                            ),
-                          ],
-                        ),
                         Container(
+                          padding: const EdgeInsets.all(10),
                           decoration: BoxDecoration(
-                            color: AppTheme.primary.withOpacity(0.1),
-                            borderRadius: BorderRadius.circular(
-                              AppTheme.radiusMD,
-                            ),
+                            color: AppTheme.primary.withOpacity(0.08),
+                            borderRadius: BorderRadius.circular(12),
                           ),
-                          child: IconButton(
-                            onPressed: () => Navigator.pop(context),
-                            icon: const Icon(
+                          child: Icon(
+                            Icons.edit_note_rounded,
+                            color: AppTheme.primary,
+                            size: 22,
+                          ),
+                        ),
+                        const SizedBox(width: 16),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Text(
+                                'Update Status',
+                                style: context.textTheme.titleMedium?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  letterSpacing: -0.3,
+                                  color: AppTheme.textPrimary,
+                                ),
+                              ),
+                              const SizedBox(height: 2),
+                              Text(
+                                enquiry.user?.name ?? 'Unknown User',
+                                style: context.textTheme.labelMedium?.copyWith(
+                                  color: AppTheme.textSecondary,
+                                  fontWeight: FontWeight.w500,
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                        InkWell(
+                          onTap: () => Navigator.pop(context),
+                          borderRadius: BorderRadius.circular(20),
+                          child: Container(
+                            padding: const EdgeInsets.all(8),
+                            decoration: BoxDecoration(
+                              color: Colors.grey.shade100,
+                              shape: BoxShape.circle,
+                            ),
+                            child: Icon(
                               Icons.close_rounded,
-                              color: AppTheme.textSecondary,
-                              size: 22,
+                              color: Colors.grey.shade600,
+                              size: 18,
                             ),
                           ),
                         ),
@@ -1343,625 +1073,204 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
                     ),
                   ),
 
-                  // Main content with constrained height
+                  // Gradient Divider requested by user
+                  Container(
+                    height: 1,
+                    margin: const EdgeInsets.symmetric(horizontal: 24),
+                    decoration: BoxDecoration(
+                      gradient: LinearGradient(
+                        colors: [
+                          Colors.transparent,
+                          AppTheme.primary.withOpacity(0.2),
+                          AppTheme.primary.withOpacity(0.4),
+                          AppTheme.primary.withOpacity(0.2),
+                          Colors.transparent,
+                        ],
+                        begin: Alignment.centerLeft,
+                        end: Alignment.centerRight,
+                      ),
+                    ),
+                  ),
+
+                  // Body
                   Flexible(
                     child: SingleChildScrollView(
-                      physics: const BouncingScrollPhysics(),
                       padding: EdgeInsets.only(
-                        bottom:
-                            MediaQuery.of(context).padding.bottom +
-                            20, // Reduced from 100 to 20
-                        top: 8,
                         left: 24,
                         right: 24,
+                        top: 20,
+                        bottom: MediaQuery.of(context).viewInsets.bottom + 24,
                       ),
                       child: Column(
-                        mainAxisSize: MainAxisSize.min,
-                        crossAxisAlignment: CrossAxisAlignment.start,
+                        crossAxisAlignment: CrossAxisAlignment.stretch,
                         children: [
-                          // Tenant info card
-                          Container(
-                            padding: const EdgeInsets.all(20),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  AppTheme.accentColor.withOpacity(0.08),
-                                  AppTheme.accentColor.withOpacity(0.03),
-                                ],
-                                begin: Alignment.topLeft,
-                                end: Alignment.bottomRight,
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusXL,
-                              ),
-                              border: Border.all(
-                                color: AppTheme.accentColor.withOpacity(0.15),
-                              ),
+                          Text(
+                            'Status',
+                            style: context.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary,
                             ),
-                            child: Column(
-                              crossAxisAlignment: CrossAxisAlignment.start,
-                              children: [
-                                // Tenant header
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(12),
-                                      decoration: BoxDecoration(
-                                        gradient: AppTheme.primaryGradient,
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusLG,
-                                        ),
-                                      ),
-                                      child: const Icon(
-                                        Icons.person_rounded,
-                                        size: 24,
-                                        color: Colors.white,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 16),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Tenant Details',
-                                            style: AppTheme
-                                                .textTheme
-                                                .labelMedium
-                                                ?.copyWith(
-                                                  color: AppTheme.textHint,
-                                                  fontSize: 11,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            enquiry.user?.name ??
-                                                'Unknown User',
-                                            style: AppTheme.textTheme.titleLarge
-                                                ?.copyWith(fontSize: 18),
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
+                          ),
+                          const SizedBox(height: 12),
+
+                          // Compact, professional wrap for status chips
+                          Wrap(
+                            spacing: 8,
+                            runSpacing: 8,
+                            children: statuses.map((status) {
+                              final config = statusConfig[status]!;
+                              final isSelected = selectedStatus == status;
+                              final Color activeColor = config['color'];
+
+                              return InkWell(
+                                onTap: () => setModalState(
+                                  () => selectedStatus = status,
                                 ),
-
-                                const SizedBox(height: 20),
-
-                                // Property info
-                                Row(
-                                  children: [
-                                    Container(
-                                      padding: const EdgeInsets.all(10),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.accentColor.withOpacity(
-                                          0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusMD,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.business_rounded,
-                                        size: 20,
-                                        color: AppTheme.accentColor,
-                                      ),
-                                    ),
-                                    const SizedBox(width: 12),
-                                    Expanded(
-                                      child: Column(
-                                        crossAxisAlignment:
-                                            CrossAxisAlignment.start,
-                                        children: [
-                                          Text(
-                                            'Property',
-                                            style: AppTheme
-                                                .textTheme
-                                                .labelMedium
-                                                ?.copyWith(
-                                                  color: AppTheme.textHint,
-                                                  fontSize: 11,
-                                                ),
-                                          ),
-                                          const SizedBox(height: 4),
-                                          Text(
-                                            enquiry.pg?.name ?? 'Unknown PG',
-                                            style:
-                                                AppTheme.textTheme.bodyMedium,
-                                          ),
-                                        ],
-                                      ),
-                                    ),
-                                  ],
-                                ),
-
-                                const SizedBox(height: 12),
-
-                                // Contact info
-                                Container(
-                                  padding: const EdgeInsets.all(12),
+                                borderRadius: BorderRadius.circular(8),
+                                child: AnimatedContainer(
+                                  duration: const Duration(milliseconds: 200),
+                                  padding: const EdgeInsets.symmetric(
+                                    horizontal: 14,
+                                    vertical: 10,
+                                  ),
                                   decoration: BoxDecoration(
-                                    color: AppTheme.backgroundLight,
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusLG,
-                                    ),
+                                    color: isSelected
+                                        ? activeColor.withOpacity(0.08)
+                                        : Colors.grey.shade50,
+                                    borderRadius: BorderRadius.circular(8),
                                     border: Border.all(
-                                      color: AppTheme.surfaceBorder,
+                                      color: isSelected
+                                          ? activeColor.withOpacity(0.3)
+                                          : Colors.grey.shade200,
+                                      width: 1,
                                     ),
                                   ),
                                   child: Row(
+                                    mainAxisSize: MainAxisSize.min,
                                     children: [
-                                      Container(
-                                        padding: const EdgeInsets.all(6),
-                                        decoration: BoxDecoration(
-                                          color: AppTheme.accentColor
-                                              .withOpacity(0.1),
-                                          borderRadius: BorderRadius.circular(
-                                            AppTheme.radiusSM,
-                                          ),
-                                        ),
-                                        child: Icon(
-                                          Icons.contact_phone_rounded,
-                                          size: 16,
-                                          color: AppTheme.accentColor,
-                                        ),
-                                      ),
-                                      const SizedBox(width: 12),
-                                      Expanded(
-                                        child: Text(
-                                          enquiry.user?.mobNo1 ??
-                                              enquiry.user?.email ??
-                                              'No contact info',
-                                          style: AppTheme.textTheme.bodySmall,
-                                        ),
-                                      ),
-                                      GestureDetector(
-                                        onTap: () {
-                                          ScaffoldMessenger.of(
-                                            context,
-                                          ).showSnackBar(
-                                            SnackBar(
-                                              content: const Text(
-                                                'Copied to clipboard',
-                                              ),
-                                              backgroundColor: AppTheme.success,
-                                              behavior:
-                                                  SnackBarBehavior.floating,
-                                              shape: RoundedRectangleBorder(
-                                                borderRadius:
-                                                    BorderRadius.circular(
-                                                      AppTheme.radiusMD,
-                                                    ),
-                                              ),
-                                            ),
-                                          );
-                                        },
-                                        child: Icon(
-                                          Icons.copy_rounded,
-                                          size: 16,
-                                          color: AppTheme.textHint,
-                                        ),
-                                      ),
-                                    ],
-                                  ),
-                                ),
-                              ],
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Status selection
-                          Text(
-                            'Select Status',
-                            style: AppTheme.textTheme.titleSmall,
-                          ),
-                          const SizedBox(height: 12),
-
-                          // Horizontal scrollable status chips
-                          SizedBox(
-                            height: 60,
-                            child: ListView.separated(
-                              scrollDirection: Axis.horizontal,
-                              itemCount: statuses.length,
-                              separatorBuilder: (context, index) =>
-                                  const SizedBox(width: 12),
-                              itemBuilder: (context, index) {
-                                final status = statuses[index];
-                                final config = statusConfig[status]!;
-                                final isSelected = selectedStatus == status;
-
-                                return GestureDetector(
-                                  onTap: () => setModalState(
-                                    () => selectedStatus = status,
-                                  ),
-                                  child: AnimatedContainer(
-                                    duration: const Duration(milliseconds: 200),
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 16,
-                                      vertical: 8,
-                                    ),
-                                    decoration: BoxDecoration(
-                                      gradient: isSelected
-                                          ? LinearGradient(
-                                              colors: config['gradient'],
-                                            )
-                                          : null,
-                                      color: isSelected
-                                          ? null
-                                          : AppTheme.backgroundLight,
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusCircular,
-                                      ),
-                                      border: Border.all(
+                                      Icon(
+                                        config['icon'],
+                                        size: 16,
                                         color: isSelected
-                                            ? Colors.transparent
-                                            : AppTheme.surfaceBorder,
+                                            ? activeColor
+                                            : Colors.grey.shade500,
                                       ),
-                                    ),
-                                    child: Row(
-                                      mainAxisSize: MainAxisSize.min,
-                                      children: [
-                                        Icon(
-                                          config['icon'],
-                                          size: 18,
-                                          color: isSelected
-                                              ? Colors.white
-                                              : config['color'],
-                                        ),
-                                        const SizedBox(width: 8),
-                                        Text(
-                                          config['label'],
-                                          style: AppTheme.textTheme.labelLarge
-                                              ?.copyWith(
-                                                color: isSelected
-                                                    ? Colors.white
-                                                    : AppTheme.textSecondary,
-                                                fontSize: 13,
-                                              ),
-                                        ),
-                                      ],
-                                    ),
-                                  ),
-                                );
-                              },
-                            ),
-                          ),
-
-                          const SizedBox(height: 24),
-
-                          // Animated status preview
-                          AnimatedContainer(
-                            duration: const Duration(milliseconds: 300),
-                            padding: const EdgeInsets.all(16),
-                            decoration: BoxDecoration(
-                              gradient: LinearGradient(
-                                colors: [
-                                  (statusConfig[selectedStatus]!['color']
-                                          as Color)
-                                      .withOpacity(0.1),
-                                  (statusConfig[selectedStatus]!['color']
-                                          as Color)
-                                      .withOpacity(0.05),
-                                ],
-                              ),
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusLG,
-                              ),
-                              border: Border.all(
-                                color:
-                                    (statusConfig[selectedStatus]!['color']
-                                            as Color)
-                                        .withOpacity(0.2),
-                              ),
-                            ),
-                            child: Row(
-                              children: [
-                                Container(
-                                  padding: const EdgeInsets.all(10),
-                                  decoration: BoxDecoration(
-                                    gradient: LinearGradient(
-                                      colors:
-                                          statusConfig[selectedStatus]!['gradient'],
-                                    ),
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusMD,
-                                    ),
-                                  ),
-                                  child: Icon(
-                                    statusConfig[selectedStatus]!['icon'],
-                                    size: 22,
-                                    color: Colors.white,
-                                  ),
-                                ),
-                                const SizedBox(width: 16),
-                                Expanded(
-                                  child: Column(
-                                    crossAxisAlignment:
-                                        CrossAxisAlignment.start,
-                                    children: [
+                                      const SizedBox(width: 8),
                                       Text(
-                                        'New Status',
-                                        style: AppTheme.textTheme.labelMedium
+                                        config['label'],
+                                        style: context.textTheme.labelMedium
                                             ?.copyWith(
-                                              color: AppTheme.textHint,
-                                              fontSize: 11,
+                                              fontWeight: isSelected
+                                                  ? FontWeight.w700
+                                                  : FontWeight.w500,
+                                              color: isSelected
+                                                  ? activeColor
+                                                  : Colors.grey.shade700,
                                             ),
-                                      ),
-                                      const SizedBox(height: 4),
-                                      Text(
-                                        statusConfig[selectedStatus]!['label'],
-                                        style: AppTheme.textTheme.titleMedium,
                                       ),
                                     ],
                                   ),
                                 ),
-                                Icon(
-                                  Icons.arrow_forward_rounded,
-                                  size: 20,
-                                  color: statusConfig[selectedStatus]!['color'],
-                                ),
-                              ],
-                            ),
+                              );
+                            }).toList(),
                           ),
 
                           const SizedBox(height: 24),
 
-                          // Remarks section
                           Text(
-                            'Staff Remarks',
-                            style: AppTheme.textTheme.titleSmall,
+                            'Remarks (Optional)',
+                            style: context.textTheme.labelMedium?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.textSecondary,
+                            ),
                           ),
-                          const SizedBox(height: 12),
+                          const SizedBox(height: 8),
+
+                          // Minimal textfield
                           Container(
                             decoration: BoxDecoration(
-                              color: AppTheme.backgroundLight,
-                              borderRadius: BorderRadius.circular(
-                                AppTheme.radiusLG,
-                              ),
-                              border: Border.all(color: AppTheme.surfaceBorder),
+                              color: Colors.grey.shade50,
+                              borderRadius: BorderRadius.circular(12),
+                              border: Border.all(color: Colors.grey.shade200),
                             ),
                             child: TextField(
                               controller: remarksController,
-                              maxLines: 3,
-                              style: AppTheme.textTheme.bodyMedium,
+                              maxLines: 2,
+                              style: context.textTheme.bodyMedium?.copyWith(
+                                fontWeight: FontWeight.w500,
+                              ),
                               decoration: InputDecoration(
-                                hintText: 'Add notes about this enquiry...',
-                                hintStyle: AppTheme.textTheme.bodyMedium
-                                    ?.copyWith(color: AppTheme.textHint),
+                                hintText: 'Add internal notes here...',
+                                hintStyle: context.textTheme.bodyMedium
+                                    ?.copyWith(color: Colors.grey.shade400),
                                 border: InputBorder.none,
                                 contentPadding: const EdgeInsets.all(16),
-                                suffixIcon: Align(
-                                  widthFactor: 1.0,
-                                  heightFactor: 1.0,
-                                  alignment: Alignment.bottomRight,
-                                  child: Padding(
-                                    padding: const EdgeInsets.all(12.0),
-                                    child: Container(
-                                      padding: const EdgeInsets.all(4),
-                                      decoration: BoxDecoration(
-                                        color: AppTheme.accentColor.withOpacity(
-                                          0.1,
-                                        ),
-                                        borderRadius: BorderRadius.circular(
-                                          AppTheme.radiusSM,
-                                        ),
-                                      ),
-                                      child: Icon(
-                                        Icons.edit_note_rounded,
-                                        color: AppTheme.accentColor,
-                                        size: 18,
-                                      ),
-                                    ),
-                                  ),
-                                ),
                               ),
-                            ),
-                          ),
-
-                          // Character count
-                          Padding(
-                            padding: const EdgeInsets.only(top: 8, left: 12),
-                            child: Text(
-                              '${remarksController.text.length}/500 characters',
-                              style: AppTheme.textTheme.labelSmall,
                             ),
                           ),
 
                           const SizedBox(height: 32),
 
-                          // Action buttons
-                          Row(
-                            mainAxisAlignment: MainAxisAlignment.end,
-                            children: [
-                              TextButton(
-                                onPressed: isSaving
-                                    ? null
-                                    : () => Navigator.pop(context),
-                                style: TextButton.styleFrom(
-                                  padding: const EdgeInsets.symmetric(
-                                    horizontal: 20,
-                                    vertical: 12,
-                                  ),
-                                  shape: RoundedRectangleBorder(
-                                    borderRadius: BorderRadius.circular(
-                                      AppTheme.radiusLG,
-                                    ),
-                                  ),
-                                ),
-                                child: Text(
-                                  'Cancel',
-                                  style: AppTheme.textTheme.labelLarge
-                                      ?.copyWith(color: AppTheme.textSecondary),
-                                ),
+                          // Single clean Save Button
+                          ElevatedButton(
+                            onPressed: isSaving
+                                ? null
+                                : () async {
+                                    setModalState(() => isSaving = true);
+                                    try {
+                                      final repo = ref.read(
+                                        enquiriesRepositoryProvider,
+                                      );
+                                      await repo.updateEnquiry(enquiry.id, {
+                                        'status': selectedStatus,
+                                        'staffRemarks': remarksController.text
+                                            .trim(),
+                                      });
+                                      if (mounted) {
+                                        Navigator.pop(context);
+                                        _showSuccessSnackBar(context);
+                                        setState(() {
+                                          _currentPage = 1;
+                                          _hasMoreData = true;
+                                        });
+                                        ref.refresh(
+                                          paginatedEnquiriesProvider(1).future,
+                                        );
+                                      }
+                                    } catch (e) {
+                                      if (mounted) {
+                                        _showErrorSnackBar(context, e);
+                                        setModalState(() => isSaving = false);
+                                      }
+                                    }
+                                  },
+                            style: ElevatedButton.styleFrom(
+                              backgroundColor: AppTheme.primary,
+                              foregroundColor: Colors.white,
+                              padding: const EdgeInsets.symmetric(vertical: 16),
+                              elevation: 0,
+                              shape: RoundedRectangleBorder(
+                                borderRadius: BorderRadius.circular(12),
                               ),
-                              const SizedBox(width: 12),
-                              AnimatedContainer(
-                                duration: const Duration(milliseconds: 200),
-                                child: ElevatedButton(
-                                  onPressed: isSaving
-                                      ? null
-                                      : () async {
-                                          setModalState(() => isSaving = true);
-                                          try {
-                                            final repo = ref.read(
-                                              enquiriesRepositoryProvider,
-                                            );
-                                            await repo
-                                                .updateEnquiry(enquiry.id, {
-                                                  'status': selectedStatus,
-                                                  'staffRemarks':
-                                                      remarksController.text
-                                                          .trim(),
-                                                });
-                                            if (mounted) {
-                                              Navigator.pop(context);
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons
-                                                            .check_circle_rounded,
-                                                        color: Colors.white,
-                                                        size: 20,
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: Text(
-                                                          'Enquiry updated successfully',
-                                                          style: AppTheme
-                                                              .textTheme
-                                                              .bodyMedium
-                                                              ?.copyWith(
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  backgroundColor:
-                                                      AppTheme.success,
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusMD,
-                                                        ),
-                                                  ),
-                                                ),
-                                              );
-                                              setState(() {
-                                                _currentPage = 1;
-                                                _hasMoreData = true;
-                                              });
-                                              ref.refresh(
-                                                paginatedEnquiriesProvider(
-                                                  1,
-                                                ).future,
-                                              );
-                                            }
-                                          } catch (e) {
-                                            if (mounted) {
-                                              ScaffoldMessenger.of(
-                                                context,
-                                              ).showSnackBar(
-                                                SnackBar(
-                                                  content: Row(
-                                                    children: [
-                                                      const Icon(
-                                                        Icons
-                                                            .error_outline_rounded,
-                                                        color: Colors.white,
-                                                        size: 20,
-                                                      ),
-                                                      const SizedBox(width: 12),
-                                                      Expanded(
-                                                        child: Text(
-                                                          e.toString(),
-                                                          style: AppTheme
-                                                              .textTheme
-                                                              .bodyMedium
-                                                              ?.copyWith(
-                                                                color: Colors
-                                                                    .white,
-                                                              ),
-                                                        ),
-                                                      ),
-                                                    ],
-                                                  ),
-                                                  backgroundColor:
-                                                      AppTheme.error,
-                                                  behavior:
-                                                      SnackBarBehavior.floating,
-                                                  shape: RoundedRectangleBorder(
-                                                    borderRadius:
-                                                        BorderRadius.circular(
-                                                          AppTheme.radiusMD,
-                                                        ),
-                                                  ),
-                                                ),
-                                              );
-                                            }
-                                            setModalState(
-                                              () => isSaving = false,
-                                            );
-                                          }
-                                        },
-                                  style: ElevatedButton.styleFrom(
-                                    backgroundColor:
-                                        statusConfig[selectedStatus]!['color'],
-                                    padding: const EdgeInsets.symmetric(
-                                      horizontal: 28,
-                                      vertical: 12,
+                            ),
+                            child: isSaving
+                                ? const SizedBox(
+                                    width: 20,
+                                    height: 20,
+                                    child: CircularProgressIndicator(
+                                      color: Colors.white,
+                                      strokeWidth: 2.5,
                                     ),
-                                    shape: RoundedRectangleBorder(
-                                      borderRadius: BorderRadius.circular(
-                                        AppTheme.radiusLG,
-                                      ),
-                                    ),
-                                    elevation: 0,
-                                  ),
-                                  child: isSaving
-                                      ? const SizedBox(
-                                          height: 20,
-                                          width: 20,
-                                          child: CircularProgressIndicator(
-                                            color: Colors.white,
-                                            strokeWidth: 2,
-                                          ),
-                                        )
-                                      : Row(
-                                          mainAxisSize: MainAxisSize.min,
-                                          children: [
-                                            Text(
-                                              'Save Changes',
-                                              style: AppTheme
-                                                  .textTheme
-                                                  .labelLarge
-                                                  ?.copyWith(
-                                                    color: Colors.white,
-                                                  ),
-                                            ),
-                                            const SizedBox(width: 8),
-                                            const Icon(
-                                              Icons.arrow_forward_rounded,
-                                              size: 18,
-                                              color: Colors.white,
-                                            ),
-                                          ],
+                                  )
+                                : Text(
+                                    'Save Status',
+                                    style: context.textTheme.labelLarge
+                                        ?.copyWith(
+                                          color: Colors.white,
+                                          fontWeight: FontWeight.w700,
                                         ),
-                                ),
-                              ),
-                            ],
+                                  ),
                           ),
-
-                          const SizedBox(height: 32), // Bottom padding
                         ],
                       ),
                     ),
@@ -1972,6 +1281,91 @@ class _OwnerEnquiriesScreenState extends ConsumerState<OwnerEnquiriesScreen>
           },
         );
       },
+    );
+  }
+
+  // Helper methods for snackbars
+  void _showSuccessSnackBar(BuildContext context) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.check_rounded,
+                  color: Color(0xFF27AE60),
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  'Enquiry updated successfully! ✨',
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: const Color(0xFF27AE60),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 6,
+        duration: const Duration(seconds: 3),
+      ),
+    );
+  }
+
+  void _showErrorSnackBar(BuildContext context, dynamic error) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Container(
+          padding: const EdgeInsets.symmetric(vertical: 4),
+          child: Row(
+            children: [
+              Container(
+                padding: const EdgeInsets.all(6),
+                decoration: const BoxDecoration(
+                  color: Colors.white,
+                  shape: BoxShape.circle,
+                ),
+                child: const Icon(
+                  Icons.close_rounded,
+                  color: Color(0xFFE74C3C),
+                  size: 16,
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Text(
+                  error.toString(),
+                  style: GoogleFonts.poppins(
+                    color: Colors.white,
+                    fontSize: 14,
+                    fontWeight: FontWeight.w500,
+                  ),
+                ),
+              ),
+            ],
+          ),
+        ),
+        backgroundColor: const Color(0xFFE74C3C),
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+        elevation: 6,
+        duration: const Duration(seconds: 3),
+      ),
     );
   }
 

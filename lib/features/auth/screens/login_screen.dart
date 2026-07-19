@@ -19,6 +19,7 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
   final _passwordController = TextEditingController();
   final _formKey = GlobalKey<FormState>();
   bool _obscurePassword = true;
+  int? _selectedCredentialIndex;
   late final AnimationController _pulseController;
 
   @override
@@ -273,6 +274,42 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                       ),
                     ),
                   ),
+                  const SizedBox(height: 32),
+                  
+                  // ─── Sample Credentials ───────────────────────────────
+                  StaggeredFadeIn(
+                    delay: const Duration(milliseconds: 600),
+                    child: Container(
+                      padding: const EdgeInsets.all(16),
+                      decoration: BoxDecoration(
+                        color: AppTheme.primary.withOpacity(0.05),
+                        borderRadius: BorderRadius.circular(16),
+                        border: Border.all(
+                          color: AppTheme.primary.withOpacity(0.1),
+                        ),
+                      ),
+                      child: Column(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: [
+                          Text(
+                            'Sample Credentials',
+                            style: GoogleFonts.inter(
+                              fontSize: 13,
+                              fontWeight: FontWeight.w700,
+                              color: AppTheme.primary,
+                            ),
+                          ),
+                          const SizedBox(height: 12),
+                          _buildCredentialRow('Owner:', 'samita4588@gmail.com', 'Samita@123', 0),
+                          const SizedBox(height: 8),
+                          _buildCredentialRow('Manager:', 'manager1@gmail.com', 'Sagar@123', 1),
+                          const SizedBox(height: 8),
+                          _buildCredentialRow('User:', 'saggythakare01@gmail.com', 'Sagar@123', 2),
+                        ],
+                      ),
+                    ),
+                  ),
+                  const SizedBox(height: 32),
                 ],
               ),
             ),
@@ -339,6 +376,75 @@ class _LoginScreenState extends ConsumerState<LoginScreen>
                   ),
                 ],
               ),
+      ),
+    );
+  }
+
+  Widget _buildCredentialRow(String role, String email, String password, int index) {
+    final isSelected = _selectedCredentialIndex == index;
+    return GestureDetector(
+      onTap: () {
+        setState(() {
+          _selectedCredentialIndex = index;
+          _emailController.text = email;
+          _passwordController.text = password;
+        });
+      },
+      behavior: HitTestBehavior.opaque,
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Container(
+            margin: const EdgeInsets.only(top: 2),
+            width: 14,
+            height: 14,
+            decoration: BoxDecoration(
+              color: isSelected ? AppTheme.primary : Colors.transparent,
+              borderRadius: BorderRadius.circular(4),
+              border: Border.all(
+                color: isSelected ? AppTheme.primary : AppTheme.textHint,
+              ),
+            ),
+            child: isSelected
+                ? const Icon(Icons.check, size: 10, color: Colors.white)
+                : null,
+          ),
+          const SizedBox(width: 8),
+          Expanded(
+            child: RichText(
+              text: TextSpan(
+                style: GoogleFonts.inter(
+                  fontSize: 12,
+                  color: AppTheme.textSecondary,
+                  height: 1.4,
+                ),
+                children: [
+                  TextSpan(
+                    text: '$role ',
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w700,
+                      color: AppTheme.primary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: email,
+                    style: const TextStyle(
+                      fontWeight: FontWeight.w600,
+                      color: AppTheme.textPrimary,
+                    ),
+                  ),
+                  TextSpan(
+                    text: ' ($password)',
+                    style: TextStyle(
+                      color: AppTheme.textHint,
+                      fontWeight: FontWeight.w500,
+                    ),
+                  ),
+                ],
+              ),
+            ),
+          ),
+        ],
       ),
     );
   }

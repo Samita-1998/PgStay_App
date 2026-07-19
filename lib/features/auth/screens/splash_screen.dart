@@ -23,7 +23,7 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
     super.initState();
     _controller = AnimationController(
       vsync: this,
-      duration: const Duration(milliseconds: 1600),
+      duration: const Duration(milliseconds: 800),
     );
 
     _scaleAnimation = Tween<double>(begin: 0.85, end: 1.0).animate(
@@ -46,14 +46,18 @@ class _SplashScreenState extends ConsumerState<SplashScreen>
 
   Future<void> _checkNavigation() async {
     // Wait for the animation to play a bit
-    await Future.delayed(const Duration(milliseconds: 2000));
+    await Future.delayed(const Duration(milliseconds: 1500));
     if (!mounted) return;
+
+    // Wait until auth state is no longer loading
+    while (ref.read(authProvider).isLoading) {
+      await Future.delayed(const Duration(milliseconds: 200));
+      if (!mounted) return;
+    }
 
     final authState = ref.read(authProvider);
     
-    // If auth is still loading, let the GoRouter redirect handle navigation when it completes
-    if (authState.isLoading) return;
-
+    // If there is no logged-in user, manually go to login
     if (authState.valueOrNull == null) {
       context.go('/login');
     }

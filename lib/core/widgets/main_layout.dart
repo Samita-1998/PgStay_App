@@ -5,6 +5,7 @@ import 'package:go_router/go_router.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:pgstay/core/theme/app_theme.dart';
 import 'package:pgstay/features/auth/providers/auth_provider.dart';
+import 'package:pgstay/core/providers/theme_provider.dart';
 import 'package:curved_navigation_bar/curved_navigation_bar.dart';
 
 class MainLayout extends ConsumerStatefulWidget {
@@ -175,7 +176,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
         return i;
       }
     }
-    return 0;
+    return -1;
   }
 
   void _onItemTapped(
@@ -195,6 +196,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
     final selectedIndex = _calculateSelectedIndex(context, navItems);
     final drawerItems = _getDrawerItems(role);
     final currentPath = GoRouterState.of(context).uri.path;
+    final showBottomNav = selectedIndex != -1;
 
     return Scaffold(
       key: _scaffoldKey,
@@ -203,7 +205,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
       // ── Drawer ────────────────────────────────────────────────────────────
       endDrawer: _buildDrawer(user, role, drawerItems, currentPath),
       // ── Bottom Nav ────────────────────────────────────────────────────────
-      bottomNavigationBar: CurvedNavigationBar(
+      bottomNavigationBar: showBottomNav ? CurvedNavigationBar(
         index: selectedIndex,
         backgroundColor: Colors.transparent,
         color: AppTheme.primary,
@@ -224,7 +226,7 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
             _onItemTapped(index, context, navItems);
           }
         },
-      ),
+      ) : null,
     );
   }
 
@@ -356,33 +358,49 @@ class _MainLayoutState extends ConsumerState<MainLayout> {
                       isActive: isActive,
                       onTap: () {
                         Navigator.of(context).pop(); // close drawer
-                        context.go(item['path']);
+                        if (item['path'] == '/logout') {
+                          _showLogoutDialog();
+                        } else {
+                          context.go(item['path']);
+                        }
                       },
                     );
                   }),
-                ],
-              ),
-            ),
-
-            // ── Footer ───────────────────────────────────────────────────
-            Container(
-              padding: const EdgeInsets.fromLTRB(24, 12, 24, 24),
-              decoration: BoxDecoration(
-                border: Border(
-                  top: BorderSide(
-                    color: AppTheme.surfaceBorder.withValues(alpha: 0.5),
+                  const Padding(
+                    padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                    child: Divider(),
                   ),
-                ),
-              ),
-              child: _buildDrawerItem(
-                icon: Icons.logout_rounded,
-                label: 'Logout',
-                isActive: false,
-                isDestructive: true,
-                onTap: () {
-                  Navigator.of(context).pop();
-                  _showLogoutDialog();
-                },
+                  _buildDrawerItem(
+                    icon: ref.watch(themeProvider) == ThemeMode.dark
+                        ? Icons.light_mode_outlined
+                        : Icons.dark_mode_outlined,
+                    label: ref.watch(themeProvider) == ThemeMode.dark
+                        ? 'Light Mode'
+                        : 'Dark Mode',
+                    isActive: false,
+                    onTap: () {
+                      final currentTheme = ref.read(themeProvider);
+                      ref
+                          .read(themeProvider.notifier)
+                          .state = currentTheme == ThemeMode.dark
+                          ? ThemeMode.light
+                          : ThemeMode.dark;
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  _buildDrawerItem(
+                    icon: Icons.logout_rounded,
+                    label: 'Logout',
+                    isActive: false,
+                    isDestructive: true,
+                    onTap: () {
+                      Navigator.of(context).pop();
+                      _showLogoutDialog();
+                    },
+                  ),
+                  // Add bottom padding so it can scroll past the bottom nav bar
+                  const SizedBox(height: 100),
+                ],
               ),
             ),
           ],
